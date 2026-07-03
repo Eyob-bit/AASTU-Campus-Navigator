@@ -18,8 +18,8 @@ model Building {
   name          String
   isActive      Boolean  @default(true)
   code          String   @unique
-  latitude      Float
-  longitude     Float
+  entranceLatitude  Float
+  entranceLongitude Float
   entranceImage String?
   coverImage    String?
   createdAt     DateTime @default(now())
@@ -120,6 +120,7 @@ model PanoramaScene {
   name         String
   imagePath    String
   displayOrder Int    @default(0)
+  isEntryScene Boolean @default(false)
 
   floorId String
 
@@ -135,6 +136,9 @@ model PanoramaScene {
 
 model SceneElement {
   id String @id @default(cuid())
+  displayOrder Int @default(0)
+  isVisible    Boolean @default(true)
+  updatedAt DateTime @updatedAt
 
   type SceneElementType
 
