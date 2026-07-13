@@ -14,4 +14,20 @@ export class BuildingService {
     async createBuilding(data: any) {
         return this.repository.create(data);
     }
+
+    async getBuildingById(id: string) {
+        return this.repository.findByIdWithDetails(id);
+    }
+
+    async updateBuilding(
+        id: string,
+        data: any
+    ) {
+        return this.repository.update(id, data);
+    }
+
+    async deleteBuilding(id: string) {
+        return this.repository.softDelete(id);
+    }
 }
+

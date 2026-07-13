@@ -23,6 +23,47 @@ export class BuildingRepository {
         });
     }
 
+    async findByIdWithDetails(id: string) {
+        return prisma.building.findUnique({
+            where: { id },
+            include: {
+                floors: {
+                    orderBy: {
+                        floorNumber: "asc",
+                    },
+                },
+                announcements: true,
+            },
+        });
+    }
+
+    async update(
+        id: string,
+        data: {
+            name?: string;
+            code?: string;
+            entranceLatitude?: number;
+            entranceLongitude?: number;
+            entranceImage?: string;
+            coverImage?: string;
+            isActive?: boolean;
+        }
+    ) {
+        return prisma.building.update({
+            where: { id },
+            data,
+        });
+    }
+
+    async softDelete(id: string) {
+        return prisma.building.update({
+            where: { id },
+            data: {
+                isActive: false,
+            },
+        });
+    }
+
     async create(data: {
         name: string;
         code: string;
