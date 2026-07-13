@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { buildingController } from "../controllers/building.controller.js";
+import { floorController } from "../controllers/floor.controller.js";
 import { validate } from "../middleware/validation.middleware.js";
 import { createBuildingSchema, updateBuildingSchema } from "../validators/building.validator.js";
+import { createFloorSchema } from "../validators/floor.validator.js";
 
 const router = Router();
 
@@ -22,5 +24,13 @@ router.patch(
 );
 
 router.delete("/:id", buildingController.deleteBuilding);
+
+// Nested floor routes
+router.get("/:buildingId/floors", floorController.getFloorsByBuilding);
+router.post(
+    "/:buildingId/floors",
+    validate(createFloorSchema),
+    floorController.createFloor
+);
 
 export default router;
