@@ -109,9 +109,8 @@ model SearchAlias {
 
   createdAt DateTime @default(now())
 
-  @@unique([alias, officeId])
-  @@unique([alias, staffId])
-  @@index([normalizedAlias])
+  @@unique([normalizedAlias, officeId])
+  @@unique([normalizedAlias, staffId])
 }
 
 model PanoramaScene {
