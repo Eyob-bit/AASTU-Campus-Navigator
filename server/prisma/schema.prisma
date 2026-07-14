@@ -118,6 +118,7 @@ model PanoramaScene {
   key          String @unique
   name         String
   imagePath    String
+  imageFilename String?
   displayOrder Int    @default(0)
   isEntryScene Boolean @default(false)
 
@@ -131,6 +132,8 @@ model PanoramaScene {
   elements SceneElement[] @relation("SceneElements")
 
   nextScenes SceneElement[] @relation("SceneNavigation")
+
+  @@unique([floorId, displayOrder])
 }
 
 model SceneElement {

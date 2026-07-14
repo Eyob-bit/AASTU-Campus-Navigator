@@ -5,6 +5,7 @@ import floorRoutes from "./floor.routes.js";
 import officeRoutes from "./office.routes.js";
 import staffRoutes from "./staff.routes.js";
 import aliasRoutes from "./alias.routes.js";
+import sceneRoutes from "./scene.routes.js";
 
 const router = Router();
 
@@ -15,5 +16,6 @@ router.use("/floors", floorRoutes);
 router.use("/offices", officeRoutes);
 router.use("/staff", staffRoutes);
 router.use("/aliases", aliasRoutes);
+router.use("/scenes", sceneRoutes);
 
 export default router;
