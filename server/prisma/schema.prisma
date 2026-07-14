@@ -164,6 +164,8 @@ model SceneElement {
   office Office? @relation(fields: [officeId], references: [id])
 
   nextScene PanoramaScene? @relation("SceneNavigation", fields: [nextSceneId], references: [id])
+
+  @@unique([sceneId, displayOrder])
 }
 
 model Announcement {
