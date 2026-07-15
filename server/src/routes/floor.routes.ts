@@ -6,6 +6,7 @@ import { validate } from "../middleware/validation.middleware.js";
 import { updateFloorSchema } from "../validators/floor.validator.js";
 import { createOfficeSchema } from "../validators/office.validator.js";
 import { createSceneSchema } from "../validators/scene.validator.js";
+import { uploadPanorama } from "../middleware/upload.middleware.js";
 
 const router = Router();
 
@@ -31,6 +32,7 @@ router.post(
 router.get("/:floorId/scenes", sceneController.getScenesByFloor);
 router.post(
     "/:floorId/scenes",
+    uploadPanorama,
     validate(createSceneSchema),
     sceneController.createScene
 );
