@@ -20,6 +20,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 // Root API route
+app.use("/uploads", express.static("uploads"));
 app.use("/api", routes);
 
 // Error handling middleware

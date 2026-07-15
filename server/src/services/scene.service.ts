@@ -1,6 +1,8 @@
 import { SceneRepository } from "../repositories/scene.repository.js";
 import { FloorRepository } from "../repositories/floor.repository.js";
 import { ApiError } from "../utils/ApiError.js";
+import { deleteFile } from "../utils/file.util.js";
+import path from "path";
 
 export class SceneService {
     private repository = new SceneRepository();
@@ -27,11 +29,10 @@ export class SceneService {
         data: {
             name: string;
             key: string;
-            imagePath: string;
-            imageFilename?: string | null;
             displayOrder?: number;
             isEntryScene?: boolean;
-        }
+        },
+        file: Express.Multer.File
     ) {
         const floor = await this.floorRepository.findById(floorId);
         if (!floor) {
@@ -66,9 +67,14 @@ export class SceneService {
             oldEntrySceneId = entryScene.id;
         }
 
+        const imageFilename = file.filename;
+        const imagePath = `uploads/panoramas/${imageFilename}`;
+
         return this.repository.createSceneWithEntrySwitch(
             {
                 ...data,
+                imageFilename,
+                imagePath,
                 isEntryScene,
                 floorId,
             },
@@ -81,11 +87,10 @@ export class SceneService {
         data: {
             name?: string;
             key?: string;
-            imagePath?: string;
-            imageFilename?: string | null;
             displayOrder?: number;
             isEntryScene?: boolean;
-        }
+        },
+        file?: Express.Multer.File
     ) {
         const scene = await this.repository.findById(id);
         if (!scene) {
@@ -134,7 +139,38 @@ export class SceneService {
             }
         }
 
-        return this.repository.updateSceneWithEntrySwitch(id, data, oldEntrySceneId);
+        let imagePath = scene.imagePath;
+        let imageFilename = scene.imageFilename;
+
+        if (file) {
+            imageFilename = file.filename;
+            imagePath = `uploads/panoramas/${imageFilename}`;
+        }
+
+        const updatedScene = await this.repository.updateSceneWithEntrySwitch(
+            id,
+            {
+                ...data,
+                imagePath,
+                imageFilename,
+            },
+            oldEntrySceneId
+        );
+
+        // Delete old image only after the database has successfully updated
+        if (file) {
+            if (scene.imageFilename) {
+                await deleteFile(path.join("uploads", "panoramas", scene.imageFilename)).catch((err) =>
+                    console.error("Failed to delete old image after database update:", err)
+                );
+            } else if (scene.imagePath) {
+                await deleteFile(scene.imagePath).catch((err) =>
+                    console.error("Failed to delete old image path after database update:", err)
+                );
+            }
+        }
+
+        return updatedScene;
     }
 
     async deleteScene(id: string) {
@@ -148,6 +184,13 @@ export class SceneService {
                 400,
                 "Cannot delete the entry scene. Please set another scene as the entry scene first."
             );
+        }
+
+        // Delete physical file
+        if (scene.imageFilename) {
+            await deleteFile(path.join("uploads", "panoramas", scene.imageFilename));
+        } else if (scene.imagePath) {
+            await deleteFile(scene.imagePath);
         }
 
         return this.repository.delete(id);

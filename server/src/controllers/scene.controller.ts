@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { SceneService } from "../services/scene.service.js";
 import { sendSuccess } from "../utils/response.js";
+import { ApiError } from "../utils/ApiError.js";
+import { deleteFile } from "../utils/file.util.js";
 
 const sceneService = new SceneService();
 
@@ -50,9 +52,14 @@ export class SceneController {
         next: NextFunction
     ) {
         try {
+            if (!req.file) {
+                throw new ApiError(400, "A scene must have one panorama image.");
+            }
+
             const scene = await sceneService.createScene(
                 req.params.floorId,
-                req.body
+                req.body,
+                req.file
             );
 
             return sendSuccess(
@@ -62,6 +69,11 @@ export class SceneController {
                 201
             );
         } catch (error) {
+            if (req.file) {
+                deleteFile(req.file.path).catch((err) =>
+                    console.error("Failed to delete file after creation error:", err)
+                );
+            }
             next(error);
         }
     }
@@ -74,7 +86,8 @@ export class SceneController {
         try {
             const scene = await sceneService.updateScene(
                 req.params.id,
-                req.body
+                req.body,
+                req.file
             );
 
             return sendSuccess(
@@ -83,6 +96,11 @@ export class SceneController {
                 "Scene updated successfully"
             );
         } catch (error) {
+            if (req.file) {
+                deleteFile(req.file.path).catch((err) =>
+                    console.error("Failed to delete file after update error:", err)
+                );
+            }
             next(error);
         }
     }
