@@ -1,16 +1,43 @@
-# React + Vite
+# AASTU Campus Navigator — Client
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Production frontend for the AASTU Campus Navigator platform.
 
-Currently, two official plugins are available:
+## Technology Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19
+- TypeScript
+- Vite
+- React Router
+- Tailwind CSS
+- Axios
+- TanStack Query (React Query)
+- React Hook Form
+- Zod
+- Leaflet (campus map)
+- Marzipano (360° panorama viewer)
 
-## React Compiler
+## Getting Started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+The dev server runs at `http://localhost:5173` and proxies API requests to `http://localhost:5000`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Project Structure
+
+```
+src/
+├── api/           Axios client and HTTP helpers
+├── components/    UI modules (common, map, panorama, search, navigation)
+├── hooks/         TanStack Query hooks and feature hooks
+├── layouts/       App shell, providers, and route layouts
+├── lib/           Shared app libraries (query client)
+├── pages/         Route-level screens
+├── schemas/       Zod validation schemas
+├── services/      API service functions
+├── store/         Client-side app state
+├── types/         Shared TypeScript types
+└── utils/         Utility helpers
+```
