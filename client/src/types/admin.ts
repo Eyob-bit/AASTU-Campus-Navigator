@@ -166,7 +166,9 @@ export interface CreateOfficeBody {
   description?: string | null;
 }
 
-export interface UpdateOfficeBody extends Partial<CreateOfficeBody> {}
+export interface UpdateOfficeBody extends Partial<CreateOfficeBody> {
+  isActive?: boolean;
+}
 
 export interface CreateStaffBody {
   fullName: string;
