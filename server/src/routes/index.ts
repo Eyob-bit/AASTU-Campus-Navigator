@@ -8,6 +8,7 @@ import aliasRoutes from "./alias.routes.js";
 import sceneRoutes from "./scene.routes.js";
 import sceneElementRoutes from "./scene-element.routes.js";
 import searchRoutes from "./search.routes.js";
+import navigationRoutes from "./navigation.routes.js";
 
 const router = Router();
 
@@ -21,5 +22,6 @@ router.use("/aliases", aliasRoutes);
 router.use("/scenes", sceneRoutes);
 router.use("/elements", sceneElementRoutes);
 router.use("/search", searchRoutes);
+router.use("/navigation", navigationRoutes);
 
 export default router;
