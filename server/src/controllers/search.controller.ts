@@ -18,7 +18,7 @@ export class SearchController {
             const { q } = result.data;
             const searchResult = await searchService.search(q);
 
-            return sendSuccess(res, searchResult, "Search results retrieved successfully");
+            return sendSuccess(res, searchResult, "Search completed successfully.");
         } catch (error) {
             next(error);
         }
