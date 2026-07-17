@@ -5,7 +5,6 @@ import type {
   ElementListData,
   CreateSceneElementBody,
   SceneElement,
-  UpdateSceneBody,
 } from "@/types";
 import { apiPost } from "./client";
 

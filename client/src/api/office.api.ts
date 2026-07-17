@@ -1,6 +1,8 @@
 import { apiGet, apiPatch, apiDelete, apiPost } from "./client";
 import type {
   Office,
+  OfficeListData,
+  CreateOfficeBody,
   UpdateOfficeBody,
   StaffListData,
   CreateStaffBody,
@@ -11,6 +13,13 @@ import type {
 } from "@/types";
 
 export const officeApi = {
+  // Offices live under floors
+  getByFloor: (floorId: string) =>
+    apiGet<OfficeListData>(`/floors/${floorId}/offices`),
+
+  create: (floorId: string, body: CreateOfficeBody) =>
+    apiPost<Office, CreateOfficeBody>(`/floors/${floorId}/offices`, body),
+
   getById: (id: string) => apiGet<Office>(`/offices/${id}`),
 
   update: (id: string, body: UpdateOfficeBody) =>

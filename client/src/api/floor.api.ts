@@ -1,7 +1,8 @@
-import { apiClient, apiGet, apiPatch, apiDelete, apiPost } from "./client";
+import { apiGet, apiPatch, apiDelete, apiPost, apiClient } from "./client";
 import { ApiRequestError } from "@/types";
 import type {
   Floor,
+  FloorListData,
   OfficeListData,
   CreateOfficeBody,
   Office,
@@ -41,6 +42,13 @@ async function apiPatchForm<T>(path: string, formData: FormData): Promise<T> {
 export { apiPostForm, apiPatchForm };
 
 export const floorApi = {
+  // Floors live under buildings — fetch all floors for a given building
+  getByBuilding: (buildingId: string) =>
+    apiGet<FloorListData>(`/buildings/${buildingId}/floors`),
+
+  create: (buildingId: string, body: { floorNumber: number }) =>
+    apiPost<Floor, { floorNumber: number }>(`/buildings/${buildingId}/floors`, body),
+
   getById: (id: string) => apiGet<Floor>(`/floors/${id}`),
 
   update: (id: string, body: { floorNumber: number }) =>

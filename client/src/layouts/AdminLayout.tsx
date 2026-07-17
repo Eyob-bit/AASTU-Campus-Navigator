@@ -3,7 +3,6 @@ import { Outlet, useNavigate } from "react-router-dom";
 import { Menu, Navigation } from "lucide-react";
 import { Sidebar, AdminHeader } from "@/components/layout";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { cn } from "@/utils/cn";
 
 export function AdminLayout() {
   const [collapsed, setCollapsed]       = useState(false);
