@@ -1,37 +1,16 @@
 import { useState, useCallback } from "react";
 import { officeApi } from "@/api/office.api";
-import { floorApi } from "@/api/floor.api";
-import { buildingApi } from "@/api/building.api";
-import type { Office, Floor, Building, CreateOfficeBody, UpdateOfficeBody } from "@/types";
+import { useCampusHierarchy } from "./useCampusHierarchy";
+import { sortOffices } from "@/utils";
+import type { Building, CreateOfficeBody, UpdateOfficeBody, FloorOption, OfficeWithContext } from "@/types";
 
-/** Office enriched with floor and building context for display */
-export interface OfficeWithContext extends Office {
-  floorNumber: number;
-  buildingId: string;
-  buildingName: string;
-}
-
-/** Floor enriched with its building name — used for the form dropdowns */
-export interface FloorOption extends Floor {
-  buildingName: string;
-}
-
-function sortOffices(list: OfficeWithContext[]): OfficeWithContext[] {
-  return [...list].sort((a, b) => {
-    const byBuilding = a.buildingName.localeCompare(b.buildingName);
-    if (byBuilding !== 0) return byBuilding;
-    const byFloor = a.floorNumber - b.floorNumber;
-    if (byFloor !== 0) return byFloor;
-    return a.name.localeCompare(b.name);
-  });
-}
 
 interface UseOfficesReturn {
-  offices: OfficeWithContext[];
-  buildings: Building[];
+  offices:      OfficeWithContext[];
+  buildings:    Building[];
   floorOptions: FloorOption[];
-  isLoading: boolean;
-  error: string | null;
+  isLoading:    boolean;
+  error:        string | null;
   fetchOffices: () => Promise<void>;
   createOffice: (floorId: string, body: CreateOfficeBody) => Promise<void>;
   updateOffice: (id: string, body: UpdateOfficeBody) => Promise<void>;
@@ -39,73 +18,59 @@ interface UseOfficesReturn {
 }
 
 export function useOffices(): UseOfficesReturn {
-  const [offices,      setOffices]      = useState<OfficeWithContext[]>([]);
-  const [buildings,    setBuildings]    = useState<Building[]>([]);
-  const [floorOptions, setFloorOptions] = useState<FloorOption[]>([]);
-  const [isLoading,    setIsLoading]    = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
+  // ── Campus tree (buildings + floors) comes from the shared hook ────────────
+  const {
+    buildings,
+    floorOptions,
+    isLoading: hierarchyLoading,
+    error:     hierarchyError,
+    refresh:   refreshHierarchy,
+  } = useCampusHierarchy();
+
+  // ── Office-specific state ──────────────────────────────────────────────────
+  const [offices,       setOffices]       = useState<OfficeWithContext[]>([]);
+  const [officeLoading, setOfficeLoading] = useState(false);
+  const [officeError,   setOfficeError]   = useState<string | null>(null);
+
+  const isLoading = hierarchyLoading || officeLoading;
+  const error     = hierarchyError ?? officeError;
 
   /**
-   * 1. Fetch all buildings
-   * 2. Fetch all floors per building in parallel  (N+1 — acceptable until backend adds /floors)
-   * 3. Fetch all offices per floor in parallel
-   * 4. Enrich each office with its floor/building context
+   * 1. Refresh the campus tree via useCampusHierarchy (buildings → floors).
+   * 2. Use the freshly returned floor list to fetch offices in parallel.
+   * 3. Enrich each office with its floor / building context.
    */
   const fetchOffices = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+    setOfficeLoading(true);
+    setOfficeError(null);
     try {
-      const buildingData = await buildingApi.getAll();
-      const allBuildings = buildingData.buildings;
-      setBuildings(allBuildings);
+      // refreshHierarchy() returns the snapshot so we can use it immediately
+      // without waiting for a React state-update cycle.
+      const { floorOptions: freshFloors } = await refreshHierarchy();
 
-      // Build a Map for O(1) lookups
-      const buildingMap = new Map(allBuildings.map((b) => [b.id, b]));
-
-      // Fetch floors for every building
-      const floorsByBuilding = await Promise.all(
-        allBuildings.map((b) =>
-          floorApi.getByBuilding(b.id).then((d) =>
-            d.floors.map((f): FloorOption => ({
-              ...f,
-              buildingName: b.name,
-            }))
-          )
-        )
-      );
-      const allFloors = floorsByBuilding.flat();
-      setFloorOptions(
-        [...allFloors].sort((a, b) => {
-          const byBuilding = a.buildingName.localeCompare(b.buildingName);
-          return byBuilding !== 0 ? byBuilding : a.floorNumber - b.floorNumber;
-        })
-      );
-
-      // Fetch offices for every floor
       const officesByFloor = await Promise.all(
-        allFloors.map((f) =>
+        freshFloors.map((f) =>
           officeApi.getByFloor(f.id).then((d) =>
             d.offices.map((o): OfficeWithContext => ({
               ...o,
               floorNumber:  f.floorNumber,
               buildingId:   f.buildingId,
-              buildingName: buildingMap.get(f.buildingId)?.name ?? "Unknown",
+              buildingName: f.buildingName,
             }))
           )
         )
       );
-
       setOffices(sortOffices(officesByFloor.flat()));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to load offices.");
+      setOfficeError(err instanceof Error ? err.message : "Failed to load offices.");
     } finally {
-      setIsLoading(false);
+      setOfficeLoading(false);
     }
-  }, []);
+  }, [refreshHierarchy]);
 
   const createOffice = useCallback(
     async (floorId: string, body: CreateOfficeBody) => {
-      setError(null);
+      setOfficeError(null);
       try {
         const created = await officeApi.create(floorId, body);
         const floor   = floorOptions.find((f) => f.id === floorId);
@@ -117,7 +82,7 @@ export function useOffices(): UseOfficesReturn {
         };
         setOffices((prev) => sortOffices([...prev, enriched]));
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to create office.");
+        setOfficeError(err instanceof Error ? err.message : "Failed to create office.");
         throw err;
       }
     },
@@ -125,7 +90,7 @@ export function useOffices(): UseOfficesReturn {
   );
 
   const updateOffice = useCallback(async (id: string, body: UpdateOfficeBody) => {
-    setError(null);
+    setOfficeError(null);
     try {
       const updated = await officeApi.update(id, body);
       setOffices((prev) =>
@@ -138,18 +103,18 @@ export function useOffices(): UseOfficesReturn {
         )
       );
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update office.");
+      setOfficeError(err instanceof Error ? err.message : "Failed to update office.");
       throw err;
     }
   }, []);
 
   const deleteOffice = useCallback(async (id: string) => {
-    setError(null);
+    setOfficeError(null);
     try {
       await officeApi.delete(id);
       setOffices((prev) => prev.filter((o) => o.id !== id));
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to delete office.");
+      setOfficeError(err instanceof Error ? err.message : "Failed to delete office.");
       throw err;
     }
   }, []);

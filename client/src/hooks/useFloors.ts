@@ -1,25 +1,16 @@
 import { useState, useCallback } from "react";
 import { floorApi } from "@/api/floor.api";
 import { buildingApi } from "@/api/building.api";
-import type { Floor, Building } from "@/types";
+import { sortFloors } from "@/utils";
+import type { Building, FloorWithBuilding } from "@/types";
 
-function sortFloors(list: FloorWithBuilding[]): FloorWithBuilding[] {
-  return [...list].sort((a, b) => {
-    const byBuilding = a.buildingName.localeCompare(b.buildingName);
-    return byBuilding !== 0 ? byBuilding : a.floorNumber - b.floorNumber;
-  });
-}
-
-/** Floor enriched with its building name for display */
-export interface FloorWithBuilding extends Floor {
-  buildingName: string;
-}
+export type { FloorWithBuilding };
 
 interface UseFloorsReturn {
-  floors: FloorWithBuilding[];
-  buildings: Building[];        // exposed so the form can populate the dropdown
-  isLoading: boolean;
-  error: string | null;
+  floors:      FloorWithBuilding[];
+  buildings:   Building[];        // exposed so the form can populate the dropdown
+  isLoading:   boolean;
+  error:       string | null;
   fetchFloors: () => Promise<void>;
   createFloor: (buildingId: string, floorNumber: number) => Promise<void>;
   updateFloor: (id: string, floorNumber: number) => Promise<void>;
@@ -52,9 +43,7 @@ export function useFloors(): UseFloorsReturn {
         )
       );
 
-      setFloors(
-        sortFloors(results.flat())
-      );
+      setFloors(sortFloors(results.flat()));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load floors.");
     } finally {

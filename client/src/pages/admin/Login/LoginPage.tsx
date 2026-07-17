@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Navigation, Mail, Lock, Eye, EyeOff, AlertCircle, Building2, Image, Users } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { cn } from "@/utils/cn";
 
 export function LoginPage() {
   const [email,    setEmail]    = useState("admin@aastu.edu.et");
