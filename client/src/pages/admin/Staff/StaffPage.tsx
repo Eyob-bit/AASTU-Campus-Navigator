@@ -23,7 +23,9 @@ export function StaffPage() {
     fetchStaff, createStaff, updateStaff, deleteStaff,
   } = useStaff();
   const { toasts, addToast, removeToast } = useToast();
-  const { search, setSearch } = useTableSearch();
+  const { search, setSearch } = useTableSearch({
+    onSearchChange: () => setPage(1),
+  });
   const del = useDeleteDialog<StaffWithContext>();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -35,11 +37,6 @@ export function StaffPage() {
   const totalPages = getTotalPages(filtered.length, ADMIN_TABLE_PAGE_SIZE);
   const { page, setPage } = usePagination(totalPages);
   const paginated  = paginate(filtered, page, ADMIN_TABLE_PAGE_SIZE);
-
-  // Reset page to 1 when search query changes
-  useEffect(() => {
-    setPage(1);
-  }, [search, setPage]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
 

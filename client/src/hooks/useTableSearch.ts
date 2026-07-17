@@ -1,5 +1,9 @@
 import { useState } from "react";
 
+interface UseTableSearchOptions {
+  onSearchChange?: (q: string) => void;
+}
+
 interface UseTableSearchReturn {
   search:    string;
   setSearch: (q: string) => void;
@@ -7,9 +11,15 @@ interface UseTableSearchReturn {
 
 /**
  * Manages the search/filter query string for admin CRUD tables.
- * Single responsibility: owns the search string and nothing else.
+ * Accepts an optional callback to react to search input changes (e.g. reset page to 1).
  */
-export function useTableSearch(): UseTableSearchReturn {
-  const [search, setSearch] = useState("");
+export function useTableSearch(options?: UseTableSearchOptions): UseTableSearchReturn {
+  const [search, setSearchState] = useState("");
+
+  const setSearch = (q: string) => {
+    setSearchState(q);
+    options?.onSearchChange?.(q);
+  };
+
   return { search, setSearch };
 }
