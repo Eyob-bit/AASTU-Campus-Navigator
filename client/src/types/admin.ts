@@ -179,6 +179,7 @@ export interface CreateStaffBody {
 
 export interface UpdateStaffBody extends Partial<CreateStaffBody> {
   officeId?: string;
+  isActive?: boolean;
 }
 
 export interface CreateAliasBody {
@@ -187,6 +188,48 @@ export interface CreateAliasBody {
 
 export interface UpdateAliasBody {
   alias?: string;
+}
+
+// ─── Shared Hierarchy Option Types ───────────────────────────────────────────
+// Used by useFloors, useOffices, useStaff and their form modals.
+
+export interface FloorOption {
+  id: string;
+  floorNumber: number;
+  buildingId: string;
+  buildingName: string;
+}
+
+/** Floor enriched with its building name for display in the admin table */
+export interface FloorWithBuilding extends Floor {
+  buildingName: string;
+}
+
+export interface OfficeOption {
+  id: string;
+  name: string;
+  roomNumber: string;
+  floorId: string;
+  floorNumber: number;
+  buildingId: string;
+  buildingName: string;
+}
+
+/** Office enriched with floor and building context for display */
+export interface OfficeWithContext extends Office {
+  floorNumber: number;
+  buildingId: string;
+  buildingName: string;
+}
+
+/** Staff enriched with full hierarchy context for display */
+export interface StaffWithContext extends Staff {
+  officeName: string;
+  roomNumber: string;
+  floorId: string;
+  floorNumber: number;
+  buildingId: string;
+  buildingName: string;
 }
 
 export interface CreateSceneBody {
