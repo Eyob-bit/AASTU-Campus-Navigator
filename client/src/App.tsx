@@ -58,7 +58,7 @@ export default function App() {
         <Route path="aliases" element={<AliasesPage />} />
         <Route path="announcements" element={<AnnouncementsPage />} />
         <Route path="panoramas" element={<PanoramaGalleryPage />} />
-        <Route path="scene-editor" element={<SceneEditorPage />} />
+        <Route path="scene-editor/:sceneId" element={<SceneEditorPage />} />
         <Route path="nav-preview" element={<NavigationPreviewPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
