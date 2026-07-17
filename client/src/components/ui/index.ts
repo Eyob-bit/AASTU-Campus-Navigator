@@ -12,3 +12,5 @@ export { Skeleton } from "./Skeleton";
 export { Pagination } from "./Pagination";
 export { TableToolbar } from "./TableToolbar";
 export { ToastContainer } from "./ToastContainer";
+export { ActionButton } from "./ActionButton";
+export { ErrorBanner } from "./ErrorBanner";
