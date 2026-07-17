@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Modal, Input, Select, Textarea, Button } from "@/components/ui";
-import type { Building, CreateOfficeBody, UpdateOfficeBody } from "@/types";
-import type { OfficeWithContext, FloorOption } from "@/hooks/useOffices";
+import type { Building, CreateOfficeBody, UpdateOfficeBody, FloorOption, OfficeWithContext } from "@/types";
+import { formatFloorLabel } from "@/utils";
 
 interface OfficeFormModalProps {
   open: boolean;
@@ -221,14 +221,4 @@ export function OfficeFormModal({
   );
 }
 
-function formatFloorLabel(n: number): string {
-  if (n === 0) return "Ground Floor";
-  const mod100 = n % 100;
-  if (mod100 >= 11 && mod100 <= 13) return `${n}th Floor`;
-  switch (n % 10) {
-    case 1:  return `${n}st Floor`;
-    case 2:  return `${n}nd Floor`;
-    case 3:  return `${n}rd Floor`;
-    default: return `${n}th Floor`;
-  }
-}
+
