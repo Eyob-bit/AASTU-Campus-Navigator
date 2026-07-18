@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 import { ArrowRight, Building2, Info } from "lucide-react";
 import { cn } from "@/utils/cn";
 import type { SceneElement, SceneElementType } from "@/types";
@@ -47,6 +47,22 @@ export function ElementMarker({
   const colour     = COLOUR_MAP[element.type];
   const ring       = isSelected ? SELECTED_RING[element.type] : "";
   const dragOrigin = useRef<{ mx: number; my: number; ex: number; ey: number } | null>(null);
+  const buttonRef  = useRef<HTMLButtonElement>(null);
+
+  // Keep track of event listeners for unmount cleanup
+  const onMouseMoveRef = useRef<((me: MouseEvent) => void) | null>(null);
+  const onMouseUpRef   = useRef<((me: MouseEvent) => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (onMouseMoveRef.current) {
+        document.removeEventListener("mousemove", onMouseMoveRef.current);
+      }
+      if (onMouseUpRef.current) {
+        document.removeEventListener("mouseup", onMouseUpRef.current);
+      }
+    };
+  }, []);
 
   function handleMouseDown(e: React.MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();   // don't bubble to the panorama click handler
@@ -63,7 +79,7 @@ export function ElementMarker({
       const dx = (me.clientX - dragOrigin.current.mx) / rect.width;
       const dy = (me.clientY - dragOrigin.current.my) / rect.height;
       // Visual feedback via CSS transform while dragging — no state update
-      const el = document.getElementById(`marker-${element.id}`);
+      const el = buttonRef.current;
       if (el) {
         const nx = Math.max(0, Math.min(1, dragOrigin.current.ex + dx)) * 100;
         const ny = Math.max(0, Math.min(1, dragOrigin.current.ey + dy)) * 100;
@@ -75,6 +91,8 @@ export function ElementMarker({
     function onUp(me: MouseEvent) {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup",   onUp);
+      onMouseMoveRef.current = null;
+      onMouseUpRef.current = null;
       if (!dragOrigin.current) return;
 
       const totalDelta = Math.abs(me.clientX - dragOrigin.current.mx) +
@@ -91,6 +109,8 @@ export function ElementMarker({
       dragOrigin.current = null;
     }
 
+    onMouseMoveRef.current = onMove;
+    onMouseUpRef.current = onUp;
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup",   onUp);
   }
@@ -99,6 +119,7 @@ export function ElementMarker({
 
   return (
     <button
+      ref={buttonRef}
       id={`marker-${element.id}`}
       onMouseDown={handleMouseDown}
       title={label}

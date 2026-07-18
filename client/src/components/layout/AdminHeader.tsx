@@ -1,14 +1,15 @@
 import { useState } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { Bell, ChevronDown, Home, ChevronRight, Search, User, Settings, BookOpen, LogOut } from "lucide-react";
+import { Bell, ChevronDown, Home, ChevronRight, Search, User, Settings, BookOpen, LogOut, Menu, Navigation } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { NAV_ITEMS } from "./Sidebar";
 
 interface AdminHeaderProps {
   onLogout: () => void;
+  onMenuClick?: () => void;
 }
 
-export function AdminHeader({ onLogout }: AdminHeaderProps) {
+export function AdminHeader({ onLogout, onMenuClick }: AdminHeaderProps) {
   const [notifOpen, setNotifOpen]   = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const location = useLocation();
@@ -19,17 +20,32 @@ export function AdminHeader({ onLogout }: AdminHeaderProps) {
   });
 
   return (
-    <header className="h-16 bg-white border-b border-gray-100 flex items-center px-6 gap-4 flex-shrink-0">
+    <header className="h-16 bg-white border-b border-gray-100 flex items-center px-4 sm:px-6 gap-3 sm:gap-4 flex-shrink-0">
+      {onMenuClick && (
+        <button
+          onClick={onMenuClick}
+          className="lg:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-xl flex-shrink-0"
+          aria-label="Open menu"
+        >
+          <Menu size={20} />
+        </button>
+      )}
+
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm min-w-0 flex-1">
-        <Link to="/dashboard" className="text-gray-400 hover:text-gray-600 transition-colors">
+        <div className="lg:hidden w-7 h-7 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0">
+          <Navigation size={14} className="text-white" />
+        </div>
+        <Link to="/dashboard" className="hidden lg:block text-gray-400 hover:text-gray-600 transition-colors">
           <Home size={15} />
         </Link>
-        {currentNav && currentNav.id !== "dashboard" && (
+        {currentNav && currentNav.id !== "dashboard" ? (
           <>
-            <ChevronRight size={13} className="text-gray-300" />
-            <span className="text-gray-900 font-medium truncate">{currentNav.label}</span>
+            <ChevronRight size={13} className="text-gray-300 flex-shrink-0" />
+            <span className="text-gray-900 font-semibold truncate text-xs sm:text-sm">{currentNav.label}</span>
           </>
+        ) : (
+          <span className="lg:hidden text-gray-900 font-semibold text-xs sm:text-sm truncate">AASTU Navigator</span>
         )}
       </div>
 

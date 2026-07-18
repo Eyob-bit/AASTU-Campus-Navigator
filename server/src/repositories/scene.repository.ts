@@ -6,6 +6,9 @@ export class SceneRepository {
             where: {
                 floorId,
             },
+            include: {
+                elements: true,
+            },
             orderBy: {
                 displayOrder: "asc",
             },

@@ -74,6 +74,8 @@ export interface PanoramaScene {
   floorId: string;
   createdAt: string;
   updatedAt: string;
+  /** Included when fetched via GET /floors/:id/scenes */
+  elements?: SceneElement[];
 }
 
 export type SceneElementType = "ARROW" | "OFFICE_LABEL" | "INFORMATION";
