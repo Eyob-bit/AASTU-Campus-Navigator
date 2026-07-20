@@ -11,3 +11,5 @@ export function useSearch() {
 }
 
 export { useCampusSearch, useNavigationPath, campusQueryKeys } from "./useCampusQueries";
+
+export { useScenePreview } from "./useScenePreview";

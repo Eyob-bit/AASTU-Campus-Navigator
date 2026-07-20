@@ -61,6 +61,7 @@ export default function App() {
         <Route path="scene-editor" element={<SceneEditorPage />} />
         <Route path="scene-editor/:sceneId" element={<SceneEditorPage />} />
         <Route path="nav-preview" element={<NavigationPreviewPage />} />
+        <Route path="nav-preview/:sceneId" element={<NavigationPreviewPage />} />
         <Route path="settings" element={<SettingsPage />} />
       </Route>
 
