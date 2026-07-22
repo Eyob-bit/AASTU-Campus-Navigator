@@ -1,6 +1,7 @@
 import { OfficeRepository } from "../repositories/office.repository.js";
 import { FloorRepository } from "../repositories/floor.repository.js";
 import { ApiError } from "../utils/ApiError.js";
+import { prisma } from "../config/prisma.js";
 
 export class OfficeService {
     private repository = new OfficeRepository();
@@ -85,18 +86,20 @@ export class OfficeService {
     }
 
     async deleteOffice(id: string) {
-        const office = await this.repository.findByIdWithDetails(id);
+        const office = await this.repository.findById(id);
         if (!office) {
             throw new ApiError(404, "Office not found");
         }
 
-        if (office.staff && office.staff.length > 0) {
-            throw new ApiError(
-                400,
-                "Cannot delete office with staff members"
-            );
-        }
+        // Unlink scene elements referencing this office
+        await prisma.sceneElement.updateMany({
+            where: { officeId: id },
+            data: { officeId: null },
+        });
 
-        return this.repository.softDelete(id);
+        // Delete the office (assigned staff will cascade delete)
+        return prisma.office.delete({
+            where: { id },
+        });
     }
 }

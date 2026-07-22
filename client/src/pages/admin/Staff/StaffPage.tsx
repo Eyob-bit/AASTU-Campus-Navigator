@@ -38,8 +38,6 @@ export function StaffPage() {
   useResetPageOnSearch(search, setPage);
   const paginated  = paginate(filtered, page, ADMIN_TABLE_PAGE_SIZE);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
-
   function openCreate() { setEditing(null); setFormOpen(true); }
   function openEdit(s: StaffWithContext) { setEditing(s); setFormOpen(true); }
 
@@ -53,7 +51,7 @@ export function StaffPage() {
         addToast({ type: "success", message: "Staff member added successfully." });
       }
     } catch (err) {
-      throw err; // StaffFormModal handles inline error
+      throw err;
     }
   }
 
@@ -71,14 +69,12 @@ export function StaffPage() {
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
-
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Staff</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Staff</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
             {isLoading
               ? "Loading…"
               : `${staff.length} staff member${staff.length !== 1 ? "s" : ""}`}
@@ -97,7 +93,8 @@ export function StaffPage() {
           onRefresh={fetchStaff}
         />
 
-        <div className="overflow-x-auto">
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           {isLoading ? (
             <LoadingSkeleton />
           ) : (
@@ -147,8 +144,33 @@ export function StaffPage() {
           )}
         </div>
 
+        {/* Mobile card list */}
+        <div className="sm:hidden">
+          {isLoading ? (
+            <MobileLoadingSkeleton />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<Users size={24} />}
+              title={search ? "No staff match your search" : "No staff members yet"}
+              description={search ? "Try a different name, position, or office." : "Add the first staff member to an office."}
+              action={!search ? <Button variant="primary" size="sm" onClick={openCreate}><Plus size={14} />Add Staff</Button> : undefined}
+            />
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {paginated.map((s) => (
+                <StaffCard
+                  key={s.id}
+                  member={s}
+                  onEdit={() => openEdit(s)}
+                  onDelete={() => del.openDelete(s)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
         {!isLoading && filtered.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-100">
             <p className="text-xs text-gray-500">
               Showing {(page - 1) * ADMIN_TABLE_PAGE_SIZE + 1}–{Math.min(page * ADMIN_TABLE_PAGE_SIZE, filtered.length)} of{" "}
               {filtered.length} staff members
@@ -182,8 +204,6 @@ export function StaffPage() {
     </div>
   );
 }
-
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 const TABLE_HEADERS = ["Full Name", "Position", "Office", "Floor", "Building", "Status", "Actions"];
 
@@ -250,6 +270,28 @@ function StaffRow({ member, onEdit, onDelete }: StaffRowProps) {
   );
 }
 
+function StaffCard({ member, onEdit, onDelete }: StaffRowProps) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+        {initials(member.fullName)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900 truncate">{member.fullName}</p>
+        <p className="text-xs text-gray-500 truncate mt-0.5">{member.position}</p>
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          <span className="text-[10px] text-gray-400">{member.officeName} · {member.buildingName}</span>
+          <StatusBadge status={member.isActive ? "active" : "inactive"} />
+        </div>
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <ActionButton icon={<Pencil size={14} />} label="Edit"   hoverClass="hover:text-amber-600 hover:bg-amber-50" onClick={onEdit} />
+        <ActionButton icon={<Trash2 size={14} />} label="Delete" hoverClass="hover:text-red-600 hover:bg-red-50"    onClick={onDelete} />
+      </div>
+    </div>
+  );
+}
+
 function LoadingSkeleton() {
   return (
     <div className="p-4 space-y-3">
@@ -268,7 +310,21 @@ function LoadingSkeleton() {
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function MobileLoadingSkeleton() {
+  return (
+    <div className="p-4 space-y-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <Skeleton className="w-9 h-9 rounded-full flex-shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function initials(name: string): string {
   return name

@@ -28,14 +28,14 @@ export function PlaceholderPage({
   };
 
   return (
-    <div className="p-6">
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
-        <div className={cn("w-16 h-16 rounded-2xl border flex items-center justify-center mb-5", colorMap[color] ?? colorMap.blue)}>
-          <Icon size={28} />
+    <div className="p-3 sm:p-6">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+        <div className={cn("w-14 h-14 sm:w-16 sm:h-16 rounded-2xl border flex items-center justify-center mb-4 sm:mb-5", colorMap[color] ?? colorMap.blue)}>
+          <Icon size={26} />
         </div>
-        <h1 className="text-xl font-bold text-gray-900 mb-2">{title}</h1>
+        <h1 className="text-lg sm:text-xl font-bold text-gray-900 mb-2">{title}</h1>
         <p className="text-sm text-gray-500 max-w-sm leading-relaxed">{description}</p>
-        <span className="mt-5 inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
+        <span className="mt-4 sm:mt-5 inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">
           Coming in next sprint
         </span>
       </div>

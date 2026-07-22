@@ -36,8 +36,6 @@ export function FloorsPage() {
   useResetPageOnSearch(search, setPage);
   const paginated  = paginate(filtered, page, ADMIN_TABLE_PAGE_SIZE);
 
-  // ── Handlers ────────────────────────────────────────────────────────────────
-
   function openCreate() { setEditing(null); setFormOpen(true); }
   function openEdit(f: FloorWithBuilding) { setEditing(f); setFormOpen(true); }
 
@@ -51,7 +49,7 @@ export function FloorsPage() {
         addToast({ type: "success", message: "Floor created successfully." });
       }
     } catch (err) {
-      throw err; // FloorFormModal handles the inline error display
+      throw err;
     }
   }
 
@@ -69,14 +67,12 @@ export function FloorsPage() {
     }
   }
 
-  // ── Render ───────────────────────────────────────────────────────────────────
-
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Floors</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Floors</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
             {isLoading ? "Loading…" : `${floors.length} floor${floors.length !== 1 ? "s" : ""} across all buildings`}
           </p>
         </div>
@@ -93,7 +89,8 @@ export function FloorsPage() {
           onRefresh={fetchFloors}
         />
 
-        <div className="overflow-x-auto">
+        {/* Desktop table */}
+        <div className="hidden sm:block overflow-x-auto">
           {isLoading ? (
             <LoadingSkeleton />
           ) : (
@@ -143,8 +140,33 @@ export function FloorsPage() {
           )}
         </div>
 
+        {/* Mobile card list */}
+        <div className="sm:hidden">
+          {isLoading ? (
+            <MobileLoadingSkeleton />
+          ) : filtered.length === 0 ? (
+            <EmptyState
+              icon={<Layers size={24} />}
+              title={search ? "No floors match your search" : "No floors yet"}
+              description={search ? "Try a different building name or floor number." : "Add the first floor to a building to get started."}
+              action={!search ? <Button variant="primary" size="sm" onClick={openCreate}><Plus size={14} />Add Floor</Button> : undefined}
+            />
+          ) : (
+            <div className="divide-y divide-gray-50">
+              {paginated.map((f) => (
+                <FloorCard
+                  key={f.id}
+                  floor={f}
+                  onEdit={() => openEdit(f)}
+                  onDelete={() => del.openDelete(f)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
         {!isLoading && filtered.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-100">
             <p className="text-xs text-gray-500">
               Showing {(page - 1) * ADMIN_TABLE_PAGE_SIZE + 1}–{Math.min(page * ADMIN_TABLE_PAGE_SIZE, filtered.length)} of {filtered.length} floors
             </p>
@@ -175,8 +197,6 @@ export function FloorsPage() {
     </div>
   );
 }
-
-// ── Sub-components ────────────────────────────────────────────────────────────
 
 const TABLE_HEADERS = ["Floor Number", "Building", "Actions"];
 
@@ -219,6 +239,28 @@ function FloorRow({ floor, onEdit, onDelete }: FloorRowProps) {
   );
 }
 
+function FloorCard({ floor, onEdit, onDelete }: FloorRowProps) {
+  return (
+    <div className="flex items-center gap-3 px-4 py-3.5">
+      <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
+        <span className="text-sm font-bold text-indigo-600">
+          {floor.floorNumber === 0 ? "G" : floor.floorNumber}
+        </span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-900">{formatFloorLabel(floor.floorNumber)}</p>
+        <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1">
+          <Layers size={11} className="text-gray-400" />{floor.buildingName}
+        </p>
+      </div>
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <ActionButton icon={<Pencil size={14} />} label="Edit"   hoverClass="hover:text-amber-600 hover:bg-amber-50" onClick={onEdit} />
+        <ActionButton icon={<Trash2 size={14} />} label="Delete" hoverClass="hover:text-red-600 hover:bg-red-50"    onClick={onDelete} />
+      </div>
+    </div>
+  );
+}
+
 function LoadingSkeleton() {
   return (
     <div className="p-4 space-y-3">
@@ -227,6 +269,22 @@ function LoadingSkeleton() {
           <Skeleton className="w-8 h-8 rounded-lg" />
           <Skeleton className="h-4 w-24" />
           <Skeleton className="h-4 flex-1 max-w-[200px]" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MobileLoadingSkeleton() {
+  return (
+    <div className="p-4 space-y-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <div key={i} className="flex items-center gap-3">
+          <Skeleton className="w-9 h-9 rounded-lg flex-shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-3 w-3/4" />
+          </div>
         </div>
       ))}
     </div>

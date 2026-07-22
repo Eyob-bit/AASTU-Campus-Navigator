@@ -45,13 +45,19 @@ export class SceneElementService {
             throw new ApiError(404, "Scene not found");
         }
 
-        const existingOrder = await this.repository.findBySceneAndDisplayOrder(
-            sceneId,
-            data.displayOrder
-        );
+        const maxOrderEl = await this.repository.findMaxDisplayOrder(sceneId);
+        const nextOrder = (maxOrderEl?.displayOrder ?? -1) + 1;
 
-        if (existingOrder) {
-            throw new ApiError(400, "Display order already exists in this scene");
+        if (data.displayOrder === undefined || data.displayOrder === null) {
+            data.displayOrder = nextOrder;
+        } else {
+            const existingOrder = await this.repository.findBySceneAndDisplayOrder(
+                sceneId,
+                data.displayOrder
+            );
+            if (existingOrder) {
+                data.displayOrder = nextOrder;
+            }
         }
 
         await this.validateBusinessRules(scene, data);
@@ -109,7 +115,6 @@ export class SceneElementService {
         const updatePayload: typeof data = { ...data };
         if (merged.type === "ARROW") {
             updatePayload.officeId = null;
-            updatePayload.label = null;
         } else if (merged.type === "OFFICE_LABEL") {
             updatePayload.nextSceneId = null;
         } else if (merged.type === "INFORMATION") {
@@ -144,9 +149,6 @@ export class SceneElementService {
             }
             if (data.officeId) {
                 throw new ApiError(400, "ARROW element must NOT have officeId");
-            }
-            if (data.label) {
-                throw new ApiError(400, "ARROW element must NOT have label");
             }
             if (data.nextSceneId === currentScene.id) {
                 throw new ApiError(400, "ARROW element cannot point to the same scene");

@@ -1,4 +1,4 @@
-import { apiGet, apiPatch, apiDelete, apiPost, apiClient } from "./client";
+import { apiGet, apiPatch, apiDelete, apiPost, apiClient, unwrapResponse, handleApiError } from "./client";
 import { ApiRequestError } from "@/types";
 import type {
   Floor,
@@ -13,29 +13,21 @@ import type {
 
 async function apiPostForm<T>(path: string, formData: FormData): Promise<T> {
   try {
-    const response = await apiClient.post<ApiResponse<T>>(path, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    const body = response.data;
-    if (!body.success) throw new ApiRequestError(response.status, body.message);
-    return body.data;
+    const response = await apiClient.post<ApiResponse<T>>(path, formData);
+    return unwrapResponse(response);
   } catch (error) {
     if (error instanceof ApiRequestError) throw error;
-    throw new ApiRequestError(500, "Request failed");
+    handleApiError(error);
   }
 }
 
 async function apiPatchForm<T>(path: string, formData: FormData): Promise<T> {
   try {
-    const response = await apiClient.patch<ApiResponse<T>>(path, formData, {
-      headers: { "Content-Type": "multipart/form-data" },
-    });
-    const body = response.data;
-    if (!body.success) throw new ApiRequestError(response.status, body.message);
-    return body.data;
+    const response = await apiClient.patch<ApiResponse<T>>(path, formData);
+    return unwrapResponse(response);
   } catch (error) {
     if (error instanceof ApiRequestError) throw error;
-    throw new ApiRequestError(500, "Request failed");
+    handleApiError(error);
   }
 }
 

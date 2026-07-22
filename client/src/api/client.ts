@@ -10,7 +10,7 @@ export const apiClient = axios.create({
   },
 });
 
-function handleApiError(error: unknown): never {
+export function handleApiError(error: unknown): never {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError<ApiResponse<unknown>>;
     const message =
@@ -27,7 +27,7 @@ function handleApiError(error: unknown): never {
   throw new ApiRequestError(500, "Request failed");
 }
 
-function unwrapResponse<T>(response: AxiosResponse<ApiResponse<T>>): T {
+export function unwrapResponse<T>(response: AxiosResponse<ApiResponse<T>>): T {
   const body = response.data;
 
   if (!body.success) {

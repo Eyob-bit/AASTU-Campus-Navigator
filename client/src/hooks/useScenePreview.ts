@@ -53,7 +53,15 @@ export function useScenePreview(initialSceneId: string): ScenePreviewContext {
   }, []);
 
   useEffect(() => {
-    load(sceneId);
+    if (initialSceneId && initialSceneId !== sceneId) {
+      setSceneId(initialSceneId);
+    }
+  }, [initialSceneId, sceneId]);
+
+  useEffect(() => {
+    if (sceneId) {
+      load(sceneId);
+    }
   }, [sceneId, load]);
 
   const reload = useCallback(() => load(sceneId), [sceneId, load]);

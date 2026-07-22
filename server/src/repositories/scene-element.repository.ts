@@ -45,6 +45,14 @@ export class SceneElementRepository {
         });
     }
 
+    async findMaxDisplayOrder(sceneId: string) {
+        return prisma.sceneElement.findFirst({
+            where: { sceneId },
+            orderBy: { displayOrder: "desc" },
+            select: { displayOrder: true },
+        });
+    }
+
     async create(data: {
         type: SceneElementType;
         x: number;

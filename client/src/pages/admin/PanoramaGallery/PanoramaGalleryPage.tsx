@@ -499,12 +499,20 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
         </div>
 
         {/* CTA */}
-        <Link
-          to={`/dashboard/scene-editor/${scene.id}`}
-          className="mt-auto flex items-center justify-center gap-1.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors cursor-pointer"
-        >
-          Edit in Scene Editor <ArrowRight size={12} />
-        </Link>
+        <div className="mt-auto grid grid-cols-2 gap-2">
+          <Link
+            to={`/dashboard/scene-editor/${scene.id}`}
+            className="flex items-center justify-center gap-1 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
+          >
+            Edit Editor
+          </Link>
+          <Link
+            to={`/dashboard/nav-preview/${scene.id}`}
+            className="flex items-center justify-center gap-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors cursor-pointer"
+          >
+            Preview <ArrowRight size={12} />
+          </Link>
+        </div>
       </div>
     </div>
   );
