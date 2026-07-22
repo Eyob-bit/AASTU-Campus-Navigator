@@ -18,8 +18,8 @@ model Building {
   name          String
   isActive      Boolean  @default(true)
   code          String   @unique
-  latitude      Float
-  longitude     Float
+  entranceLatitude  Float
+  entranceLongitude Float
   entranceImage String?
   coverImage    String?
   createdAt     DateTime @default(now())
@@ -109,9 +109,8 @@ model SearchAlias {
 
   createdAt DateTime @default(now())
 
-  @@unique([alias, officeId])
-  @@unique([alias, staffId])
-  @@index([normalizedAlias])
+  @@unique([normalizedAlias, officeId])
+  @@unique([normalizedAlias, staffId])
 }
 
 model PanoramaScene {
@@ -119,7 +118,9 @@ model PanoramaScene {
   key          String @unique
   name         String
   imagePath    String
+  imageFilename String?
   displayOrder Int    @default(0)
+  isEntryScene Boolean @default(false)
 
   floorId String
 
@@ -131,10 +132,15 @@ model PanoramaScene {
   elements SceneElement[] @relation("SceneElements")
 
   nextScenes SceneElement[] @relation("SceneNavigation")
+
+  @@unique([floorId, displayOrder])
 }
 
 model SceneElement {
   id String @id @default(cuid())
+  displayOrder Int @default(0)
+  isVisible    Boolean @default(true)
+  updatedAt DateTime @updatedAt
 
   type SceneElementType
 
@@ -158,6 +164,8 @@ model SceneElement {
   office Office? @relation(fields: [officeId], references: [id])
 
   nextScene PanoramaScene? @relation("SceneNavigation", fields: [nextSceneId], references: [id])
+
+  @@unique([sceneId, displayOrder])
 }
 
 model Announcement {
