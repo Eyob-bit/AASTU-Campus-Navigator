@@ -20,16 +20,16 @@ function ToolButton({ icon, label, active, onClick, danger, disabled }: ToolButt
       disabled={disabled}
       title={label}
       className={cn(
-        "flex flex-col items-center gap-0.5 sm:gap-1 px-2.5 py-1.5 sm:px-3 sm:py-2.5 rounded-xl text-[10px] sm:text-xs font-medium transition-all cursor-pointer",
+        "flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl text-xs font-medium transition-all",
         "focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-40 disabled:cursor-not-allowed",
         danger && active && "bg-red-50 text-red-600 ring-red-300",
         danger && !active && "text-gray-500 hover:bg-red-50 hover:text-red-600",
-        !danger &&  active && "bg-indigo-50 text-indigo-700 ring-indigo-300 ring-2 shadow-xs",
-        !danger && !active && "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+        !danger &&  active && "bg-blue-50 text-blue-700 ring-blue-300 ring-2",
+        !danger && !active && "text-gray-500 hover:bg-gray-100 hover:text-gray-700",
       )}
     >
       {icon}
-      <span>{label}</span>
+      {label}
     </button>
   );
 }
@@ -42,7 +42,11 @@ interface EditorToolbarProps {
 }
 
 /**
- * Responsive Toolbar for Scene Editor (Horizontal floating/header on mobile, vertical sidebar on desktop).
+ * Vertical toolbar on the left side of the Scene Editor.
+ *
+ * Three placement tools (ARROW, OFFICE_LABEL, INFORMATION) act as
+ * radio buttons — clicking an active tool deselects it.
+ * The Delete button is enabled only when an element is selected.
  */
 export function EditorToolbar({
   activeTool,
@@ -55,33 +59,36 @@ export function EditorToolbar({
   }
 
   return (
-    <div className="w-full sm:w-20 flex-shrink-0 flex flex-row sm:flex-col items-center justify-around sm:justify-start gap-1 p-1.5 sm:p-2 bg-white border-b sm:border-b-0 sm:border-r border-gray-200 z-20 shadow-xs">
-      <div className="hidden sm:block text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1 pt-1 pb-0.5">
+    <div className="w-20 flex-shrink-0 flex flex-col gap-1 p-2 bg-white border-r border-gray-100">
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1 pt-1 pb-0.5">
         Place
-      </div>
+      </p>
       <ToolButton
-        icon={<ArrowRight size={16} className="sm:w-[18px] sm:h-[18px]" />}
+        icon={<ArrowRight size={18} />}
         label="Arrow"
         active={activeTool === "ARROW"}
         onClick={() => toggleTool("ARROW")}
       />
       <ToolButton
-        icon={<Building2 size={16} className="sm:w-[18px] sm:h-[18px]" />}
+        icon={<Building2 size={18} />}
         label="Label"
         active={activeTool === "OFFICE_LABEL"}
         onClick={() => toggleTool("OFFICE_LABEL")}
       />
       <ToolButton
-        icon={<Info size={16} className="sm:w-[18px] sm:h-[18px]" />}
+        icon={<Info size={18} />}
         label="Info"
         active={activeTool === "INFORMATION"}
         onClick={() => toggleTool("INFORMATION")}
       />
 
-      <div className="h-6 w-px sm:h-auto sm:w-auto sm:my-1 border-r sm:border-r-0 sm:border-t border-gray-200" />
+      <div className="my-1 border-t border-gray-100" />
 
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1 pb-0.5">
+        Edit
+      </p>
       <ToolButton
-        icon={<Trash2 size={16} className="sm:w-[18px] sm:h-[18px]" />}
+        icon={<Trash2 size={18} />}
         label="Delete"
         active={false}
         danger

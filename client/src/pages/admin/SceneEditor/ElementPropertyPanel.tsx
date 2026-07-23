@@ -93,7 +93,7 @@ export function ElementPropertyPanel({
   }));
 
   return (
-    <aside className="fixed bottom-0 left-0 right-0 z-50 sm:relative sm:z-auto w-full sm:w-80 flex-shrink-0 flex flex-col bg-white border-t sm:border-t-0 sm:border-l border-gray-200 overflow-y-auto max-h-[85vh] sm:max-h-none rounded-t-2xl sm:rounded-none shadow-2xl sm:shadow-none animate-in slide-in-from-bottom duration-200">
+    <aside className="w-72 flex-shrink-0 flex flex-col bg-white border-l border-gray-100 overflow-y-auto">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
         <div>

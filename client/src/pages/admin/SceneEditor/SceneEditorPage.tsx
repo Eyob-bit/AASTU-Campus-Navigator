@@ -139,22 +139,17 @@ export function SceneEditorPage() {
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
 
-  async function handleViewerClick(x: number, y: number) {
+  function handleViewerClick(x: number, y: number) {
     if (activeTool) {
       setDraft({ type: activeTool, x, y });
       setSelectedElementId(null);
-    } else if (selectedElementId) {
-      try {
-        await updateElement(selectedElementId, { x, y });
-        addToast({ type: "success", message: "Element position updated." });
-      } catch {
-        addToast({ type: "error", message: "Failed to update element position." });
-      }
     }
   }
 
   function handleViewerBgMouseDown() {
-    if (!activeTool && !selectedElementId) {
+    // Clicking the panorama background (no tool) deselects the current element
+    if (!activeTool) {
+      setSelectedElementId(null);
       setDraft(null);
     }
   }
@@ -228,18 +223,18 @@ export function SceneEditorPage() {
     return (
       <div className="flex flex-col h-full bg-gray-50 overflow-y-auto">
         {/* Header */}
-        <div className="bg-white border-b border-gray-100 px-4 sm:px-8 py-4 sm:py-6 flex-shrink-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Map size={22} className="text-indigo-600" />
+        <div className="bg-white border-b border-gray-100 px-8 py-6 flex-shrink-0">
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Map size={24} className="text-indigo-600" />
             Scene Editor
           </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 mt-1">
             Select a building, floor, and scene to start placing labels and navigation markers.
           </p>
         </div>
 
         {/* Content */}
-        <div className="p-4 sm:p-8 max-w-7xl w-full mx-auto grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-8">
+        <div className="p-8 max-w-7xl w-full mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Building & Floor Selector */}
           <div className="md:col-span-1 space-y-6">
             {/* Buildings list */}
@@ -406,23 +401,23 @@ export function SceneEditorPage() {
     <div className="flex flex-col h-full">
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 bg-white border-b border-gray-100 flex-shrink-0">
-        <div className="min-w-0">
-          <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-gray-400 mb-0.5 sm:mb-1">
-            <Link to="/dashboard/panoramas" className="hover:text-gray-600 transition-colors whitespace-nowrap">
+      <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100 flex-shrink-0">
+        <div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
+            <Link to="/dashboard/panoramas" className="hover:text-gray-600 transition-colors">
               Panoramas
             </Link>
-            <ChevronRight size={11} />
-            <span className="text-gray-700 font-medium truncate max-w-[160px] sm:max-w-[260px]">
+            <ChevronRight size={12} />
+            <span className="text-gray-700 font-medium truncate max-w-[260px]">
               {scene?.name ?? "Loading…"}
             </span>
           </div>
-          <h1 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-1.5 sm:gap-2">
-            <Map size={16} className="text-indigo-500 sm:w-[18px] sm:h-[18px]" />
+          <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+            <Map size={18} className="text-indigo-500" />
             Scene Editor
           </h1>
         </div>
-        <div className="text-[10px] sm:text-xs text-gray-400 flex-shrink-0 ml-2">
+        <div className="text-xs text-gray-400">
           {elements.length} element{elements.length !== 1 ? "s" : ""}
         </div>
       </div>
@@ -430,7 +425,7 @@ export function SceneEditorPage() {
       <ErrorBanner title="Failed to load scene" message={error} onRetry={() => { fetchScene(sceneId); fetchElements(sceneId); }} />
 
       {/* ── Body ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row flex-1 overflow-hidden min-h-0">
+      <div className="flex flex-1 overflow-hidden">
 
         <EditorToolbar
           activeTool={activeTool}
@@ -440,7 +435,7 @@ export function SceneEditorPage() {
         />
 
         {/* ── Panorama viewer ─────────────────────────────────────────────── */}
-        <main className="flex-1 relative flex flex-col p-1.5 sm:p-3 bg-gray-900 min-h-0 overflow-hidden" data-panorama-container>
+        <main className="flex-1 overflow-auto p-4 bg-gray-50" data-panorama-container>
           {isLoading && (
             <div className="flex items-center justify-center h-64 text-sm text-gray-400">
               Loading scene…
@@ -462,10 +457,6 @@ export function SceneEditorPage() {
               )}
               <EditorPanoramaViewer
                 imageUrl={imageUrl}
-                elements={elements}
-                selectedElementId={selectedElementId}
-                onSelectElement={handleElementSelect}
-                onDragEnd={handleDragEnd}
                 isPlacingElement={!!activeTool}
                 onClick={handleViewerClick}
                 onBgMouseDown={handleViewerBgMouseDown}

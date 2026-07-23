@@ -2,7 +2,6 @@ import { useRef, useEffect } from "react";
 import { ArrowRight, Building2, Info } from "lucide-react";
 import { cn } from "@/utils/cn";
 import type { SceneElement, SceneElementType } from "@/types";
-import { NeonChevronArrow } from "@/components/common";
 
 interface ElementMarkerProps {
   element:    SceneElement;
@@ -25,7 +24,7 @@ const COLOUR_MAP: Record<SceneElementType, string> = {
 };
 
 const SELECTED_RING: Record<SceneElementType, string> = {
-  ARROW:        "ring-2 ring-cyan-400",
+  ARROW:        "ring-2 ring-blue-300",
   OFFICE_LABEL: "ring-2 ring-emerald-300",
   INFORMATION:  "ring-2 ring-amber-300",
 };
@@ -138,20 +137,14 @@ export function ElementMarker({
           : "translate(-50%, -50%)",
       }}
     >
-      {element.type === "ARROW" ? (
-        <div className={cn("p-1 rounded-xl transition-all", ring)}>
-          <NeonChevronArrow rotation={0} size="md" />
-        </div>
-      ) : (
-        <span
-          className={cn(
-            "w-8 h-8 rounded-full border-2 flex items-center justify-center shadow-lg",
-            colour, ring,
-          )}
-        >
-          <Icon size={14} />
-        </span>
-      )}
+      <span
+        className={cn(
+          "w-8 h-8 rounded-full border-2 flex items-center justify-center shadow-lg",
+          colour, ring,
+        )}
+      >
+        <Icon size={14} />
+      </span>
       {label !== element.type && (
         <span className="text-[10px] font-semibold text-white bg-black/60 px-1.5 py-0.5 rounded whitespace-nowrap max-w-[80px] truncate">
           {label}
