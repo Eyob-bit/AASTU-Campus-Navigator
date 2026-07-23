@@ -10,6 +10,7 @@ import { useStaff } from "@/hooks/useStaff";
 import { useToast } from "@/hooks/useToast";
 import { useTableSearch } from "@/hooks/useTableSearch";
 import { usePagination } from "@/hooks/usePagination";
+import { useResetPageOnSearch } from "@/hooks/useResetPageOnSearch";
 import { useDeleteDialog } from "@/hooks/useDeleteDialog";
 import { StaffFormModal } from "./StaffFormModal";
 import type { CreateStaffBody, UpdateStaffBody, StaffWithContext } from "@/types";
@@ -23,9 +24,7 @@ export function StaffPage() {
     fetchStaff, createStaff, updateStaff, deleteStaff,
   } = useStaff();
   const { toasts, addToast, removeToast } = useToast();
-  const { search, setSearch } = useTableSearch({
-    onSearchChange: () => setPage(1),
-  });
+  const { search, setSearch } = useTableSearch();
   const del = useDeleteDialog<StaffWithContext>();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -36,6 +35,7 @@ export function StaffPage() {
   const filtered   = useMemo(() => filterStaff(staff, search), [staff, search]);
   const totalPages = getTotalPages(filtered.length, ADMIN_TABLE_PAGE_SIZE);
   const { page, setPage } = usePagination(totalPages);
+  useResetPageOnSearch(search, setPage);
   const paginated  = paginate(filtered, page, ADMIN_TABLE_PAGE_SIZE);
 
   // ── Handlers ────────────────────────────────────────────────────────────────

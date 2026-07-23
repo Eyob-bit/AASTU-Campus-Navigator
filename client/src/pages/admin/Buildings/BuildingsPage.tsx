@@ -10,6 +10,7 @@ import { useBuildings } from "@/hooks/useBuildings";
 import { useToast } from "@/hooks/useToast";
 import { useTableSearch } from "@/hooks/useTableSearch";
 import { usePagination } from "@/hooks/usePagination";
+import { useResetPageOnSearch } from "@/hooks/useResetPageOnSearch";
 import { useDeleteDialog } from "@/hooks/useDeleteDialog";
 import { BuildingFormModal } from "./BuildingFormModal";
 import type { Building, CreateBuildingBody, UpdateBuildingBody } from "@/types";
@@ -20,9 +21,7 @@ export function BuildingsPage() {
   const { buildings, isLoading, error, fetchBuildings, createBuilding, updateBuilding, deleteBuilding } =
     useBuildings();
   const { toasts, addToast, removeToast } = useToast();
-  const { search, setSearch } = useTableSearch({
-    onSearchChange: () => setPage(1),
-  });
+  const { search, setSearch } = useTableSearch();
   const del = useDeleteDialog<Building>();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -33,6 +32,7 @@ export function BuildingsPage() {
   const filtered   = useMemo(() => filterBuildings(buildings, search), [buildings, search]);
   const totalPages = getTotalPages(filtered.length, ADMIN_TABLE_PAGE_SIZE);
   const { page, setPage } = usePagination(totalPages);
+  useResetPageOnSearch(search, setPage);
   const paginated  = paginate(filtered, page, ADMIN_TABLE_PAGE_SIZE);
 
   // ── Handlers ────────────────────────────────────────────────────────────────

@@ -10,6 +10,7 @@ import { useOffices } from "@/hooks/useOffices";
 import { useToast } from "@/hooks/useToast";
 import { useTableSearch } from "@/hooks/useTableSearch";
 import { usePagination } from "@/hooks/usePagination";
+import { useResetPageOnSearch } from "@/hooks/useResetPageOnSearch";
 import { useDeleteDialog } from "@/hooks/useDeleteDialog";
 import { OfficeFormModal } from "./OfficeFormModal";
 import type { CreateOfficeBody, UpdateOfficeBody, OfficeWithContext } from "@/types";
@@ -22,9 +23,7 @@ export function OfficesPage() {
     fetchOffices, createOffice, updateOffice, deleteOffice,
   } = useOffices();
   const { toasts, addToast, removeToast } = useToast();
-  const { search, setSearch } = useTableSearch({
-    onSearchChange: () => setPage(1),
-  });
+  const { search, setSearch } = useTableSearch();
   const del = useDeleteDialog<OfficeWithContext>();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -35,6 +34,7 @@ export function OfficesPage() {
   const filtered   = useMemo(() => filterOffices(offices, search), [offices, search]);
   const totalPages = getTotalPages(filtered.length, ADMIN_TABLE_PAGE_SIZE);
   const { page, setPage } = usePagination(totalPages);
+  useResetPageOnSearch(search, setPage);
   const paginated  = paginate(filtered, page, ADMIN_TABLE_PAGE_SIZE);
 
   // ── Handlers ────────────────────────────────────────────────────────────────

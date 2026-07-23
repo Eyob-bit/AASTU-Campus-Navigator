@@ -10,6 +10,7 @@ import type { FloorWithBuilding } from "@/hooks/useFloors";
 import { useToast } from "@/hooks/useToast";
 import { useTableSearch } from "@/hooks/useTableSearch";
 import { usePagination } from "@/hooks/usePagination";
+import { useResetPageOnSearch } from "@/hooks/useResetPageOnSearch";
 import { useDeleteDialog } from "@/hooks/useDeleteDialog";
 import { FloorFormModal } from "./FloorFormModal";
 import { filterFloors, getTotalPages, paginate, formatFloorLabel } from "@/utils";
@@ -21,9 +22,7 @@ export function FloorsPage() {
     fetchFloors, createFloor, updateFloor, deleteFloor,
   } = useFloors();
   const { toasts, addToast, removeToast } = useToast();
-  const { search, setSearch } = useTableSearch({
-    onSearchChange: () => setPage(1),
-  });
+  const { search, setSearch } = useTableSearch();
   const del = useDeleteDialog<FloorWithBuilding>();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -34,6 +33,7 @@ export function FloorsPage() {
   const filtered   = useMemo(() => filterFloors(floors, search), [floors, search]);
   const totalPages = getTotalPages(filtered.length, ADMIN_TABLE_PAGE_SIZE);
   const { page, setPage } = usePagination(totalPages);
+  useResetPageOnSearch(search, setPage);
   const paginated  = paginate(filtered, page, ADMIN_TABLE_PAGE_SIZE);
 
   // ── Handlers ────────────────────────────────────────────────────────────────

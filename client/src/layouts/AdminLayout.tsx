@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { Menu, Navigation } from "lucide-react";
 import { Sidebar, AdminHeader } from "@/components/layout";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
@@ -48,24 +47,7 @@ export function AdminLayout() {
 
       {/* Content area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center px-4 py-3 bg-white border-b border-gray-100">
-          <button
-            onClick={() => setMobileOpen(true)}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl"
-            aria-label="Open menu"
-          >
-            <Menu size={20} />
-          </button>
-          <div className="flex items-center gap-2 ml-3">
-            <div className="w-7 h-7 bg-blue-600 rounded-xl flex items-center justify-center">
-              <Navigation size={14} className="text-white" />
-            </div>
-            <span className="font-semibold text-gray-900 text-sm">AASTU Navigator</span>
-          </div>
-        </div>
-
-        <AdminHeader onLogout={handleLogout} />
+        <AdminHeader onLogout={handleLogout} onMenuClick={() => setMobileOpen(true)} />
 
         <main className="flex-1 overflow-y-auto">
           <Outlet />
