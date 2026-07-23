@@ -15,6 +15,7 @@ export function AdminHeader({ onLogout }: AdminHeaderProps) {
 
   const currentNav = NAV_ITEMS.find((n) => {
     if (n.path === "/dashboard") return location.pathname === "/dashboard";
+    // nav-preview sub-routes (/nav-preview/:sceneId) should still resolve to the nav item
     return location.pathname.startsWith(n.path);
   });
 
