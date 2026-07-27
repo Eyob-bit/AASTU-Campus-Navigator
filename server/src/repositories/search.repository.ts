@@ -1,0 +1,193 @@
+import { prisma } from "../config/prisma.js";
+
+interface PrismaModelClient<T> {
+    findMany(args: { where?: any; include?: any; take?: number }): Promise<T[]>;
+}
+
+const SEARCH_LIMIT = 10;
+
+const STAFF_INCLUDE = {
+    office: {
+        include: {
+            floor: {
+                include: {
+                    building: true,
+                },
+            },
+        },
+    },
+};
+
+const OFFICE_INCLUDE = {
+    floor: {
+        include: {
+            building: true,
+        },
+    },
+};
+
+const ALIAS_INCLUDE = {
+    office: {
+        include: {
+            floor: {
+                include: {
+                    building: true,
+                },
+            },
+        },
+    },
+    staff: {
+        include: {
+            office: {
+                include: {
+                    floor: {
+                        include: {
+                            building: true,
+                        },
+                    },
+                },
+            },
+        },
+    },
+};
+
+export class SearchRepository {
+    private async rankedSearch<T extends { id: string }>(
+        model: PrismaModelClient<T>,
+        whereBase: Record<string, any>,
+        searchField: string,
+        query: string,
+        include: Record<string, any>
+    ): Promise<T[]> {
+        const exact = await model.findMany({
+            where: {
+                ...whereBase,
+                [searchField]: { equals: query, mode: "insensitive" },
+            },
+            include,
+            take: SEARCH_LIMIT,
+        });
+
+        if (exact.length >= SEARCH_LIMIT) return exact;
+
+        const startsWith = await model.findMany({
+            where: {
+                ...whereBase,
+                [searchField]: { startsWith: query, mode: "insensitive" },
+            },
+            include,
+            take: SEARCH_LIMIT,
+        });
+
+        const contains = await model.findMany({
+            where: {
+                ...whereBase,
+                [searchField]: { contains: query, mode: "insensitive" },
+            },
+            include,
+            take: SEARCH_LIMIT,
+        });
+
+        const merged = [...exact, ...startsWith, ...contains];
+        const unique = merged.filter((item, index, self) =>
+            self.findIndex(t => t.id === item.id) === index
+        );
+        return unique.slice(0, SEARCH_LIMIT);
+    }
+
+    async findStaffByName(normalizedQuery: string) {
+        return this.rankedSearch<any>(
+            prisma.staff,
+            {
+                isActive: true,
+                office: { isActive: true },
+            },
+            "fullName",
+            normalizedQuery,
+            STAFF_INCLUDE
+        );
+    }
+
+    async findStaffByPosition(normalizedQuery: string) {
+        return this.rankedSearch<any>(
+            prisma.staff,
+            {
+                isActive: true,
+                office: { isActive: true },
+            },
+            "position",
+            normalizedQuery,
+            STAFF_INCLUDE
+        );
+    }
+
+    async findOfficeByName(normalizedQuery: string) {
+        return this.rankedSearch<any>(
+            prisma.office,
+            { isActive: true },
+            "name",
+            normalizedQuery,
+            OFFICE_INCLUDE
+        );
+    }
+
+    async findOfficeByRoomNumber(normalizedQuery: string) {
+        return this.rankedSearch<any>(
+            prisma.office,
+            { isActive: true },
+            "roomNumber",
+            normalizedQuery,
+            OFFICE_INCLUDE
+        );
+    }
+
+    async findAlias(normalizedQuery: string) {
+        const activeFilter = {
+            OR: [
+                {
+                    staff: {
+                        isActive: true,
+                        office: {
+                            isActive: true,
+                        },
+                    },
+                },
+                {
+                    office: {
+                        isActive: true,
+                    },
+                },
+            ],
+        };
+
+        return this.rankedSearch<any>(
+            prisma.searchAlias,
+            activeFilter,
+            "normalizedAlias",
+            normalizedQuery,
+            ALIAS_INCLUDE
+        );
+    }
+
+    async findEntryScene(floorId: string) {
+        return prisma.panoramaScene.findFirst({
+            where: {
+                floorId,
+                isEntryScene: true,
+            },
+        });
+    }
+
+    async findOfficeScene(officeId: string) {
+        const element = await prisma.sceneElement.findFirst({
+            where: {
+                type: "OFFICE_LABEL",
+                officeId,
+            },
+            include: {
+                scene: true,
+            },
+        });
+        return element?.scene ?? null;
+    }
+}
