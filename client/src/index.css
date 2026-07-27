@@ -1,8 +1,138 @@
+/* ── Google Fonts ── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ── Tailwind v4 base ── */
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/* ── Dark mode via .dark class on <html> ── */
+@variant dark (&:where(.dark, .dark *));
+
+/* ── Design Tokens ── */
+@theme {
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+
+  /* Brand palette */
+  --color-brand-50:  #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+
+  /* Custom animations */
+  --animate-fade-in-up:    fade-in-up 0.6s ease-out both;
+  --animate-fade-in:       fade-in 0.5s ease-out both;
+  --animate-float:         float 6s ease-in-out infinite;
+  --animate-pulse-slow:    pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-shimmer:       shimmer 2s linear infinite;
+  --animate-slide-down:    slide-down 0.3s ease-out both;
+  --animate-bounce-gentle: bounce-gentle 2s ease-in-out infinite;
+}
+
+/* ── Keyframes ── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 0.2; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes bounce-gentle {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(6px); }
+}
+
+/* ── Animation delay utilities ── */
+@utility delay-150  { animation-delay: 150ms; }
+@utility delay-300  { animation-delay: 300ms; }
+@utility delay-500  { animation-delay: 500ms; }
+@utility delay-700  { animation-delay: 700ms; }
+@utility delay-1000 { animation-delay: 1000ms; }
+@utility delay-1500 { animation-delay: 1500ms; }
+@utility delay-2000 { animation-delay: 2000ms; }
+
+/* ── Glassmorphism utility ── */
+@utility glass-light {
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+@utility glass-dark {
+  background-color: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Hero dot grid pattern ── */
+@utility hero-grid-pattern {
+  background-image: radial-gradient(circle, rgba(255,255,255,0.07) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+/* ── Base layer ── */
 @layer base {
-  body {
-    @apply min-h-screen bg-slate-50 text-slate-900 antialiased;
+  html {
+    font-family: var(--font-body);
+    scroll-behavior: smooth;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  body {
+    @apply min-h-screen bg-white text-slate-900 antialiased transition-colors duration-300;
+  }
+
+  .dark body {
+    @apply bg-slate-950 text-white;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+
+  /* Focus ring for accessibility */
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Smooth scrollbar */
+  ::-webkit-scrollbar        { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { background: rgba(148,163,184,0.5); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.7); }
 }

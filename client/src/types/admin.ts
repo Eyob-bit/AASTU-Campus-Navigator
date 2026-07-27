@@ -91,6 +91,7 @@ export interface SceneElement {
   label: string | null;
   sceneId: string;
   officeId: string | null;
+  targetOfficeId?: string | null;
   nextSceneId: string | null;
   createdAt: string;
   updatedAt: string;

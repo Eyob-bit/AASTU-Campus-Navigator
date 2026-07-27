@@ -3,6 +3,9 @@ import { Navigate, Route, Routes } from "react-router-dom";
 // Public layout + pages
 import { MainLayout } from "@/layouts/MainLayout";
 import { HomePage } from "@/pages/Home";
+import { ChatbotPage } from "@/pages/Chatbot/ChatbotPage";
+import { InformationPage } from "@/pages/Information/InformationPage";
+import { AboutPage } from "@/pages/About/AboutPage";
 import { SearchPage } from "@/pages/Search";
 import { NavigationPage } from "@/pages/Navigation";
 import { PanoramaPage } from "@/pages/Panorama";
@@ -32,6 +35,9 @@ export default function App() {
       {/* ── Public campus app ── */}
       <Route element={<MainLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="chatbot" element={<ChatbotPage />} />
+        <Route path="info" element={<InformationPage />} />
+        <Route path="about" element={<AboutPage />} />
         <Route path="search" element={<SearchPage />} />
         <Route path="navigation" element={<NavigationPage />} />
         <Route path="panorama" element={<PanoramaPage />} />

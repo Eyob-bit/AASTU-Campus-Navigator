@@ -1,13 +1,13 @@
 import { Outlet } from "react-router-dom";
-import { AppHeader } from "@/components/common/AppHeader";
+import { AppBottomNav } from "@/components/common/AppBottomNav";
 
 export function MainLayout() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <AppHeader />
-      <main className="flex-1 px-6 py-6">
+    <div className="flex min-h-screen flex-col bg-[#080E1E] text-slate-100 antialiased selection:bg-cyan-500 selection:text-white">
+      <main className="flex-1 pb-16">
         <Outlet />
       </main>
+      <AppBottomNav />
     </div>
   );
 }

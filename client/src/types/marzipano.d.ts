@@ -26,10 +26,17 @@ declare module "marzipano" {
     setYaw(yaw: number): void;
     setPitch(pitch: number): void;
     setFov(fov: number): void;
+    screenToCoordinates(coords: { x: number; y: number }): { yaw: number; pitch: number } | null;
   }
 
   export interface Scene {
     switchTo(): void;
     destroy(): void;
+    hotspotContainer(): {
+      createHotspot(
+        element: HTMLElement,
+        coords: { yaw: number; pitch: number }
+      ): any;
+    };
   }
 }
