@@ -19,6 +19,7 @@ export interface Building {
   entranceLongitude: number;
   entranceImage: string | null;
   coverImage: string | null;
+  floors?: Floor[];
   createdAt: string;
   updatedAt: string;
 }

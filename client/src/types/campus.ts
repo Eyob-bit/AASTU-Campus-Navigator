@@ -7,6 +7,7 @@ export interface Building {
   entranceImage: string | null;
   coverImage: string | null;
   isActive: boolean;
+  floors?: Floor[];
 }
 
 export interface Floor {
