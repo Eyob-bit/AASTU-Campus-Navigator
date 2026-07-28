@@ -19,6 +19,8 @@ export interface Building {
   entranceLongitude: number;
   entranceImage: string | null;
   coverImage: string | null;
+  entranceRoadNodeId?: string | null;
+  entranceRoadNode?: { id: string; name: string } | null;
   floors?: Floor[];
   createdAt: string;
   updatedAt: string;
@@ -154,6 +156,7 @@ export interface CreateBuildingBody {
   entranceLongitude: number;
   entranceImage?: string;
   coverImage?: string;
+  entranceRoadNodeId?: string | null;
 }
 
 export interface UpdateBuildingBody extends Partial<CreateBuildingBody> {
@@ -284,7 +287,9 @@ export interface Landmark {
   image: string | null;
   isVisible: boolean;
   buildingId: string | null;
-  building: { id: string; name: string; code: string } | null;
+  roadNodeId: string | null;
+  building: { id: string; name: string; code: string; entranceRoadNodeId?: string | null } | null;
+  roadNode?: { id: string; name: string } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -303,6 +308,7 @@ export interface CreateLandmarkBody {
   icon?: string;
   isVisible?: boolean;
   buildingId?: string | null;
+  roadNodeId?: string | null;
 }
 
 export interface UpdateLandmarkBody extends Partial<CreateLandmarkBody> {}

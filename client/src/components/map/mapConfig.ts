@@ -19,8 +19,8 @@ export type TileMode = keyof typeof TILE_LAYERS;
 // ── AASTU Campus Constants ───────────────────────────────────────────────────
 export const AASTU_CENTER: [number, number] = [8.8885, 38.809];
 export const DEFAULT_ZOOM = 16;
-export const MIN_ZOOM = 14;
-export const MAX_ZOOM = 21;
+export const MIN_ZOOM = 12;
+export const MAX_ZOOM = 22;
 
 /**
  * AASTU Campus Boundary Polygon coordinates.

@@ -10,6 +10,9 @@ import sceneElementRoutes from "./scene-element.routes.js";
 import searchRoutes from "./search.routes.js";
 import navigationRoutes from "./navigation.routes.js";
 import landmarkRoutes from "./landmark.routes.js";
+import roadNodeRoutes from "./roadNode.routes.js";
+import roadEdgeRoutes from "./roadEdge.routes.js";
+import roadNavigationRoutes from "./roadNavigation.routes.js";
 
 const router = Router();
 
@@ -24,6 +27,10 @@ router.use("/scenes", sceneRoutes);
 router.use("/elements", sceneElementRoutes);
 router.use("/search", searchRoutes);
 router.use("/navigation", navigationRoutes);
+router.use("/navigation", roadNavigationRoutes);
 router.use("/landmarks", landmarkRoutes);
+router.use("/road-nodes", roadNodeRoutes);
+router.use("/road-edges", roadEdgeRoutes);
+
 
 export default router;

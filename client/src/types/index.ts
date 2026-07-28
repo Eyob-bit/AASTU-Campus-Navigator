@@ -10,6 +10,9 @@ export type {
   SearchResult,
   SearchResultType,
   NavigationResult,
+  DestinationType,
+  NavStep,
+  DestinationTarget,
 } from "./campus";
 export type {
   ModalType,

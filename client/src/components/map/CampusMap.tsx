@@ -7,8 +7,14 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 import { useBuildings } from "@/hooks/useBuildings";
 import { useLandmarks } from "@/hooks/useLandmarks";
+import { useAppStore } from "@/store";
+import { calculateDistanceInMeters } from "@/utils/geo";
+import { OutdoorNavOverlay, ArrivalBottomSheet, BuildingTransitionOverlay, IndoorGuidanceCard } from "@/components/navigation";
+
 import { BuildingMarker } from "./BuildingMarker";
 import { LandmarkMarker } from "./LandmarkMarker";
+import { UserLocationMarker } from "./UserLocationMarker";
+import { WalkingRoutePolyline } from "./WalkingRoutePolyline";
 import { MapLoadingOverlay } from "./MapLoadingOverlay";
 import { MapErrorOverlay } from "./MapErrorOverlay";
 import { MapLegend } from "./MapLegend";
@@ -79,6 +85,59 @@ function TileToggle({ mode, onToggle }: TileToggleProps) {
   );
 }
 
+// ── Floating GPS & Map Navigation Controls ────────────────────────────────────
+interface MapControlsProps {
+  onCenterLocation: () => void;
+  onResetCompass: () => void;
+}
+
+function MapControls({ onCenterLocation, onResetCompass }: MapControlsProps) {
+  return (
+    <div
+      className="absolute bottom-24 right-3 sm:right-4 z-[1000] flex flex-col gap-2"
+      style={{ zIndex: 1000 }}
+    >
+      <button
+        onClick={onCenterLocation}
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B132B]/95 text-cyan-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95"
+        title="Center on My Location"
+      >
+        <span style={{ fontSize: 16 }}>🎯</span>
+      </button>
+      <button
+        onClick={onResetCompass}
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B132B]/95 text-cyan-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95"
+        title="Reset Campus Compass View"
+      >
+        <span style={{ fontSize: 16 }}>🧭</span>
+      </button>
+    </div>
+  );
+}
+
+// Helper to interact with Leaflet map instance
+function MapViewController({
+  userLocation,
+  shouldCenter,
+  setShouldCenter,
+}: {
+  userLocation: { lat: number; lng: number } | null;
+  shouldCenter: boolean;
+  setShouldCenter: (val: boolean) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (shouldCenter && userLocation) {
+      map.flyTo([userLocation.lat, userLocation.lng], 18, { animate: true, duration: 1 });
+      setShouldCenter(false);
+    }
+  }, [shouldCenter, userLocation, map, setShouldCenter]);
+
+  return null;
+}
+
+
 // ── Component ─────────────────────────────────────────────────────────────────
 interface CampusMapProps {
   className?: string;
@@ -90,7 +149,16 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     useBuildings();
   const { landmarks, isLoading: landmarksLoading, fetchLandmarks } = useLandmarks();
 
+  const {
+    navStep,
+    destinationTarget,
+    userLocation,
+    setUserLocation,
+    triggerArrival,
+  } = useAppStore();
+
   const [tileMode, setTileMode] = useState<TileMode>("street");
+  const [shouldCenterLocation, setShouldCenterLocation] = useState<boolean>(false);
 
   useEffect(() => {
     delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
@@ -103,6 +171,39 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     fetchBuildings();
     fetchLandmarks(visibleOnly);
   }, [fetchBuildings, fetchLandmarks, visibleOnly]);
+
+
+  // GPS Geolocation tracking when OUTDOOR_NAV is active
+  useEffect(() => {
+    if (navStep !== "OUTDOOR_NAV" || !("geolocation" in navigator)) {
+      return;
+    }
+
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setUserLocation(coords);
+
+        if (destinationTarget) {
+          const dist = calculateDistanceInMeters(
+            coords.lat,
+            coords.lng,
+            destinationTarget.latitude,
+            destinationTarget.longitude
+          );
+          if (dist <= 10) {
+            triggerArrival();
+          }
+        }
+      },
+      (err) => {
+        console.warn("GPS tracking warning:", err.message);
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
+    );
+
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [navStep, destinationTarget, setUserLocation, triggerArrival]);
 
   const isLoading = buildingsLoading || landmarksLoading;
   const tile = TILE_LAYERS[tileMode];
@@ -154,6 +255,11 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         style={{ height: "100%", width: "100%", minHeight: "350px" }}
       >
         <MapResizer />
+        <MapViewController
+          userLocation={userLocation}
+          shouldCenter={shouldCenterLocation}
+          setShouldCenter={setShouldCenterLocation}
+        />
 
         <TileLayer
           key={tileMode}
@@ -163,8 +269,26 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           maxZoom={MAX_ZOOM}
         />
 
+
         {/* AASTU Yellow Campus Boundary Polygon */}
         <CampusBoundaryPolygon />
+
+        {/* User GPS location marker */}
+        {userLocation && (
+          <UserLocationMarker lat={userLocation.lat} lng={userLocation.lng} />
+        )}
+
+        {/* Outdoor walking polyline route */}
+        {navStep === "OUTDOOR_NAV" && destinationTarget && (
+          <WalkingRoutePolyline
+            userLocation={userLocation}
+            destination={{
+              lat: destinationTarget.latitude,
+              lng: destinationTarget.longitude,
+            }}
+            destNodeId={destinationTarget.roadNodeId}
+          />
+        )}
 
         {/* Standalone Building markers */}
         {standaloneBuildings.map((building) => (
@@ -191,8 +315,25 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
       {/* Satellite / Street toggle */}
       <TileToggle mode={tileMode} onToggle={() => setTileMode((m) => m === "street" ? "satellite" : "street")} />
 
-      {/* Landmark category legend */}
-      <MapLegend />
+      {/* Floating GPS & Compass buttons */}
+      <MapControls
+        onCenterLocation={() => {
+          if (!userLocation) {
+            // Default center if GPS not acquired yet
+            setUserLocation({ lat: 8.88218, lng: 38.79665 });
+          }
+          setShouldCenterLocation(true);
+        }}
+        onResetCompass={() => {
+          setShouldCenterLocation(false);
+        }}
+      />
+
+      {/* Navigation Overlays & State Machine Modals */}
+      {navStep === "OUTDOOR_NAV" && <OutdoorNavOverlay />}
+      {navStep === "ARRIVAL_BOTSHEET" && <ArrivalBottomSheet />}
+      {navStep === "BUILDING_TRANSITION" && <BuildingTransitionOverlay />}
+      {navStep === "INDOOR_GUIDANCE" && <IndoorGuidanceCard />}
 
       {/* Loading and error overlays */}
       {isLoading && <MapLoadingOverlay />}

@@ -61,6 +61,17 @@ export class SceneRepository {
         });
     }
 
+    async findFirstDefaultScene() {
+        const entry = await prisma.panoramaScene.findFirst({
+            where: { isEntryScene: true },
+            orderBy: { createdAt: "asc" },
+        });
+        if (entry) return entry;
+        return prisma.panoramaScene.findFirst({
+            orderBy: { createdAt: "asc" },
+        });
+    }
+
     async findByIdWithDetails(id: string) {
         return prisma.panoramaScene.findUnique({
             where: {

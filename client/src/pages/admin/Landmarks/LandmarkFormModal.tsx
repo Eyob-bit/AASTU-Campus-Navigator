@@ -5,6 +5,7 @@ import { Modal, Input, Select, Button } from "@/components/ui";
 import { MapLocationPickerInner, CampusBoundaryPolygon, AASTU_CENTER, CATEGORY_CONFIG, TILE_LAYERS, type TileMode } from "@/components/map";
 import type { Landmark, LandmarkCategory, CreateLandmarkBody, UpdateLandmarkBody } from "@/types";
 import { buildingApi } from "@/api/building.api";
+import { roadNetworkApi, type RoadNode } from "@/api/roadNetwork.api";
 
 // ── Category options for Select ───────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ function emptyForm() {
     icon: "",
     isVisible: "true",
     buildingId: "",
+    roadNodeId: "",
   };
 }
 
@@ -45,6 +47,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
   const [errors, setErrors]           = useState<Partial<Record<keyof ReturnType<typeof emptyForm>, string>>>({});
   const [submitError, setSubmitError] = useState("");
   const [tileMode, setTileMode] = useState<TileMode>("satellite");
+  const [roadNodes, setRoadNodes] = useState<RoadNode[]>([]);
 
   // ── Fetch buildings for the dropdown ──────────────────────────────────────
   const [buildings, setBuildings] = useState<{ id: string; name: string; code: string }[]>([]);
@@ -52,6 +55,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
     buildingApi.getAll().then((data) => {
       setBuildings(data.buildings.filter((b) => b.isActive !== false));
     }).catch(() => {/* non-critical */});
+    roadNetworkApi.getNodes().then(setRoadNodes).catch(console.error);
   }, []);
 
   const buildingOptions = useMemo(() => [
@@ -70,6 +74,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
         icon:        landmark.icon ?? "",
         isVisible:   String(landmark.isVisible),
         buildingId:  landmark.buildingId ?? "",
+        roadNodeId:  landmark.roadNodeId ?? "",
       });
     } else {
       setForm(emptyForm());
@@ -129,6 +134,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
         icon:        form.icon.trim() || undefined,
         isVisible:   form.isVisible === "true",
         buildingId:  form.buildingId || null,
+        roadNodeId:  form.roadNodeId || null,
       };
       await onSubmit(payload);
       onClose();
@@ -141,6 +147,14 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
 
   const pickerLat = parseFloat(form.latitude)  || AASTU_CENTER[0];
   const pickerLng = parseFloat(form.longitude) || AASTU_CENTER[1];
+
+  const nodeOptions = [
+    { value: "", label: "-- None (Auto-find nearest node) --" },
+    ...roadNodes.map((n) => ({
+      value: n.id,
+      label: `${n.name} (${n.latitude.toFixed(4)}, ${n.longitude.toFixed(4)})`,
+    })),
+  ];
 
   const VISIBILITY_OPTIONS = [
     { value: "true",  label: "Visible" },
@@ -165,6 +179,20 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
               🏢 The map marker name will always show the linked building's name as it appears in admin.
             </p>
           )}
+        </div>
+
+        {/* Road Node Selection */}
+        <div>
+          <Select
+            label="Road Node (Wayfinding Door)"
+            options={nodeOptions}
+            value={form.roadNodeId}
+            onChange={set("roadNodeId")}
+            disabled={saving}
+          />
+          <p className="text-[11px] text-gray-500 mt-1">
+            Connects outdoor navigation directly to this road waypoint.
+          </p>
         </div>
 
         {/* Name */}

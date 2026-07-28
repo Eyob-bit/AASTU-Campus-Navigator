@@ -6,7 +6,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type { NavigationResult, SearchResult } from "@/types";
+import type {
+  NavigationResult,
+  SearchResult,
+  NavStep,
+  DestinationTarget,
+} from "@/types";
 
 type Language = "en" | "am";
 
@@ -17,6 +22,12 @@ interface AppState {
   navigation: NavigationResult | null;
   isDarkMode: boolean;
   language: Language;
+
+  // Navigation State Machine
+  navStep: NavStep;
+  destinationTarget: DestinationTarget | null;
+  userLocation: { lat: number; lng: number } | null;
+  currentStepIndex: number;
 }
 
 interface AppStoreValue extends AppState {
@@ -27,6 +38,17 @@ interface AppStoreValue extends AppState {
   resetNavigationFlow: () => void;
   toggleDarkMode: () => void;
   setLanguage: (lang: Language) => void;
+
+  // Navigation Actions
+  setNavStep: (step: NavStep) => void;
+  setDestinationTarget: (target: DestinationTarget | null) => void;
+  setUserLocation: (loc: { lat: number; lng: number } | null) => void;
+  setCurrentStepIndex: (idx: number) => void;
+  startOutdoorNavigation: (target: DestinationTarget) => void;
+  triggerArrival: () => void;
+  enterBuilding: () => void;
+  startIndoorNavigation: () => void;
+  finishNavigation: () => void;
 }
 
 const initialState: AppState = {
@@ -36,6 +58,11 @@ const initialState: AppState = {
   navigation: null,
   isDarkMode: false,
   language: "en",
+
+  navStep: "IDLE",
+  destinationTarget: null,
+  userLocation: null,
+  currentStepIndex: 0,
 };
 
 const AppStoreContext = createContext<AppStoreValue | null>(null);
@@ -63,7 +90,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         setState((current) => ({ ...current, selectedResult })),
       setNavigation: (navigation) =>
         setState((current) => ({ ...current, navigation })),
-      resetNavigationFlow: () => setState(initialState),
+      resetNavigationFlow: () =>
+        setState((current) => ({
+          ...current,
+          navStep: "IDLE",
+          destinationTarget: null,
+          navigation: null,
+          selectedResult: null,
+          currentStepIndex: 0,
+        })),
       toggleDarkMode: () =>
         setState((current) => {
           const next = !current.isDarkMode;
@@ -73,6 +108,52 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         }),
       setLanguage: (language) =>
         setState((current) => ({ ...current, language })),
+
+      setNavStep: (navStep) =>
+        setState((current) => ({ ...current, navStep })),
+      setDestinationTarget: (destinationTarget) =>
+        setState((current) => ({ ...current, destinationTarget })),
+      setUserLocation: (userLocation) =>
+        setState((current) => ({ ...current, userLocation })),
+      setCurrentStepIndex: (currentStepIndex) =>
+        setState((current) => ({ ...current, currentStepIndex })),
+
+      startOutdoorNavigation: (target) =>
+        setState((current) => ({
+          ...current,
+          destinationTarget: target,
+          navStep: "OUTDOOR_NAV",
+          currentStepIndex: 0,
+        })),
+
+      triggerArrival: () =>
+        setState((current) => ({
+          ...current,
+          navStep: "ARRIVAL_BOTSHEET",
+        })),
+
+      enterBuilding: () =>
+        setState((current) => ({
+          ...current,
+          navStep: "BUILDING_TRANSITION",
+        })),
+
+      startIndoorNavigation: () =>
+        setState((current) => ({
+          ...current,
+          navStep: "INDOOR_PANORAMA",
+          currentStepIndex: 0,
+        })),
+
+      finishNavigation: () =>
+        setState((current) => ({
+          ...current,
+          navStep: "IDLE",
+          destinationTarget: null,
+          navigation: null,
+          selectedResult: null,
+          currentStepIndex: 0,
+        })),
     }),
     [state]
   );

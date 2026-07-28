@@ -7,6 +7,7 @@ export interface BuildingDTO {
     entranceLongitude: number;
     entranceImage: string | null;
     coverImage: string | null;
+    entranceRoadNodeId?: string | null;
 }
 
 export interface FloorDTO {

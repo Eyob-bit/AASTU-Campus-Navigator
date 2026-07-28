@@ -9,6 +9,7 @@ import type {
 import { apiPost } from "./client";
 
 export const sceneApi = {
+  getDefault: () => apiGet<PanoramaScene>("/scenes/default"),
   getById: (id: string) => apiGet<PanoramaScene>(`/scenes/${id}`),
 
   update: (id: string, formData: FormData) =>

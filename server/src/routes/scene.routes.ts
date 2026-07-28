@@ -8,6 +8,7 @@ import { uploadPanorama } from "../middleware/upload.middleware.js";
 
 const router = Router();
 
+router.get("/default", sceneController.getDefaultScene);
 router.get("/:id", sceneController.getSceneById);
 
 router.patch(
