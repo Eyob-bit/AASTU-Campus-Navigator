@@ -8,3 +8,5 @@ export { sceneApi } from "./scene.api";
 export { sceneElementApi } from "./scene-element.api";
 export { searchApi } from "./search.api";
 export { navigationApi } from "./navigation.api";
+export { landmarkApi } from "./landmark.api";
+

@@ -7,6 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum LandmarkCategory {
+  FOOD
+  EDUCATION
+  SPORTS
+  ADMINISTRATION
+  TRANSPORT
+  EMERGENCY
+  RECREATION
+  RELIGIOUS
+  SERVICES
+  CUSTOM
+}
+
 enum SceneElementType {
   ARROW
   OFFICE_LABEL
@@ -27,6 +40,7 @@ model Building {
 
   floors        Floor[]
   announcements Announcement[]
+  landmarks     Landmark[]
 
   @@index([name])
 }
@@ -187,4 +201,25 @@ model Announcement {
   office Office? @relation(fields: [officeId], references: [id])
 
   @@index([expiresAt])
+}
+
+model Landmark {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  category    LandmarkCategory @default(CUSTOM)
+  latitude    Float
+  longitude   Float
+  icon        String?
+  image       String?
+  isVisible   Boolean          @default(true)
+  buildingId  String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  building    Building?        @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+
+  @@index([category])
+  @@index([name])
+  @@index([buildingId])
 }

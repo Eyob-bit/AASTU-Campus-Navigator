@@ -56,7 +56,7 @@ export function AboutPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           AASTU at a Glance
         </h2>
-        <div className="grid grid-cols-2 gap-3 text-xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div className="flex items-center gap-2.5 rounded-xl border border-slate-700/50 bg-[#131F3F]/60 p-3">
             <Users className="h-4 w-4 text-cyan-400 shrink-0" />
             <div>
@@ -93,7 +93,7 @@ export function AboutPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           Our Philosophy
         </h2>
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
           <div className="flex items-center gap-2 text-slate-200">
             <Sparkles className="h-3.5 w-3.5 text-amber-400 shrink-0" />
             <span>Innovation-Driven</span>

@@ -23,6 +23,20 @@ export class SearchController {
             next(error);
         }
     }
+
+    async searchLandmarks(req: Request, res: Response, next: NextFunction) {
+        try {
+            const q = (req.query.q as string) ?? "";
+            if (!q.trim()) {
+                throw new ApiError(400, "Search query must not be empty");
+            }
+            const results = await searchService.searchLandmarks(q);
+            return sendSuccess(res, results, "Landmark search completed");
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export const searchController = new SearchController();
+

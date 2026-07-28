@@ -1,6 +1,7 @@
 import { SearchRepository } from "../repositories/search.repository.js";
 import { mapToSearchResultDTO, SearchResultDTO } from "../dto/search-result.dto.js";
 import { ApiError } from "../utils/ApiError.js";
+import { LandmarkRepository } from "../repositories/landmark.repository.js";
 
 interface StrategyMatch {
     type: "staff" | "office";
@@ -12,6 +13,7 @@ interface StrategyMatch {
 
 export class SearchService {
     private repository = new SearchRepository();
+    private landmarkRepository = new LandmarkRepository();
 
     async search(query: string): Promise<SearchResultDTO[]> {
         // Normalize: trim, lowercase, and collapse multiple spaces
@@ -76,6 +78,16 @@ export class SearchService {
         }
 
         throw new ApiError(404, "No matching campus entities found");
+    }
+
+    async searchLandmarks(query: string) {
+        const normalized = query.trim().toLowerCase().replace(/\s+/g, " ");
+        if (!normalized) return [];
+
+        const exact = await this.landmarkRepository.findByNameExact(normalized);
+        if (exact.length > 0) return exact;
+
+        return this.landmarkRepository.findByName(normalized);
     }
 
     private async searchRoom(normalized: string): Promise<StrategyMatch[] | null> {

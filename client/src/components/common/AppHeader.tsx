@@ -19,9 +19,9 @@ import { useAppStore } from "@/store";
 const NAV_ITEMS = [
   { to: "/",           label: "Home",         icon: Home },
   { to: "/navigation", label: "Campus Map",   icon: Map },
-  { to: "/search",     label: "Information",  icon: Info },
-  { to: "/search",     label: "About",        icon: Users },
-  { to: "/search",     label: "AI Assistant", icon: Bot },
+  { to: "/info",       label: "Information",  icon: Info },
+  { to: "/about",      label: "About",        icon: Users },
+  { to: "/chatbot",    label: "AI Assistant", icon: Bot },
 ] as const;
 
 export function AppHeader() {
@@ -43,14 +43,16 @@ export function AppHeader() {
   const isActive = (to: string) =>
     to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
 
+  const isHomePage = location.pathname === "/";
+
   return (
     <>
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-          scrolled || mobileOpen
-            ? "glass-light dark:glass-dark shadow-lg shadow-black/5 dark:shadow-black/30"
-            : "bg-transparent"
+          scrolled || mobileOpen || !isHomePage
+            ? "bg-[#0B132B]/90 backdrop-blur-md border-b border-slate-800/80 shadow-lg shadow-black/40"
+            : "bg-gradient-to-b from-slate-950/80 via-slate-950/40 to-transparent"
         )}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
@@ -200,7 +202,7 @@ export function AppHeader() {
       </header>
 
       {/* Spacer so content doesn't hide behind fixed nav on non-hero pages */}
-      <div className="h-[60px]" aria-hidden="true" />
+      {!isHomePage && <div className="h-[60px]" aria-hidden="true" />}
     </>
   );
 }
