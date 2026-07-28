@@ -35,12 +35,14 @@ model Building {
   entranceLongitude Float
   entranceImage String?
   coverImage    String?
+  entranceRoadNodeId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   floors        Floor[]
   announcements Announcement[]
   landmarks     Landmark[]
+  entranceRoadNode RoadNode? @relation("BuildingEntrance", fields: [entranceRoadNodeId], references: [id], onDelete: SetNull)
 
   @@index([name])
 }
@@ -214,12 +216,47 @@ model Landmark {
   image       String?
   isVisible   Boolean          @default(true)
   buildingId  String?
+  roadNodeId  String?
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
   building    Building?        @relation(fields: [buildingId], references: [id], onDelete: SetNull)
+  roadNode    RoadNode?        @relation("LandmarkNode", fields: [roadNodeId], references: [id], onDelete: SetNull)
 
   @@index([category])
   @@index([name])
   @@index([buildingId])
+}
+
+model RoadNode {
+  id        String   @id @default(cuid())
+  name      String
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  outgoingEdges RoadEdge[] @relation("FromNode")
+  incomingEdges RoadEdge[] @relation("ToNode")
+
+  buildingEntrances Building[] @relation("BuildingEntrance")
+  landmarks         Landmark[] @relation("LandmarkNode")
+
+  @@index([name])
+}
+
+model RoadEdge {
+  id              String   @id @default(cuid())
+  fromNodeId      String
+  toNodeId        String
+  distance        Float
+  isBidirectional Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  fromNode RoadNode @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
+  toNode   RoadNode @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([fromNodeId, toNodeId])
+  @@index([fromNodeId])
+  @@index([toNodeId])
 }

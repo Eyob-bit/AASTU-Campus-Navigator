@@ -11,17 +11,19 @@ interface CreateLandmarkData {
   image?: string;
   isVisible?: boolean;
   buildingId?: string | null;
+  roadNodeId?: string | null;
 }
 
 interface UpdateLandmarkData extends Partial<CreateLandmarkData> {}
 
-const BUILDING_SELECT = { select: { id: true, name: true, code: true } } as const;
+const BUILDING_SELECT = { select: { id: true, name: true, code: true, entranceRoadNodeId: true } } as const;
+const ROAD_NODE_SELECT = { select: { id: true, name: true } } as const;
 
 export class LandmarkRepository {
   async findAll() {
     return prisma.landmark.findMany({
       orderBy: { name: "asc" },
-      include: { building: BUILDING_SELECT },
+      include: { building: BUILDING_SELECT, roadNode: ROAD_NODE_SELECT },
     });
   }
 
@@ -29,14 +31,14 @@ export class LandmarkRepository {
     return prisma.landmark.findMany({
       where: { isVisible: true },
       orderBy: { name: "asc" },
-      include: { building: BUILDING_SELECT },
+      include: { building: BUILDING_SELECT, roadNode: ROAD_NODE_SELECT },
     });
   }
 
   async findById(id: string) {
     return prisma.landmark.findUnique({
       where: { id },
-      include: { building: BUILDING_SELECT },
+      include: { building: BUILDING_SELECT, roadNode: ROAD_NODE_SELECT },
     });
   }
 
@@ -48,7 +50,7 @@ export class LandmarkRepository {
       },
       orderBy: { name: "asc" },
       take: 10,
-      include: { building: BUILDING_SELECT },
+      include: { building: BUILDING_SELECT, roadNode: ROAD_NODE_SELECT },
     });
   }
 
@@ -59,14 +61,14 @@ export class LandmarkRepository {
         name: { equals: query, mode: "insensitive" },
       },
       take: 5,
-      include: { building: BUILDING_SELECT },
+      include: { building: BUILDING_SELECT, roadNode: ROAD_NODE_SELECT },
     });
   }
 
   async create(data: CreateLandmarkData) {
     return prisma.landmark.create({
       data,
-      include: { building: BUILDING_SELECT },
+      include: { building: BUILDING_SELECT, roadNode: ROAD_NODE_SELECT },
     });
   }
 
@@ -74,7 +76,7 @@ export class LandmarkRepository {
     return prisma.landmark.update({
       where: { id },
       data,
-      include: { building: BUILDING_SELECT },
+      include: { building: BUILDING_SELECT, roadNode: ROAD_NODE_SELECT },
     });
   }
 

@@ -12,6 +12,7 @@ export class BuildingRepository {
                         floorNumber: "asc",
                     },
                 },
+                entranceRoadNode: true,
             },
         });
     }
@@ -19,6 +20,9 @@ export class BuildingRepository {
     async findById(id: string) {
         return prisma.building.findUnique({
             where: { id },
+            include: {
+                entranceRoadNode: true,
+            },
         });
     }
 
@@ -26,6 +30,9 @@ export class BuildingRepository {
         return prisma.building.findUnique({
             where: {
                 code,
+            },
+            include: {
+                entranceRoadNode: true,
             },
         });
     }
@@ -40,6 +47,7 @@ export class BuildingRepository {
                     },
                 },
                 announcements: true,
+                entranceRoadNode: true,
             },
         });
     }
@@ -53,12 +61,16 @@ export class BuildingRepository {
             entranceLongitude?: number;
             entranceImage?: string;
             coverImage?: string;
+            entranceRoadNodeId?: string | null;
             isActive?: boolean;
         }
     ) {
         return prisma.building.update({
             where: { id },
             data,
+            include: {
+                entranceRoadNode: true,
+            },
         });
     }
 
@@ -78,6 +90,7 @@ export class BuildingRepository {
         entranceLongitude: number;
         entranceImage?: string;
         coverImage?: string;
+        entranceRoadNodeId?: string | null;
     }) {
         return prisma.building.create({
             data: {
@@ -87,6 +100,10 @@ export class BuildingRepository {
                 entranceLongitude: data.entranceLongitude,
                 entranceImage: data.entranceImage,
                 coverImage: data.coverImage,
+                entranceRoadNodeId: data.entranceRoadNodeId,
+            },
+            include: {
+                entranceRoadNode: true,
             },
         });
     }

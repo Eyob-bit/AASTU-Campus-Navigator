@@ -9,6 +9,7 @@ import { AboutPage } from "@/pages/About/AboutPage";
 import { SearchPage } from "@/pages/Search";
 import { NavigationPage } from "@/pages/Navigation";
 import { PanoramaPage } from "@/pages/Panorama";
+import { PublicPanoramaPage } from "@/pages/Panorama";
 import { NotFoundPage } from "@/pages/NotFound";
 
 // Admin layout + auth
@@ -29,6 +30,7 @@ import { SceneEditorPage } from "@/pages/admin/SceneEditor/SceneEditorPage";
 import { NavigationPreviewPage } from "@/pages/admin/NavigationPreview/NavigationPreviewPage";
 import { SettingsPage } from "@/pages/admin/Settings/SettingsPage";
 import { LandmarksPage } from "@/pages/admin/Landmarks/LandmarksPage";
+import { RoadNetworkPage } from "@/pages/admin/RoadNetwork/RoadNetworkPage";
 
 export default function App() {
   return (
@@ -44,6 +46,9 @@ export default function App() {
         <Route path="panorama" element={<PanoramaPage />} />
         <Route path="404" element={<NotFoundPage />} />
       </Route>
+
+      {/* ── Public: full-screen panorama viewer (no layout chrome) ── */}
+      <Route path="/panorama/:sceneId" element={<PublicPanoramaPage />} />
 
       {/* ── Admin: login (no auth required) ── */}
       <Route path="/login" element={<LoginPage />} />
@@ -69,6 +74,7 @@ export default function App() {
         <Route path="scene-editor/:sceneId" element={<SceneEditorPage />} />
         <Route path="nav-preview" element={<NavigationPreviewPage />} />
         <Route path="nav-preview/:sceneId" element={<NavigationPreviewPage />} />
+        <Route path="road-network" element={<RoadNetworkPage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="landmarks" element={<LandmarksPage />} />
       </Route>
@@ -78,3 +84,4 @@ export default function App() {
     </Routes>
   );
 }
+

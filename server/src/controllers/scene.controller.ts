@@ -46,6 +46,24 @@ export class SceneController {
         }
     }
 
+    async getDefaultScene(
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) {
+        try {
+            const scene = await sceneService.getDefaultScene();
+
+            return sendSuccess(
+                res,
+                scene,
+                "Default scene retrieved successfully"
+            );
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async createScene(
         req: Request<{ floorId: string }>,
         res: Response,

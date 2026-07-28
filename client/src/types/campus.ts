@@ -6,6 +6,7 @@ export interface Building {
   entranceLongitude: number;
   entranceImage: string | null;
   coverImage: string | null;
+  entranceRoadNodeId?: string | null;
   isActive: boolean;
   floors?: Floor[];
 }
@@ -55,6 +56,41 @@ export interface PathNode {
 }
 
 export type SearchResultType = "office" | "staff";
+
+export type DestinationType = "BUILDING" | "LANDMARK" | "OFFICE" | "STAFF";
+
+export type NavStep =
+  | "IDLE"
+  | "OUTDOOR_NAV"
+  | "ARRIVAL_BOTSHEET"
+  | "BUILDING_TRANSITION"
+  | "INDOOR_GUIDANCE"
+  | "INDOOR_PANORAMA"
+  | "DESTINATION_REACHED";
+
+export interface DestinationTarget {
+  id: string;
+  type: DestinationType;
+  name: string;
+  subtitle?: string;
+  latitude: number;
+  longitude: number;
+  roadNodeId?: string | null;
+  buildingId?: string;
+  buildingName?: string;
+  buildingCode?: string;
+  floorId?: string;
+  floorNumber?: number;
+  officeId?: string;
+  officeName?: string;
+  roomNumber?: string;
+  staffName?: string;
+  staffPosition?: string;
+  staffPhone?: string | null;
+  staffEmail?: string | null;
+  entranceImage?: string | null;
+  entrySceneId?: string | null;
+}
 
 export interface SearchResult {
   type: SearchResultType;

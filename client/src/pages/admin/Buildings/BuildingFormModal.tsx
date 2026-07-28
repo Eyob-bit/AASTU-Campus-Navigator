@@ -7,6 +7,7 @@ import { MapLocationPickerInner, CampusBoundaryPolygon, AASTU_CENTER } from "@/c
 import { TILE_LAYERS } from "@/components/map/CampusMap";
 import type { TileMode } from "@/components/map/CampusMap";
 import type { Building, CreateBuildingBody, UpdateBuildingBody } from "@/types";
+import { roadNetworkApi, type RoadNode } from "@/api/roadNetwork.api";
 
 interface BuildingFormModalProps {
   open: boolean;
@@ -21,7 +22,7 @@ const STATUS_OPTIONS = [
 ];
 
 function emptyForm() {
-  return { name: "", code: "", entranceLatitude: "", entranceLongitude: "", isActive: "true" };
+  return { name: "", code: "", entranceLatitude: "", entranceLongitude: "", entranceRoadNodeId: "", isActive: "true" };
 }
 
 export function BuildingFormModal({ open, onClose, onSubmit, building }: BuildingFormModalProps) {
@@ -32,6 +33,11 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
   const [errors, setErrors]       = useState<Partial<Record<keyof typeof form, string>>>({});
   const [submitError, setSubmitError] = useState("");
   const [tileMode, setTileMode] = useState<TileMode>("satellite");
+  const [roadNodes, setRoadNodes] = useState<RoadNode[]>([]);
+
+  useEffect(() => {
+    roadNetworkApi.getNodes().then(setRoadNodes).catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (building) {
@@ -40,6 +46,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
         code:              building.code,
         entranceLatitude:  String(building.entranceLatitude),
         entranceLongitude: String(building.entranceLongitude),
+        entranceRoadNodeId: building.entranceRoadNodeId || "",
         isActive:          String(building.isActive),
       });
     } else {
@@ -88,6 +95,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
         code:              form.code.trim().toUpperCase(),
         entranceLatitude:  parseFloat(form.entranceLatitude),
         entranceLongitude: parseFloat(form.entranceLongitude),
+        entranceRoadNodeId: form.entranceRoadNodeId || null,
         ...(isEdit ? { isActive: form.isActive === "true" } : {}),
       };
       await onSubmit(payload);
@@ -101,6 +109,14 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
 
   const pickerLat = parseFloat(form.entranceLatitude) || AASTU_CENTER[0];
   const pickerLng = parseFloat(form.entranceLongitude) || AASTU_CENTER[1];
+
+  const nodeOptions = [
+    { value: "", label: "-- None (Auto-find nearest node) --" },
+    ...roadNodes.map((n) => ({
+      value: n.id,
+      label: `${n.name} (${n.latitude.toFixed(4)}, ${n.longitude.toFixed(4)})`,
+    })),
+  ];
 
   return (
     <Modal open={open} onClose={onClose} title={isEdit ? "Edit Building" : "Add Building"} size="md">
@@ -136,6 +152,20 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
               disabled={saving}
             />
           )}
+        </div>
+
+        {/* Entrance Road Node Selection */}
+        <div>
+          <Select
+            label="Entrance Road Node (Wayfinding Door)"
+            options={nodeOptions}
+            value={form.entranceRoadNodeId}
+            onChange={handleChange("entranceRoadNodeId")}
+            disabled={saving}
+          />
+          <p className="text-[11px] text-gray-500 mt-1">
+            Connects outdoor GPS walking route directly to this entrance node.
+          </p>
         </div>
 
         {/* Coordinates */}

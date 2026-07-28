@@ -24,6 +24,14 @@ export class SceneService {
         return scene;
     }
 
+    async getDefaultScene() {
+        const scene = await this.repository.findFirstDefaultScene();
+        if (!scene) {
+            throw new ApiError(404, "No default panorama scene found in database");
+        }
+        return this.repository.findByIdWithDetails(scene.id);
+    }
+
     async createScene(
         floorId: string,
         data: {
