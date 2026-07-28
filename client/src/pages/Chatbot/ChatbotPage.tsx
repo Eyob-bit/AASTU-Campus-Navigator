@@ -93,7 +93,7 @@ export function ChatbotPage() {
   };
 
   return (
-    <div className="relative min-h-[calc(100vh-140px)] w-full bg-[#080E1E] text-slate-100 flex flex-col justify-between overflow-hidden rounded-3xl border border-slate-800/80 shadow-2xl">
+    <div className="relative h-[calc(100dvh-7.5rem)] sm:h-[calc(100vh-8rem)] w-full max-w-4xl mx-auto bg-[#080E1E] text-slate-100 flex flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-800/80 shadow-2xl">
       {/* Background aerial graphic overlay */}
       <div
         className="absolute inset-0 opacity-10 bg-cover bg-center pointer-events-none"

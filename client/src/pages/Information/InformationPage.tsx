@@ -63,7 +63,7 @@ export function InformationPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
           <span>University Social Media & Channels</span>
         </h2>
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {SOCIAL_CHANNELS.map((ch, idx) => {
             const Icon = ch.icon;
             return (
@@ -89,7 +89,7 @@ export function InformationPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           Centers of Excellence
         </h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {CENTERS_OF_EXCELLENCE.map((center, idx) => {
             const Icon = center.icon;
             return (
@@ -115,7 +115,7 @@ export function InformationPage() {
         <h2 className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
           Faculty Portals & Services
         </h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {PORTALS_AND_SERVICES.map((portal, idx) => {
             const Icon = portal.icon;
             return (

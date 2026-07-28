@@ -48,4 +48,9 @@ export type {
   UpdateSceneBody,
   CreateSceneElementBody,
   UpdateSceneElementBody,
+  Landmark,
+  LandmarkCategory,
+  LandmarkListData,
+  CreateLandmarkBody,
+  UpdateLandmarkBody,
 } from "./admin";

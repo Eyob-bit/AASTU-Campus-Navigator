@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Building2, Layers, DoorOpen, Users,
   Search, Megaphone, Image, Map, Navigation, Settings,
-  LogOut, ChevronLeft, ChevronRight,
+  LogOut, ChevronLeft, ChevronRight, MapPin,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -24,6 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "panoramas",     label: "Panorama Scenes",     icon: Image,           path: "/dashboard/panoramas" },
   { id: "scene-editor",  label: "Scene Editor",        icon: Map,             path: "/dashboard/scene-editor" },
   { id: "nav-preview",   label: "Navigation Preview",  icon: Navigation,      path: "/dashboard/nav-preview" },
+  { id: "landmarks",     label: "Landmarks",            icon: MapPin,          path: "/dashboard/landmarks" },
   { id: "settings",      label: "Settings",            icon: Settings,        path: "/dashboard/settings" },
 ];
 
