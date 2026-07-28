@@ -6,6 +6,13 @@ export class BuildingRepository {
             orderBy: {
                 name: "asc",
             },
+            include: {
+                floors: {
+                    orderBy: {
+                        floorNumber: "asc",
+                    },
+                },
+            },
         });
     }
 

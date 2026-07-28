@@ -9,6 +9,7 @@ import sceneRoutes from "./scene.routes.js";
 import sceneElementRoutes from "./scene-element.routes.js";
 import searchRoutes from "./search.routes.js";
 import navigationRoutes from "./navigation.routes.js";
+import landmarkRoutes from "./landmark.routes.js";
 
 const router = Router();
 
@@ -23,5 +24,6 @@ router.use("/scenes", sceneRoutes);
 router.use("/elements", sceneElementRoutes);
 router.use("/search", searchRoutes);
 router.use("/navigation", navigationRoutes);
+router.use("/landmarks", landmarkRoutes);
 
-export default router;
+export default router;

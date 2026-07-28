@@ -1,9 +1,18 @@
 {
+  "name": "aastu-campus-navigator",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
+    "dev:client": "npm run dev --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "start": "npx concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\""
+  },
   "dependencies": {
     "helmet": "^8.2.0",
     "morgan": "^1.11.0"
   },
   "devDependencies": {
-    "@types/morgan": "^1.9.10"
+    "@types/morgan": "^1.9.10",
+    "concurrently": "^8.2.2"
   }
 }

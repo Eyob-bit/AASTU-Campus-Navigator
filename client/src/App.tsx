@@ -28,6 +28,7 @@ import { PanoramaGalleryPage } from "@/pages/admin/PanoramaGallery/PanoramaGalle
 import { SceneEditorPage } from "@/pages/admin/SceneEditor/SceneEditorPage";
 import { NavigationPreviewPage } from "@/pages/admin/NavigationPreview/NavigationPreviewPage";
 import { SettingsPage } from "@/pages/admin/Settings/SettingsPage";
+import { LandmarksPage } from "@/pages/admin/Landmarks/LandmarksPage";
 
 export default function App() {
   return (
@@ -69,6 +70,7 @@ export default function App() {
         <Route path="nav-preview" element={<NavigationPreviewPage />} />
         <Route path="nav-preview/:sceneId" element={<NavigationPreviewPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="landmarks" element={<LandmarksPage />} />
       </Route>
 
       {/* ── Fallback ── */}

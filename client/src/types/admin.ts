@@ -19,6 +19,7 @@ export interface Building {
   entranceLongitude: number;
   entranceImage: string | null;
   coverImage: string | null;
+  floors?: Floor[];
   createdAt: string;
   updatedAt: string;
 }
@@ -257,3 +258,52 @@ export interface CreateSceneElementBody {
 }
 
 export interface UpdateSceneElementBody extends Partial<CreateSceneElementBody> {}
+
+// ─── Landmark Types ───────────────────────────────────────────────────────────
+
+export type LandmarkCategory =
+  | "FOOD"
+  | "EDUCATION"
+  | "SPORTS"
+  | "ADMINISTRATION"
+  | "TRANSPORT"
+  | "EMERGENCY"
+  | "RECREATION"
+  | "RELIGIOUS"
+  | "SERVICES"
+  | "CUSTOM";
+
+export interface Landmark {
+  id: string;
+  name: string;
+  description: string | null;
+  category: LandmarkCategory;
+  latitude: number;
+  longitude: number;
+  icon: string | null;
+  image: string | null;
+  isVisible: boolean;
+  buildingId: string | null;
+  building: { id: string; name: string; code: string } | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LandmarkListData {
+  count: number;
+  landmarks: Landmark[];
+}
+
+export interface CreateLandmarkBody {
+  name: string;
+  description?: string;
+  category: LandmarkCategory;
+  latitude: number;
+  longitude: number;
+  icon?: string;
+  isVisible?: boolean;
+  buildingId?: string | null;
+}
+
+export interface UpdateLandmarkBody extends Partial<CreateLandmarkBody> {}
+

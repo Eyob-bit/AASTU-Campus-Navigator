@@ -1,12 +1,18 @@
 import { useState, useEffect } from "react";
+import { MapContainer, TileLayer } from "react-leaflet";
+import { MapPin } from "lucide-react";
+
 import { Modal, Input, Select, Button } from "@/components/ui";
+import { MapLocationPickerInner, CampusBoundaryPolygon, AASTU_CENTER } from "@/components/map";
+import { TILE_LAYERS } from "@/components/map/CampusMap";
+import type { TileMode } from "@/components/map/CampusMap";
 import type { Building, CreateBuildingBody, UpdateBuildingBody } from "@/types";
 
 interface BuildingFormModalProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: CreateBuildingBody | UpdateBuildingBody) => Promise<void>;
-  building?: Building | null; // null → create mode
+  building?: Building | null;
 }
 
 const STATUS_OPTIONS = [
@@ -21,20 +27,20 @@ function emptyForm() {
 export function BuildingFormModal({ open, onClose, onSubmit, building }: BuildingFormModalProps) {
   const isEdit = !!building;
 
-  const [form, setForm] = useState(emptyForm());
-  const [saving, setSaving]   = useState(false);
-  const [errors, setErrors]   = useState<Partial<Record<keyof typeof form, string>>>({});
+  const [form, setForm]           = useState(emptyForm());
+  const [saving, setSaving]       = useState(false);
+  const [errors, setErrors]       = useState<Partial<Record<keyof typeof form, string>>>({});
   const [submitError, setSubmitError] = useState("");
+  const [tileMode, setTileMode] = useState<TileMode>("satellite");
 
-  // Populate form when editing
   useEffect(() => {
     if (building) {
       setForm({
-        name:               building.name,
-        code:               building.code,
-        entranceLatitude:   String(building.entranceLatitude),
-        entranceLongitude:  String(building.entranceLongitude),
-        isActive:           String(building.isActive),
+        name:              building.name,
+        code:              building.code,
+        entranceLatitude:  String(building.entranceLatitude),
+        entranceLongitude: String(building.entranceLongitude),
+        isActive:          String(building.isActive),
       });
     } else {
       setForm(emptyForm());
@@ -50,11 +56,20 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
     };
   }
 
+  function handleMapPick(lat: number, lng: number) {
+    setForm((f) => ({
+      ...f,
+      entranceLatitude:  lat.toFixed(6),
+      entranceLongitude: lng.toFixed(6),
+    }));
+    setErrors((e) => ({ ...e, entranceLatitude: undefined, entranceLongitude: undefined }));
+  }
+
   function validate(): boolean {
     const next: typeof errors = {};
-    if (!form.name.trim())               next.name = "Name is required.";
-    if (!form.code.trim())               next.code = "Code is required.";
-    if (form.code.trim().length > 10)    next.code = "Code must be 10 characters or fewer.";
+    if (!form.name.trim())             next.name = "Name is required.";
+    if (!form.code.trim())             next.code = "Code is required.";
+    if (form.code.trim().length > 10)  next.code = "Code must be 10 characters or fewer.";
     const lat = parseFloat(form.entranceLatitude);
     const lng = parseFloat(form.entranceLongitude);
     if (isNaN(lat) || lat < -90  || lat > 90)   next.entranceLatitude  = "Valid latitude required (−90 to 90).";
@@ -69,10 +84,10 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
     setSubmitError("");
     try {
       const payload: CreateBuildingBody | UpdateBuildingBody = {
-        name:               form.name.trim(),
-        code:               form.code.trim().toUpperCase(),
-        entranceLatitude:   parseFloat(form.entranceLatitude),
-        entranceLongitude:  parseFloat(form.entranceLongitude),
+        name:              form.name.trim(),
+        code:              form.code.trim().toUpperCase(),
+        entranceLatitude:  parseFloat(form.entranceLatitude),
+        entranceLongitude: parseFloat(form.entranceLongitude),
         ...(isEdit ? { isActive: form.isActive === "true" } : {}),
       };
       await onSubmit(payload);
@@ -84,13 +99,11 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
     }
   }
 
+  const pickerLat = parseFloat(form.entranceLatitude) || AASTU_CENTER[0];
+  const pickerLng = parseFloat(form.entranceLongitude) || AASTU_CENTER[1];
+
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={isEdit ? "Edit Building" : "Add Building"}
-      size="md"
-    >
+    <Modal open={open} onClose={onClose} title={isEdit ? "Edit Building" : "Add Building"} size="md">
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <Input
@@ -125,6 +138,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
           )}
         </div>
 
+        {/* Coordinates */}
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
             <Input
@@ -153,6 +167,56 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
           </div>
         </div>
 
+        {/* Map picker */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+              <MapPin size={14} className="text-blue-600" />
+              Pick Entrance Location on AASTU Campus Map
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 shadow-2xs">
+                🟡 AASTU Boundary
+              </span>
+              <span className="text-[11px] text-gray-500">Click map or drag pin</span>
+            </div>
+          </div>
+
+          <div className="rounded-xl overflow-hidden border border-gray-300 shadow-sm relative h-[240px] sm:h-[300px] w-full">
+            <MapContainer
+              center={[pickerLat, pickerLng]}
+              zoom={18}
+              minZoom={14}
+              maxZoom={21}
+              style={{ height: "100%", width: "100%" }}
+              scrollWheelZoom
+            >
+              <TileLayer
+                key={tileMode}
+                attribution={TILE_LAYERS[tileMode].attribution}
+                url={TILE_LAYERS[tileMode].url}
+                maxNativeZoom={TILE_LAYERS[tileMode].maxNativeZoom}
+                maxZoom={21}
+              />
+              <CampusBoundaryPolygon />
+              <MapLocationPickerInner
+                lat={pickerLat}
+                lng={pickerLng}
+                onChange={handleMapPick}
+              />
+            </MapContainer>
+            {/* Satellite toggle overlay */}
+            <button
+              type="button"
+              onClick={() => setTileMode((m) => m === "street" ? "satellite" : "street")}
+              className="absolute top-2 right-2 flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg shadow-lg backdrop-blur-md cursor-pointer transition-all active:scale-95"
+              style={{ zIndex: 1000, background: tileMode === "satellite" ? "rgba(255,255,255,0.95)" : "rgba(11,19,43,0.95)", color: tileMode === "satellite" ? "#1e293b" : "#fff", border: tileMode === "satellite" ? "1px solid #cbd5e1" : "1px solid #475569" }}
+            >
+              {tileMode === "satellite" ? "🗺️ Street" : "🛰️ Satellite"}
+            </button>
+          </div>
+        </div>
+
         {submitError && (
           <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
             {submitError}
@@ -160,9 +224,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
         )}
 
         <div className="flex gap-3 justify-end pt-2">
-          <Button variant="outline" onClick={onClose} disabled={saving}>
-            Cancel
-          </Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button variant="primary" onClick={handleSubmit} disabled={saving}>
             {saving ? "Saving…" : isEdit ? "Save Changes" : "Create Building"}
           </Button>
