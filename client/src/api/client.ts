@@ -15,9 +15,9 @@ export function handleApiError(error: unknown): never {
     const axiosError = error as AxiosError<ApiResponse<unknown>>;
     const message =
       axiosError.response?.data &&
-      typeof axiosError.response.data === "object" &&
-      "message" in axiosError.response.data &&
-      typeof axiosError.response.data.message === "string"
+        typeof axiosError.response.data === "object" &&
+        "message" in axiosError.response.data &&
+        typeof axiosError.response.data.message === "string"
         ? axiosError.response.data.message
         : "Request failed";
     const statusCode = axiosError.response?.status ?? 500;
