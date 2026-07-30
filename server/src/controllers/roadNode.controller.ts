@@ -26,9 +26,12 @@ export async function getRoadNodeById(req: Request, res: Response): Promise<void
 
 export async function createRoadNode(req: Request, res: Response): Promise<void> {
   try {
-    const { name, latitude, longitude } = req.body;
+    const { name, type, zone, mapZoom, latitude, longitude } = req.body;
     const node = await roadNodeService.createNode({
-      name,
+      name: name ?? null,
+      type,
+      zone,
+      mapZoom: mapZoom != null ? Number(mapZoom) : undefined,
       latitude: Number(latitude),
       longitude: Number(longitude),
     });
@@ -42,9 +45,12 @@ export async function createRoadNode(req: Request, res: Response): Promise<void>
 export async function updateRoadNode(req: Request, res: Response): Promise<void> {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { name, latitude, longitude } = req.body;
+    const { name, type, zone, mapZoom, latitude, longitude } = req.body;
     const node = await roadNodeService.updateNode(id, {
       ...(name !== undefined && { name }),
+      ...(type !== undefined && { type }),
+      ...(zone !== undefined && { zone }),
+      ...(mapZoom !== undefined && { mapZoom: mapZoom != null ? Number(mapZoom) : null }),
       ...(latitude !== undefined && { latitude: Number(latitude) }),
       ...(longitude !== undefined && { longitude: Number(longitude) }),
     });
