@@ -3,13 +3,17 @@ import { apiClient } from "./client";
 
 export interface RoadNode {
   id: string;
-  name: string;
+  name: string | null;
+  type: string;
+  zone: string | null;
   latitude: number;
   longitude: number;
+  mapZoom?: number | null;
   createdAt?: string;
   updatedAt?: string;
   outgoingEdges?: RoadEdge[];
   incomingEdges?: RoadEdge[];
+  buildingEntrances?: { id: string; name: string; code: string }[];
 }
 
 export interface RoadEdge {
@@ -18,18 +22,49 @@ export interface RoadEdge {
   toNodeId: string;
   distance: number;
   isBidirectional: boolean;
+  isWalkable: boolean;
   fromNode?: RoadNode;
   toNode?: RoadNode;
   createdAt?: string;
+}
+
+export interface RouteNodeInfo {
+  id: string;
+  name: string | null;
+  type: string;
+  zone: string | null;
+  latitude: number;
+  longitude: number;
+  buildingId?: string | null;
+  buildingName?: string | null;
+}
+
+export type InstructionType =
+  | "START"
+  | "STRAIGHT"
+  | "LEFT"
+  | "RIGHT"
+  | "SLIGHT_LEFT"
+  | "SLIGHT_RIGHT"
+  | "UTURN"
+  | "ARRIVE";
+
+export interface RouteInstruction {
+  type: InstructionType;
+  text: string;
+  distance: number;
+  targetNodeId?: string;
+  targetNodeName?: string | null;
 }
 
 export interface RouteResponse {
   coordinates: [number, number][];
   totalDistanceMeters: number;
   estimatedWalkingMinutes: number;
-  startNode: RoadNode;
-  destNode: RoadNode;
-  pathNodes: RoadNode[];
+  startNode: RouteNodeInfo;
+  destNode: RouteNodeInfo;
+  pathNodes: RouteNodeInfo[];
+  instructions: RouteInstruction[];
 }
 
 export const roadNetworkApi = {

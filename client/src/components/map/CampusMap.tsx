@@ -8,7 +8,7 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { useBuildings } from "@/hooks/useBuildings";
 import { useLandmarks } from "@/hooks/useLandmarks";
 import { useAppStore } from "@/store";
-import { calculateDistanceInMeters } from "@/utils/geo";
+import { useOutdoorRoute } from "@/hooks";
 import { OutdoorNavOverlay, ArrivalBottomSheet, BuildingTransitionOverlay, IndoorGuidanceCard } from "@/components/navigation";
 
 import { BuildingMarker } from "./BuildingMarker";
@@ -17,7 +17,6 @@ import { UserLocationMarker } from "./UserLocationMarker";
 import { WalkingRoutePolyline } from "./WalkingRoutePolyline";
 import { MapLoadingOverlay } from "./MapLoadingOverlay";
 import { MapErrorOverlay } from "./MapErrorOverlay";
-import { MapLegend } from "./MapLegend";
 import { CampusBoundaryPolygon } from "./CampusBoundaryPolygon";
 import {
   TILE_LAYERS,
@@ -151,11 +150,13 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
 
   const {
     navStep,
-    destinationTarget,
     userLocation,
     setUserLocation,
-    triggerArrival,
+    activeRoute,
   } = useAppStore();
+
+  // Fetch A* route from server; handles auto-rerouting on position change
+  useOutdoorRoute();
 
   const [tileMode, setTileMode] = useState<TileMode>("street");
   const [shouldCenterLocation, setShouldCenterLocation] = useState<boolean>(false);
@@ -172,38 +173,6 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     fetchLandmarks(visibleOnly);
   }, [fetchBuildings, fetchLandmarks, visibleOnly]);
 
-
-  // GPS Geolocation tracking when OUTDOOR_NAV is active
-  useEffect(() => {
-    if (navStep !== "OUTDOOR_NAV" || !("geolocation" in navigator)) {
-      return;
-    }
-
-    const watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setUserLocation(coords);
-
-        if (destinationTarget) {
-          const dist = calculateDistanceInMeters(
-            coords.lat,
-            coords.lng,
-            destinationTarget.latitude,
-            destinationTarget.longitude
-          );
-          if (dist <= 10) {
-            triggerArrival();
-          }
-        }
-      },
-      (err) => {
-        console.warn("GPS tracking warning:", err.message);
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 }
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, [navStep, destinationTarget, setUserLocation, triggerArrival]);
 
   const isLoading = buildingsLoading || landmarksLoading;
   const tile = TILE_LAYERS[tileMode];
@@ -278,16 +247,9 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           <UserLocationMarker lat={userLocation.lat} lng={userLocation.lng} />
         )}
 
-        {/* Outdoor walking polyline route */}
-        {navStep === "OUTDOOR_NAV" && destinationTarget && (
-          <WalkingRoutePolyline
-            userLocation={userLocation}
-            destination={{
-              lat: destinationTarget.latitude,
-              lng: destinationTarget.longitude,
-            }}
-            destNodeId={destinationTarget.roadNodeId}
-          />
+        {/* Outdoor walking route polyline — coordinates from A* API */}
+        {navStep === "OUTDOOR_NAV" && activeRoute && activeRoute.coordinates.length > 1 && (
+          <WalkingRoutePolyline positions={activeRoute.coordinates} />
         )}
 
         {/* Standalone Building markers */}

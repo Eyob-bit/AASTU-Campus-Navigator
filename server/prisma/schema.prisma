@@ -26,6 +26,14 @@ enum SceneElementType {
   INFORMATION
 }
 
+enum RoadNodeType {
+  INTERSECTION
+  GATE
+  BUILDING_ENTRANCE
+  WALKWAY
+}
+
+
 model Building {
   id            String   @id @default(cuid())
   name          String
@@ -35,6 +43,9 @@ model Building {
   entranceLongitude Float
   entranceImage String?
   coverImage    String?
+  logo          String?
+  themeColor    String?
+  zone          String?
   entranceRoadNodeId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -229,12 +240,15 @@ model Landmark {
 }
 
 model RoadNode {
-  id        String   @id @default(cuid())
-  name      String
+  id        String       @id @default(cuid())
+  name      String?
+  type      RoadNodeType @default(INTERSECTION)
+  zone      String?
+  mapZoom   Float?
   latitude  Float
   longitude Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
   outgoingEdges RoadEdge[] @relation("FromNode")
   incomingEdges RoadEdge[] @relation("ToNode")
@@ -242,7 +256,8 @@ model RoadNode {
   buildingEntrances Building[] @relation("BuildingEntrance")
   landmarks         Landmark[] @relation("LandmarkNode")
 
-  @@index([name])
+  @@index([type])
+  @@index([zone])
 }
 
 model RoadEdge {
@@ -251,6 +266,7 @@ model RoadEdge {
   toNodeId        String
   distance        Float
   isBidirectional Boolean  @default(true)
+  isWalkable      Boolean  @default(true)
   createdAt       DateTime @default(now())
 
   fromNode RoadNode @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)

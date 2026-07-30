@@ -5,19 +5,29 @@ export interface CreateRoadEdgeData {
   toNodeId: string;
   distance: number;
   isBidirectional?: boolean;
+  isWalkable?: boolean;
 }
 
 export interface UpdateRoadEdgeData extends Partial<CreateRoadEdgeData> {}
+
+const nodeSelectFields = {
+  id: true,
+  name: true,
+  type: true,
+  zone: true,
+  latitude: true,
+  longitude: true,
+};
 
 export class RoadEdgeRepository {
   async findAll() {
     return prisma.roadEdge.findMany({
       include: {
         fromNode: {
-          select: { id: true, name: true, latitude: true, longitude: true },
+          select: nodeSelectFields,
         },
         toNode: {
-          select: { id: true, name: true, latitude: true, longitude: true },
+          select: nodeSelectFields,
         },
       },
     });
@@ -28,10 +38,10 @@ export class RoadEdgeRepository {
       where: { id },
       include: {
         fromNode: {
-          select: { id: true, name: true, latitude: true, longitude: true },
+          select: nodeSelectFields,
         },
         toNode: {
-          select: { id: true, name: true, latitude: true, longitude: true },
+          select: nodeSelectFields,
         },
       },
     });
@@ -55,13 +65,14 @@ export class RoadEdgeRepository {
         toNodeId: data.toNodeId,
         distance: data.distance,
         isBidirectional: data.isBidirectional ?? true,
+        isWalkable: data.isWalkable ?? true,
       },
       include: {
         fromNode: {
-          select: { id: true, name: true, latitude: true, longitude: true },
+          select: nodeSelectFields,
         },
         toNode: {
-          select: { id: true, name: true, latitude: true, longitude: true },
+          select: nodeSelectFields,
         },
       },
     });
@@ -73,10 +84,10 @@ export class RoadEdgeRepository {
       data,
       include: {
         fromNode: {
-          select: { id: true, name: true, latitude: true, longitude: true },
+          select: nodeSelectFields,
         },
         toNode: {
-          select: { id: true, name: true, latitude: true, longitude: true },
+          select: nodeSelectFields,
         },
       },
     });
@@ -92,3 +103,4 @@ export class RoadEdgeRepository {
     return prisma.roadEdge.count();
   }
 }
+

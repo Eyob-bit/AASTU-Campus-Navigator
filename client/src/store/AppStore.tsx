@@ -12,6 +12,7 @@ import type {
   NavStep,
   DestinationTarget,
 } from "@/types";
+import type { RouteResponse } from "@/api/roadNetwork.api";
 
 type Language = "en" | "am";
 
@@ -28,6 +29,10 @@ interface AppState {
   destinationTarget: DestinationTarget | null;
   userLocation: { lat: number; lng: number } | null;
   currentStepIndex: number;
+
+  // Computed outdoor route from A* API
+  activeRoute: RouteResponse | null;
+  currentInstructionIndex: number;
 }
 
 interface AppStoreValue extends AppState {
@@ -44,6 +49,8 @@ interface AppStoreValue extends AppState {
   setDestinationTarget: (target: DestinationTarget | null) => void;
   setUserLocation: (loc: { lat: number; lng: number } | null) => void;
   setCurrentStepIndex: (idx: number) => void;
+  setActiveRoute: (route: RouteResponse | null) => void;
+  setCurrentInstructionIndex: (idx: number) => void;
   startOutdoorNavigation: (target: DestinationTarget) => void;
   triggerArrival: () => void;
   enterBuilding: () => void;
@@ -63,6 +70,8 @@ const initialState: AppState = {
   destinationTarget: null,
   userLocation: null,
   currentStepIndex: 0,
+  activeRoute: null,
+  currentInstructionIndex: 0,
 };
 
 const AppStoreContext = createContext<AppStoreValue | null>(null);
@@ -98,6 +107,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           navigation: null,
           selectedResult: null,
           currentStepIndex: 0,
+          currentInstructionIndex: 0,
         })),
       toggleDarkMode: () =>
         setState((current) => {
@@ -117,6 +127,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         setState((current) => ({ ...current, userLocation })),
       setCurrentStepIndex: (currentStepIndex) =>
         setState((current) => ({ ...current, currentStepIndex })),
+      setActiveRoute: (activeRoute) =>
+        setState((current) => ({ ...current, activeRoute })),
+      setCurrentInstructionIndex: (currentInstructionIndex) =>
+        setState((current) => ({ ...current, currentInstructionIndex })),
 
       startOutdoorNavigation: (target) =>
         setState((current) => ({
@@ -124,6 +138,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           destinationTarget: target,
           navStep: "OUTDOOR_NAV",
           currentStepIndex: 0,
+          currentInstructionIndex: 0,
+          activeRoute: null, // cleared; will be fetched fresh
         })),
 
       triggerArrival: () =>
@@ -153,6 +169,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           navigation: null,
           selectedResult: null,
           currentStepIndex: 0,
+          currentInstructionIndex: 0,
+          activeRoute: null,
         })),
     }),
     [state]

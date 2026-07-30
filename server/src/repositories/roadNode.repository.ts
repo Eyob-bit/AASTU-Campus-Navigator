@@ -1,31 +1,48 @@
 import { prisma } from "../config/prisma.js";
+import { RoadNodeType } from "@prisma/client";
 
 export interface CreateRoadNodeData {
-  name: string;
+  name?: string | null;
+  type?: RoadNodeType;
+  zone?: string | null;
+  mapZoom?: number | null;
   latitude: number;
   longitude: number;
 }
 
 export interface UpdateRoadNodeData extends Partial<CreateRoadNodeData> {}
 
+const nodeSelectFields = {
+  id: true,
+  name: true,
+  type: true,
+  zone: true,
+  mapZoom: true,
+  latitude: true,
+  longitude: true,
+};
+
 export class RoadNodeRepository {
   async findAll() {
     return prisma.roadNode.findMany({
-      orderBy: { name: "asc" },
+      orderBy: { createdAt: "asc" },
       include: {
         outgoingEdges: {
           include: {
             toNode: {
-              select: { id: true, name: true, latitude: true, longitude: true },
+              select: nodeSelectFields,
             },
           },
         },
         incomingEdges: {
           include: {
             fromNode: {
-              select: { id: true, name: true, latitude: true, longitude: true },
+              select: nodeSelectFields,
             },
           },
+        },
+        buildingEntrances: {
+          select: { id: true, name: true, code: true },
         },
       },
     });
@@ -38,16 +55,19 @@ export class RoadNodeRepository {
         outgoingEdges: {
           include: {
             toNode: {
-              select: { id: true, name: true, latitude: true, longitude: true },
+              select: nodeSelectFields,
             },
           },
         },
         incomingEdges: {
           include: {
             fromNode: {
-              select: { id: true, name: true, latitude: true, longitude: true },
+              select: nodeSelectFields,
             },
           },
+        },
+        buildingEntrances: {
+          select: { id: true, name: true, code: true },
         },
       },
     });
@@ -76,3 +96,4 @@ export class RoadNodeRepository {
     return prisma.roadNode.count();
   }
 }
+

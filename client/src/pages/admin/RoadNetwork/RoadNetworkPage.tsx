@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import {
-  MapPin, Plus, Trash2, Pencil, Link as LinkIcon, Unlink, RefreshCw, Layers, Compass, ArrowRight,
+  MapPin, Trash2, Link as LinkIcon, RefreshCw, Compass, ArrowRight,
 } from "lucide-react";
 import {
-  Card, TableToolbar, Pagination, EmptyState, Skeleton, ConfirmDialog, ToastContainer, Button, ActionButton, ErrorBanner,
+  Card, ConfirmDialog, ToastContainer, Button, ErrorBanner,
 } from "@/components/ui";
 import { roadNetworkApi, type RoadNode, type RoadEdge } from "@/api/roadNetwork.api";
 import { useToast } from "@/hooks/useToast";
@@ -298,8 +298,8 @@ export function RoadNetworkPage() {
             </button>
           </div>
 
-          <Button variant="outline" size="sm" onClick={loadData}>
-            <RefreshCw size={13} />
+          <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading}>
+            <RefreshCw size={13} className={isLoading ? "animate-spin" : ""} />
           </Button>
         </div>
       </div>
@@ -455,7 +455,7 @@ export function RoadNetworkPage() {
                           </button>
 
                           <button
-                            onClick={() => setDeleteTarget({ type: "node", id: node.id, name: node.name })}
+                            onClick={() => setDeleteTarget({ type: "node", id: node.id, name: node.name ?? "Unnamed Node" })}
                             className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 font-semibold"
                           >
                             <Trash2 size={12} /> Delete node
@@ -524,7 +524,7 @@ export function RoadNetworkPage() {
                         </td>
                         <td className="px-4 py-3">
                           <button
-                            onClick={() => setDeleteTarget({ type: "node", id: node.id, name: node.name })}
+                            onClick={() => setDeleteTarget({ type: "node", id: node.id, name: node.name ?? "Unnamed Node" })}
                             className="p-1 text-slate-400 hover:text-red-400"
                           >
                             <Trash2 size={14} />

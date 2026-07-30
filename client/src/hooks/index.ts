@@ -13,3 +13,7 @@ export function useSearch() {
 export { useCampusSearch, useNavigationPath, campusQueryKeys } from "./useCampusQueries";
 
 export { useScenePreview } from "./useScenePreview";
+export { useLiveNavigation } from "./useLiveNavigation";
+export { useOutdoorRoute } from "./useOutdoorRoute";
+export { useTurnByTurnNavigation } from "./useTurnByTurnNavigation";
+

@@ -26,12 +26,13 @@ export async function getRoadEdgeById(req: Request, res: Response): Promise<void
 
 export async function createRoadEdge(req: Request, res: Response): Promise<void> {
   try {
-    const { fromNodeId, toNodeId, distance, isBidirectional } = req.body;
+    const { fromNodeId, toNodeId, distance, isBidirectional, isWalkable } = req.body;
     const edge = await roadEdgeService.createEdge({
       fromNodeId,
       toNodeId,
       distance: distance != null ? Number(distance) : undefined,
       isBidirectional: isBidirectional ?? true,
+      isWalkable: isWalkable ?? true,
     });
     res.status(201).json({ success: true, edge });
   } catch (err: unknown) {
@@ -43,12 +44,13 @@ export async function createRoadEdge(req: Request, res: Response): Promise<void>
 export async function updateRoadEdge(req: Request, res: Response): Promise<void> {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { fromNodeId, toNodeId, distance, isBidirectional } = req.body;
+    const { fromNodeId, toNodeId, distance, isBidirectional, isWalkable } = req.body;
     const edge = await roadEdgeService.updateEdge(id, {
       ...(fromNodeId && { fromNodeId }),
       ...(toNodeId && { toNodeId }),
       ...(distance != null && { distance: Number(distance) }),
       ...(isBidirectional != null && { isBidirectional }),
+      ...(isWalkable != null && { isWalkable }),
     });
     res.json({ success: true, edge });
   } catch (err: unknown) {

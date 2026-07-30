@@ -52,6 +52,9 @@ export default function App() {
 
       {/* ── Admin: login (no auth required) ── */}
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+      <Route path="/admin" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/admin/*" element={<Navigate to="/dashboard" replace />} />
 
       {/* ── Admin: protected dashboard ── */}
       <Route
