@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, MapPin, Building, User, DoorOpen, Loader2, Navigation2 } from "lucide-react";
+import { Search, User, DoorOpen, Loader2, Navigation2 } from "lucide-react";
 import { CampusMap } from "@/components/map";
 import { searchApi } from "@/api/search.api";
 import { useAppStore } from "@/store";

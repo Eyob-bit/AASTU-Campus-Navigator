@@ -4,28 +4,34 @@ import { Navigation, Mail, Lock, Eye, EyeOff, AlertCircle, Building2, Image, Use
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
 export function LoginPage() {
-  const [email,    setEmail]    = useState("admin@aastu.edu.et");
-  const [password, setPassword] = useState("password");
+  const [email,    setEmail]    = useState("");
+  const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState("");
 
-  const { login } = useAdminAuth();
+  const { isAuthenticated, login } = useAdminAuth();
   const navigate  = useNavigate();
+
+  // If already logged in, redirect straight to dashboard
+  if (isAuthenticated) {
+    navigate("/dashboard", { replace: true });
+    return null;
+  }
 
   function handleSubmit() {
     setError("");
-    if (!email || !password) {
-      setError("Please enter both email and password.");
+    if (!email.trim() || !password.trim()) {
+      setError("Please enter both email address and password.");
       return;
     }
     setLoading(true);
-    // Placeholder — real auth wired in a later sprint
+
     setTimeout(() => {
       setLoading(false);
       login();
       navigate("/dashboard", { replace: true });
-    }, 1200);
+    }, 800);
   }
 
   return (

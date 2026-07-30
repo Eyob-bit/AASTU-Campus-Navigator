@@ -8,7 +8,11 @@
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
     "build": "tsc",
+    "db:seed": "tsx prisma/seed.ts",
     "test": "echo \"No tests yet\""
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

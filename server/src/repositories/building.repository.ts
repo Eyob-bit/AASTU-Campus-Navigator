@@ -61,6 +61,9 @@ export class BuildingRepository {
             entranceLongitude?: number;
             entranceImage?: string;
             coverImage?: string;
+            logo?: string;
+            themeColor?: string;
+            zone?: string;
             entranceRoadNodeId?: string | null;
             isActive?: boolean;
         }
@@ -90,6 +93,9 @@ export class BuildingRepository {
         entranceLongitude: number;
         entranceImage?: string;
         coverImage?: string;
+        logo?: string;
+        themeColor?: string;
+        zone?: string;
         entranceRoadNodeId?: string | null;
     }) {
         return prisma.building.create({
@@ -100,6 +106,9 @@ export class BuildingRepository {
                 entranceLongitude: data.entranceLongitude,
                 entranceImage: data.entranceImage,
                 coverImage: data.coverImage,
+                logo: data.logo,
+                themeColor: data.themeColor,
+                zone: data.zone,
                 entranceRoadNodeId: data.entranceRoadNodeId,
             },
             include: {

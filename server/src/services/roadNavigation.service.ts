@@ -1,6 +1,10 @@
 import { RoadNodeRepository } from "../repositories/roadNode.repository.js";
 import { RoadEdgeRepository } from "../repositories/roadEdge.repository.js";
 import { calculateHaversineDistance } from "../utils/haversine.js";
+import {
+  generateRouteInstructions,
+  type RouteInstruction,
+} from "../utils/navigationInstructions.js";
 
 export interface RouteRequest {
   startLat: number;
@@ -10,13 +14,25 @@ export interface RouteRequest {
   destNodeId?: string;
 }
 
+export interface RouteNodeInfo {
+  id: string;
+  name: string | null;
+  type: string;
+  zone: string | null;
+  latitude: number;
+  longitude: number;
+  buildingId?: string | null;
+  buildingName?: string | null;
+}
+
 export interface RouteResponse {
   coordinates: [number, number][];
   totalDistanceMeters: number;
   estimatedWalkingMinutes: number;
-  startNode: { id: string; name: string; latitude: number; longitude: number };
-  destNode: { id: string; name: string; latitude: number; longitude: number };
-  pathNodes: Array<{ id: string; name: string; latitude: number; longitude: number }>;
+  startNode: RouteNodeInfo;
+  destNode: RouteNodeInfo;
+  pathNodes: RouteNodeInfo[];
+  instructions: RouteInstruction[];
 }
 
 const roadNodeRepo = new RoadNodeRepository();
@@ -25,6 +41,7 @@ const roadEdgeRepo = new RoadEdgeRepository();
 export class RoadNavigationService {
   /**
    * Calculates shortest path along AASTU road graph using A* pathfinding with Haversine heuristic.
+   * Only walkable edges are included.
    */
   async calculateRoute(req: RouteRequest): Promise<RouteResponse> {
     const { startLat, startLng, destLat, destLng, destNodeId } = req;
@@ -67,15 +84,16 @@ export class RoadNavigationService {
       throw new Error("Either destLat/destLng or destNodeId must be provided.");
     }
 
-    // 3. Build Adjacency Graph from database edges
+    // 3. Build Adjacency Graph from database edges (filter for isWalkable)
     const allEdges = await roadEdgeRepo.findAll();
+    const walkableEdges = allEdges.filter((e) => e.isWalkable !== false);
     const adj = new Map<string, Array<{ toId: string; distance: number }>>();
 
     for (const node of allNodes) {
       adj.set(node.id, []);
     }
 
-    for (const edge of allEdges) {
+    for (const edge of walkableEdges) {
       if (!adj.has(edge.fromNodeId)) adj.set(edge.fromNodeId, []);
       adj.get(edge.fromNodeId)!.push({ toId: edge.toNodeId, distance: edge.distance });
 
@@ -109,7 +127,6 @@ export class RoadNavigationService {
     fScore.set(startNode.id, initialH);
 
     while (openSet.size > 0) {
-      // Find node in openSet with lowest fScore
       let currentId: string | null = null;
       let minF = Infinity;
 
@@ -124,7 +141,6 @@ export class RoadNavigationService {
       if (!currentId) break;
 
       if (currentId === destNode.id) {
-        // Path found!
         break;
       }
 
@@ -162,7 +178,6 @@ export class RoadNavigationService {
     let curr: string | undefined = destNode.id;
 
     if (gScore.get(destNode.id) === Infinity && startNode.id !== destNode.id) {
-      // Fallback direct segment if graph island exists
       pathIds.push(startNode.id, destNode.id);
     } else {
       while (curr) {
@@ -177,7 +192,6 @@ export class RoadNavigationService {
       .map((id) => nodeMap.get(id))
       .filter((n): n is (typeof allNodes)[0] => n != null);
 
-    // Build polyline coordinates: [start GPS] -> [road nodes...] -> [dest GPS]
     const coordinates: [number, number][] = [[startLat, startLng]];
     let graphDistance = 0;
 
@@ -208,31 +222,33 @@ export class RoadNavigationService {
         )
     );
 
-    // Average walking speed ~ 1.3 meters per second (approx 80m/min)
     const estimatedWalkingMinutes = Math.max(1, Math.ceil(totalDistanceMeters / 78));
+
+    const mapNodeToInfo = (node: (typeof allNodes)[0]): RouteNodeInfo => ({
+      id: node.id,
+      name: node.name,
+      type: node.type,
+      zone: node.zone,
+      latitude: node.latitude,
+      longitude: node.longitude,
+      buildingId: node.buildingEntrances?.[0]?.id ?? null,
+      buildingName: node.buildingEntrances?.[0]?.name ?? null,
+    });
+
+    const mappedPathNodes = pathNodes.map(mapNodeToInfo);
+    const destInfo = mapNodeToInfo(destNode);
+    const destLabel = destInfo.buildingName || destInfo.name || undefined;
+    const instructions = generateRouteInstructions(coordinates, mappedPathNodes, destLabel);
 
     return {
       coordinates,
       totalDistanceMeters,
       estimatedWalkingMinutes,
-      startNode: {
-        id: startNode.id,
-        name: startNode.name,
-        latitude: startNode.latitude,
-        longitude: startNode.longitude,
-      },
-      destNode: {
-        id: destNode.id,
-        name: destNode.name,
-        latitude: destNode.latitude,
-        longitude: destNode.longitude,
-      },
-      pathNodes: pathNodes.map((n) => ({
-        id: n.id,
-        name: n.name,
-        latitude: n.latitude,
-        longitude: n.longitude,
-      })),
+      startNode: mapNodeToInfo(startNode),
+      destNode: destInfo,
+      pathNodes: mappedPathNodes,
+      instructions,
     };
   }
 }
+
