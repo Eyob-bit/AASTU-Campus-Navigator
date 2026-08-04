@@ -1,192 +1,289 @@
-import { useState } from "react";
-import { Bot, Send, MapPin, BookOpen, Building, Sparkles } from "lucide-react";
-
-interface Message {
-  id: string;
-  sender: "ai" | "user";
-  text: string;
-  timestamp: string;
-}
-
-const INITIAL_MESSAGES: Message[] = [
-  {
-    id: "1",
-    sender: "ai",
-    text: "Hello! I am the AASTU AI assistant. How can I help you today? I know about Block 76, Block 71, the Library, and Social Science Hall.",
-    timestamp: "Just now",
-  },
-];
-
-const SUGGESTED_PROMPTS = [
-  {
-    icon: MapPin,
-    text: "Where is the Registrar's Office?",
-    response:
-      "The Registrar's Office is located on the Ground Floor of Block 71 (Administration Building), Room 102.",
-  },
-  {
-    icon: BookOpen,
-    text: "What are the Library hours?",
-    response:
-      "The AASTU Main Library is open Monday to Friday from 8:00 AM – 10:00 PM, and Saturday/Sunday from 9:00 AM – 6:00 PM.",
-  },
-  {
-    icon: Building,
-    text: "Where is Block 76?",
-    response:
-      "Block 76 is located near the Electrical Engineering Department in the Northern Sector of the campus.",
-  },
-];
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Sparkles, Send, Bot, User, Compass, MapPin, Eye, RotateCcw,
+  Building2, UserCheck, Layers, ChevronRight,
+} from "lucide-react";
+import { useCampusChat, triggerAppAction } from "@/hooks/useCampusChat";
+import { cn } from "@/utils/cn";
 
 export function ChatbotPage() {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
-  const [inputQuery, setInputQuery] = useState("");
+  const navigate = useNavigate();
+  const [input, setInput] = useState("");
 
-  const handleSend = (textToSend?: string) => {
-    const query = textToSend || inputQuery.trim();
-    if (!query) return;
+  const { messages, isTyping, sendMessage, clearChat } = useCampusChat();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      sender: "user",
-      text: query,
-      timestamp: new Date().toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-    };
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-    setMessages((prev) => [...prev, userMsg]);
-    if (!textToSend) setInputQuery("");
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping]);
 
-    // Simulate AI response
-    setTimeout(() => {
-      let aiText =
-        "I can help you navigate to offices, faculties, or find staff at AASTU! Feel free to ask about specific block numbers or departments.";
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+    sendMessage(input.trim());
+    setInput("");
+  };
 
-      const lower = query.toLowerCase();
-      if (lower.includes("registrar")) {
-        aiText =
-          "The Registrar's Office is located in Block 71 (Administration Block), Ground Floor. Use our Campus Map to view indoor floor plans.";
-      } else if (lower.includes("library")) {
-        aiText =
-          "The AASTU Library is located central campus, opposite Block 54. It offers quiet study areas, digital archives, and e-learning resources.";
-      } else if (lower.includes("block 76")) {
-        aiText =
-          "Block 76 houses Computer Science & Software Engineering labs. It is located near the main academic walkway.";
-      } else if (lower.includes("block 71")) {
-        aiText =
-          "Block 71 is the Administration Building containing the President's office, Registrar, and Finance department.";
-      }
-
-      const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: "ai",
-        text: aiText,
-        timestamp: new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-      setMessages((prev) => [...prev, aiMsg]);
-    }, 600);
+  const handleChipClick = (text: string) => {
+    sendMessage(text);
   };
 
   return (
-    <div className="relative h-[calc(100dvh-7.5rem)] sm:h-[calc(100vh-8rem)] w-full max-w-4xl mx-auto bg-[#080E1E] text-slate-100 flex flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-800/80 shadow-2xl">
-      {/* Background aerial graphic overlay */}
-      <div
-        className="absolute inset-0 opacity-10 bg-cover bg-center pointer-events-none"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=1200&q=80')",
-        }}
-      />
+    <div className="relative h-[calc(100dvh-10rem)] sm:h-[calc(100vh-10.5rem)] w-full max-w-4xl mx-auto my-2 sm:my-3 bg-slate-50 dark:bg-[#080E1E] text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800/80 shadow-2xl transition-colors">
+      {/* ── Top Header Bar ─────────────────────────────────────────────────── */}
 
-      {/* Page Header */}
-      <div className="relative z-10 border-b border-slate-800/80 bg-[#0B132B]/90 backdrop-blur-md px-6 py-4 text-center">
-        <h1 className="font-display text-lg font-bold text-slate-100 tracking-wide flex items-center justify-center gap-2">
-          <Sparkles className="h-5 w-5 text-cyan-400" />
-          AASTU AI Assistant
-        </h1>
+      <div className="px-5 py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-indigo-900/90 dark:via-slate-900 dark:to-purple-950/90 border-b border-indigo-500/30 dark:border-slate-800 flex items-center justify-between flex-shrink-0 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-white/20 dark:bg-indigo-500/20 border border-white/30 dark:border-indigo-400/30 flex items-center justify-center flex-shrink-0 shadow-inner">
+            <Sparkles className="w-5 h-5 text-amber-300 dark:text-amber-400 animate-pulse" />
+          </div>
+          <div>
+            <h1 className="font-bold text-base sm:text-lg text-white flex items-center gap-2">
+              Chatbot
+              <span className="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white dark:bg-cyan-500/20 dark:text-cyan-400 border border-white/30 dark:border-cyan-500/30 font-mono">
+                AI Assistant
+              </span>
+            </h1>
+            <p className="text-xs text-indigo-100 dark:text-slate-400 hidden xs:block">
+              AASTU Intelligent Navigation & Campus Knowledge Guide
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={clearChat}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-xs font-semibold text-white dark:text-slate-300 dark:hover:text-white border border-white/20 dark:border-slate-700 transition-all cursor-pointer"
+          title="Reset Conversation"
+        >
+          <RotateCcw size={14} />
+          <span className="hidden sm:inline">Reset Chat</span>
+        </button>
       </div>
 
-      {/* Messages Scroll Area */}
-      <div className="relative z-10 flex-1 overflow-y-auto px-4 py-6 space-y-4 max-w-2xl mx-auto w-full">
+      {/* ── Main Chat Conversation Body ───────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-100/70 dark:bg-slate-950/60 scrollbar-thin">
         {messages.map((msg) => (
           <div
             key={msg.id}
-            className={`flex items-start gap-3 ${
-              msg.sender === "user" ? "flex-row-reverse" : "flex-row"
-            }`}
-          >
-            {msg.sender === "ai" && (
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg shadow-cyan-500/20 text-white">
-                <Bot className="h-5 w-5" />
-              </div>
+            className={cn(
+              "flex gap-3 max-w-[92%] sm:max-w-[85%]",
+              msg.sender === "user" ? "ml-auto flex-row-reverse" : "mr-auto"
             )}
+          >
+            {/* Avatar */}
             <div
-              className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+              className={cn(
+                "w-8 h-8 sm:w-9 sm:h-9 rounded-2xl flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-md mt-0.5",
                 msg.sender === "user"
-                  ? "bg-blue-600 text-white rounded-br-none shadow-lg shadow-blue-600/30"
-                  : "bg-[#131F3F]/90 text-slate-200 border border-slate-700/60 rounded-bl-none backdrop-blur-md"
-              }`}
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
+                  : "bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300"
+              )}
             >
-              <p>{msg.text}</p>
+              {msg.sender === "user" ? <User size={16} /> : <Bot size={18} />}
+            </div>
+
+            {/* Bubble */}
+            <div className="flex flex-col space-y-2 min-w-0">
+              <div
+                className={cn(
+                  "px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed shadow-md",
+                  msg.sender === "user"
+                    ? "bg-indigo-600 text-white rounded-tr-none font-medium"
+                    : "bg-white dark:bg-slate-900/90 text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-800 rounded-tl-none"
+                )}
+              >
+                <p className="whitespace-pre-wrap">{msg.text}</p>
+
+                {/* Rich Campus Location Card */}
+                {msg.payload?.campusData && msg.payload.campusData.buildingName && (
+                  <div className="mt-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/90 border border-slate-200 dark:border-indigo-500/30 text-slate-900 dark:text-slate-100 space-y-2.5 shadow-inner">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-indigo-700 dark:text-cyan-300 border border-indigo-200 dark:border-indigo-500/40">
+                        {msg.payload.type === "staff" ? "Staff Member" : msg.payload.type === "building" ? "Building" : "Office"}
+                      </span>
+                      {msg.payload.campusData.buildingCode && (
+                        <span className="text-[11px] font-mono text-indigo-600 dark:text-cyan-400 font-bold">
+                          {msg.payload.campusData.buildingCode}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="font-bold text-sm text-indigo-900 dark:text-cyan-300">
+                      {msg.payload.campusData.entityName || msg.payload.campusData.officeName}
+                    </div>
+
+                    <div className="text-xs text-slate-600 dark:text-slate-300 space-y-1 font-sans">
+                      <div className="flex items-center gap-1.5">
+                        <Building2 size={13} className="text-slate-400 flex-shrink-0" />
+                        <span className="truncate">{msg.payload.campusData.buildingName}</span>
+                      </div>
+                      {msg.payload.campusData.floorNumber !== undefined && (
+                        <div className="flex items-center gap-1.5">
+                          <Layers size={13} className="text-slate-400 flex-shrink-0" />
+                          <span>Floor {msg.payload.campusData.floorNumber}</span>
+                          {msg.payload.campusData.roomNumber && (
+                            <span className="font-semibold text-indigo-700 dark:text-cyan-300">
+                              · Room {msg.payload.campusData.roomNumber}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {msg.payload.campusData.position && (
+                        <div className="flex items-center gap-1.5">
+                          <UserCheck size={13} className="text-slate-400 flex-shrink-0" />
+                          <span>{msg.payload.campusData.position}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Interactive Action Buttons */}
+                    <div className="pt-2 flex flex-wrap gap-2 border-t border-slate-200 dark:border-slate-800/80">
+                      {msg.payload.canNavigate && msg.payload.campusData.entranceLatitude && (
+                        <button
+                          onClick={() => {
+                            navigate("/", {
+                              state: {
+                                chatAction: "START_NAVIGATION",
+                                payload: {
+                                  name: msg.payload?.campusData?.officeName || msg.payload?.campusData?.buildingName || "Destination",
+                                  latitude: msg.payload?.campusData?.entranceLatitude,
+                                  longitude: msg.payload?.campusData?.entranceLongitude,
+                                  buildingId: msg.payload?.campusData?.buildingId,
+                                  officeId: msg.payload?.campusData?.officeId,
+                                },
+                              },
+                            });
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95"
+                        >
+                          <Compass size={13} /> Start Navigation
+                        </button>
+                      )}
+
+                      {msg.payload.campusData.entranceLatitude && (
+                        <button
+                          onClick={() => {
+                            navigate("/", {
+                              state: {
+                                chatAction: "CENTER_MAP",
+                                payload: {
+                                  name: msg.payload?.campusData?.buildingName,
+                                  latitude: msg.payload?.campusData?.entranceLatitude,
+                                  longitude: msg.payload?.campusData?.entranceLongitude,
+                                  buildingId: msg.payload?.campusData?.buildingId,
+                                },
+                              },
+                            });
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                        >
+                          <MapPin size={13} /> Show on Map
+                        </button>
+                      )}
+
+                      {msg.payload.campusData.entrySceneId && (
+                        <button
+                          onClick={() => {
+                            navigate(`/panorama/${msg.payload?.campusData?.entrySceneId}`);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95"
+                        >
+                          <Eye size={13} /> Show Inside
+                        </button>
+                      )}
+
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Contextual Follow-up Chips */}
+              {msg.payload?.followUpChips && msg.payload.followUpChips.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {msg.payload.followUpChips.map((chip, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleChipClick(chip)}
+                      className="px-3 py-1 rounded-full text-xs font-medium bg-white dark:bg-slate-900 text-indigo-600 dark:text-cyan-300 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-cyan-500 transition-colors cursor-pointer flex items-center gap-1 shadow-sm"
+                    >
+                      <span>{chip}</span>
+                      <ChevronRight size={12} />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 px-1">
+                {msg.timestamp}
+              </span>
             </div>
           </div>
         ))}
 
-        {/* Suggested Prompts */}
-        {messages.length <= 2 && (
-          <div className="pt-4 space-y-2 max-w-md mx-auto">
-            <p className="text-xs text-center text-slate-400 font-medium mb-3">
-              Suggested Questions:
-            </p>
-            {SUGGESTED_PROMPTS.map((prompt, i) => {
-              const Icon = prompt.icon;
-              return (
-                <button
-                  key={i}
-                  onClick={() => handleSend(prompt.text)}
-                  className="w-full flex items-center gap-3 rounded-xl border border-slate-700/60 bg-[#131F3F]/70 px-4 py-3 text-left text-xs font-medium text-slate-200 transition-all hover:bg-[#1A2952] hover:border-cyan-500/50 hover:text-white"
-                >
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400">
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <span>{prompt.text}</span>
-                </button>
-              );
-            })}
+        {/* AI Typing Indicator */}
+        {isTyping && (
+          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 py-1">
+            <div className="w-8 h-8 rounded-2xl bg-amber-100 dark:bg-amber-500/20 border border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 flex items-center justify-center flex-shrink-0">
+              <Bot size={16} />
+            </div>
+            <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce [animation-delay:0.2s]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 animate-bounce [animation-delay:0.4s]" />
+              <span className="ml-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+                Chatbot is thinking…
+              </span>
+            </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Chat Input Bar */}
-      <div className="relative z-10 border-t border-slate-800/80 bg-[#0B132B]/90 backdrop-blur-md p-4 max-w-2xl mx-auto w-full">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSend();
-          }}
-          className="flex items-center gap-2 rounded-2xl border border-slate-700/70 bg-[#131F3F]/90 px-4 py-2.5 focus-within:border-cyan-500"
+      {/* ── Suggested Prompts Bar ────────────────────────────────────────── */}
+      {messages.length < 3 && (
+        <div className="px-4 py-2 bg-slate-100 dark:bg-slate-900/90 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none">
+          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex-shrink-0">
+            Suggestions:
+          </span>
+          {["Where is the Registrar Office?", "Where do I pay tuition?", "Where is Block 12?", "Where is Main Library?"].map((suggestion, i) => (
+            <button
+              key={i}
+              onClick={() => handleChipClick(suggestion)}
+              className="px-3 py-1 rounded-full text-xs bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-400 dark:hover:border-cyan-400 transition-colors cursor-pointer flex-shrink-0 shadow-sm"
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Input Bar ──────────────────────────────────────────────────────── */}
+      <form
+        onSubmit={handleSubmit}
+        className="p-3 sm:p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex items-center gap-2.5 flex-shrink-0"
+      >
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Ask Chatbot anything about AASTU campus…"
+          className="flex-1 px-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 focus:border-indigo-500 dark:focus:border-cyan-400 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none transition-colors"
+        />
+        <button
+          type="submit"
+          disabled={!input.trim() || isTyping}
+          className="px-4 py-3 rounded-2xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-lg active:scale-95 flex-shrink-0"
         >
-          <input
-            type="text"
-            value={inputQuery}
-            onChange={(e) => setInputQuery(e.target.value)}
-            placeholder="Type your question..."
-            className="flex-1 bg-transparent text-sm text-white placeholder-slate-400 outline-none"
-          />
-          <button
-            type="submit"
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30 transition-transform active:scale-95 hover:scale-105"
-            aria-label="Send question"
-          >
-            <Send className="h-4 w-4" />
-          </button>
-        </form>
-      </div>
+          <Send size={15} />
+          <span className="hidden sm:inline">Send</span>
+        </button>
+      </form>
     </div>
   );
+
 }

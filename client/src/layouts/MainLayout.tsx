@@ -1,6 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { AppHeader, AppBottomNav } from "@/components/common";
-
 export function MainLayout() {
   const location = useLocation();
   const isHomePage = location.pathname === "/";
@@ -15,3 +14,4 @@ export function MainLayout() {
     </div>
   );
 }
+

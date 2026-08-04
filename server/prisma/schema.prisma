@@ -311,3 +311,20 @@ model AdminProfile {
   passwordHash String  @default("admin")
   updatedAt   DateTime @updatedAt
 }
+
+model ChatLog {
+  id            String   @id @default(cuid())
+  sessionKey    String?
+  message       String
+  intent        String
+  confidence    Float    @default(0)
+  matchedEntity String?
+  responseType  String   @default("general")
+  hasMatch      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([intent])
+  @@index([hasMatch])
+}
+

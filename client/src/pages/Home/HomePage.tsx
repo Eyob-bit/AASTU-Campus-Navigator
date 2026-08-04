@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Search, User, DoorOpen, Loader2, Navigation2 } from "lucide-react";
 import { CampusMap } from "@/components/map";
 import { searchApi } from "@/api/search.api";
@@ -8,6 +8,7 @@ import type { SearchResult, Landmark, DestinationTarget } from "@/types";
 
 export function HomePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setSelectedResult, startOutdoorNavigation } = useAppStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -15,6 +16,69 @@ export function HomePage() {
   const [landmarkResults, setLandmarkResults] = useState<Landmark[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Use a stable ref for startOutdoorNavigation to avoid it being a dep that
+  // causes re-renders, which would otherwise create an infinite loop.
+  const startNavRef = useRef(startOutdoorNavigation);
+  useEffect(() => { startNavRef.current = startOutdoorNavigation; });
+
+  // Track the last processed state key so we only fire once per navigation
+  const consumedStateRef = useRef<string | null>(null);
+
+  // ── Handle incoming chatbot navigation/map actions via route state ──────────
+  useEffect(() => {
+    const state = location.state as null | {
+      chatAction?: "START_NAVIGATION" | "CENTER_MAP";
+      payload?: {
+        name?: string;
+        latitude?: number;
+        longitude?: number;
+        buildingId?: string;
+        officeId?: string;
+      };
+    };
+
+    if (!state?.chatAction || !state.payload) return;
+
+    // Build a unique key for this state so we don't process it twice
+    const stateKey = `${state.chatAction}_${state.payload.latitude}_${state.payload.longitude}`;
+    if (consumedStateRef.current === stateKey) return;
+    consumedStateRef.current = stateKey;
+
+    if (state.chatAction === "START_NAVIGATION" && state.payload.latitude && state.payload.longitude) {
+      const target: DestinationTarget = {
+        id: state.payload.officeId || state.payload.buildingId || "chat-nav",
+        type: state.payload.officeId ? "OFFICE" : "BUILDING",
+        name: state.payload.name || "Destination",
+        subtitle: "Via AI Campus Assistant",
+        latitude: state.payload.latitude,
+        longitude: state.payload.longitude,
+        roadNodeId: null,
+        buildingId: state.payload.buildingId,
+        buildingName: state.payload.name,
+        officeId: state.payload.officeId,
+      };
+      // Use the ref to avoid stale closure / dep array issues
+      startNavRef.current(target);
+    }
+
+    if (state.chatAction === "CENTER_MAP" && state.payload.latitude && state.payload.longitude) {
+      // Small delay so MapViewController is mounted and listening
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent("aastu_center_building", {
+            detail: { lat: state.payload!.latitude, lng: state.payload!.longitude, zoom: 19 },
+          })
+        );
+      }, 300);
+    }
+
+    // Clear route state so back-navigation doesn't retrigger
+    window.history.replaceState({}, "");
+  // Only run when location.state actually changes — do NOT include startOutdoorNavigation
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
+
 
   // Live search effect on query change
   useEffect(() => {
@@ -135,7 +199,7 @@ export function HomePage() {
   const hasResults = officeResults.length > 0 || landmarkResults.length > 0;
 
   return (
-    <div className="relative h-[calc(100dvh-4rem)] lg:h-screen w-full overflow-hidden bg-slate-950">
+    <div className="relative h-[calc(100dvh-4rem)] lg:h-screen w-full overflow-hidden bg-slate-100 dark:bg-slate-950 transition-colors">
       {/* Interactive Satellite/Campus Map View */}
       <div className="absolute inset-0 z-0">
         <CampusMap className="h-full w-full rounded-none border-none" />
@@ -145,7 +209,7 @@ export function HomePage() {
       <div ref={dropdownRef} className="absolute top-3 sm:top-4 inset-x-0 z-30 px-3 sm:px-4 max-w-md mx-auto">
         <form
           onSubmit={handleSearchSubmit}
-          className="flex items-center gap-2 rounded-full border border-slate-700/80 bg-[#0B132B]/95 backdrop-blur-xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-2xl shadow-black/80 focus-within:border-cyan-400"
+          className="flex items-center gap-2 rounded-full border border-slate-200 dark:border-slate-700/80 bg-white/95 dark:bg-[#0B132B]/95 backdrop-blur-xl px-3.5 sm:px-4 py-2 sm:py-2.5 shadow-xl dark:shadow-2xl dark:shadow-black/80 focus-within:border-blue-500 dark:focus-within:border-cyan-400 transition-colors"
         >
           <input
             type="text"
@@ -153,10 +217,10 @@ export function HomePage() {
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => searchQuery.trim() && setShowDropdown(true)}
             placeholder="Search buildings, offices, staff, landmarks…"
-            className="flex-1 bg-transparent text-xs sm:text-sm text-white placeholder-slate-400 outline-none min-w-0"
+            className="flex-1 bg-transparent text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 outline-none min-w-0"
           />
           {isSearching ? (
-            <Loader2 className="h-4 w-4 animate-spin text-cyan-400 shrink-0" />
+            <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-cyan-400 shrink-0" />
           ) : (
             <button
               type="submit"
@@ -170,9 +234,9 @@ export function HomePage() {
 
         {/* Live Search Dropdown Menu */}
         {showDropdown && (
-          <div className="mt-2 rounded-2xl border border-slate-700/80 bg-[#0B132B]/95 p-3 shadow-2xl backdrop-blur-2xl max-h-80 overflow-y-auto space-y-2 animate-slide-down">
+          <div className="mt-2 rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-white/95 dark:bg-[#0B132B]/95 p-3 shadow-xl dark:shadow-2xl backdrop-blur-2xl max-h-80 overflow-y-auto space-y-2 animate-slide-down">
             {!isSearching && !hasResults && (
-              <p className="text-xs text-slate-400 p-2 text-center">
+              <p className="text-xs text-slate-500 dark:text-slate-400 p-2 text-center">
                 No matching campus entities found.
               </p>
             )}
@@ -180,7 +244,7 @@ export function HomePage() {
             {/* Office & Staff Results */}
             {officeResults.length > 0 && (
               <div>
-                <p className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider px-2.5 py-1">
+                <p className="text-[10px] font-bold text-blue-600 dark:text-cyan-400 uppercase tracking-wider px-2.5 py-1">
                   Offices & Staff
                 </p>
                 <div className="space-y-1">
@@ -195,22 +259,22 @@ export function HomePage() {
                       <div
                         key={`${result.type}-${result.office.id}-${result.staff?.id ?? "office"}`}
                         onClick={() => handleSelectOfficeResult(result)}
-                        className="flex items-center justify-between p-2.5 rounded-xl bg-[#131F3F]/60 hover:bg-[#1A2952] border border-slate-700/50 transition-all cursor-pointer group"
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-[#131F3F]/60 hover:bg-slate-100 dark:hover:bg-[#1A2952] border border-slate-200 dark:border-slate-700/50 transition-all cursor-pointer group"
                       >
                         <div className="flex items-center gap-2.5 min-w-0">
-                          <div className="h-8 w-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0">
+                          <div className="h-8 w-8 rounded-lg bg-blue-500/10 dark:bg-cyan-500/20 text-blue-600 dark:text-cyan-400 flex items-center justify-center shrink-0">
                             {isStaff ? <User size={16} /> : <DoorOpen size={16} />}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-bold text-white group-hover:text-cyan-300 truncate">
+                            <p className="text-xs font-bold text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-cyan-300 truncate">
                               {title}
                             </p>
-                            <p className="text-[11px] text-slate-400 truncate">{subtitle}</p>
+                            <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{subtitle}</p>
                           </div>
                         </div>
                         <button
                           type="button"
-                          className="flex items-center gap-1 text-[11px] font-bold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-cyan-500/30 shrink-0 group-hover:bg-cyan-500 group-hover:text-white transition-all"
+                          className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-cyan-400 bg-blue-500/10 dark:bg-cyan-500/10 px-2.5 py-1 rounded-lg border border-blue-500/30 dark:border-cyan-500/30 shrink-0 group-hover:bg-blue-600 dark:group-hover:bg-cyan-500 group-hover:text-white transition-all"
                         >
                           <Navigation2 size={12} />
                           <span>Nav</span>
@@ -225,7 +289,7 @@ export function HomePage() {
             {/* Landmark Results */}
             {landmarkResults.length > 0 && (
               <div>
-                <p className="text-[10px] font-bold text-blue-400 uppercase tracking-wider px-2.5 py-1 pt-2">
+                <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider px-2.5 py-1 pt-2">
                   Landmarks & Buildings
                 </p>
                 <div className="space-y-1">
@@ -233,24 +297,24 @@ export function HomePage() {
                     <div
                       key={landmark.id}
                       onClick={() => handleSelectLandmarkResult(landmark)}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-[#131F3F]/60 hover:bg-[#1A2952] border border-slate-700/50 transition-all cursor-pointer group"
+                      className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-[#131F3F]/60 hover:bg-slate-100 dark:hover:bg-[#1A2952] border border-slate-200 dark:border-slate-700/50 transition-all cursor-pointer group"
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="h-8 w-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 text-base">
-                          {landmark.icon || "📍"}
+                        <div className="h-8 w-8 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                          <Building2 size={16} />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-white group-hover:text-blue-300 truncate">
+                          <p className="text-xs font-bold text-slate-800 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-300 truncate">
                             {landmark.name}
                           </p>
-                          <p className="text-[11px] text-slate-400 truncate">
-                            {landmark.category} Landmark · AASTU
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                            {landmark.type} {landmark.building ? `· ${landmark.building.name}` : ""}
                           </p>
                         </div>
                       </div>
                       <button
                         type="button"
-                        className="flex items-center gap-1 text-[11px] font-bold text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/30 shrink-0 group-hover:bg-blue-500 group-hover:text-white transition-all"
+                        className="flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/30 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all"
                       >
                         <Navigation2 size={12} />
                         <span>Nav</span>

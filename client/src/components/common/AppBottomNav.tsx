@@ -20,7 +20,7 @@ export function AppBottomNav() {
   return (
     <div className="fixed bottom-0 inset-x-0 z-50 pb-safe">
       <nav
-        className="mx-auto max-w-lg border-t border-slate-800/80 bg-[#0B132B]/95 px-4 py-2 backdrop-blur-xl shadow-2xl shadow-black/80"
+        className="mx-auto max-w-lg border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#0B132B]/95 px-4 py-2 backdrop-blur-xl shadow-lg dark:shadow-2xl dark:shadow-black/80 transition-colors"
         aria-label="Bottom Navigation"
       >
         <div className="flex items-center justify-around">
@@ -34,7 +34,9 @@ export function AppBottomNav() {
                 to={tab.to}
                 className={cn(
                   "flex flex-col items-center gap-1 px-3 py-1 transition-all duration-200",
-                  active ? "text-cyan-400" : "text-slate-400 hover:text-slate-200"
+                  active
+                    ? "text-blue-600 dark:text-cyan-400"
+                    : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 )}
               >
                 {/* Glowing icon pill indicator */}
@@ -42,8 +44,8 @@ export function AppBottomNav() {
                   className={cn(
                     "flex h-9 w-12 items-center justify-center rounded-2xl transition-all duration-300",
                     active
-                      ? "bg-gradient-to-r from-cyan-500/20 to-blue-600/30 text-cyan-400 border border-cyan-400/40 shadow-[0_0_15px_rgba(6,182,212,0.35)] scale-105"
-                      : "bg-transparent text-slate-400"
+                      ? "bg-blue-500/15 dark:bg-gradient-to-r dark:from-cyan-500/20 dark:to-blue-600/30 text-blue-600 dark:text-cyan-400 border border-blue-500/30 dark:border-cyan-400/40 shadow-sm dark:shadow-[0_0_15px_rgba(6,182,212,0.35)] scale-105"
+                      : "bg-transparent text-slate-500 dark:text-slate-400"
                   )}
                 >
                   <Icon className="h-5 w-5" strokeWidth={active ? 2.2 : 1.8} />
@@ -59,3 +61,4 @@ export function AppBottomNav() {
     </div>
   );
 }
+

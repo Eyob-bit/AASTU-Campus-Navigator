@@ -9,5 +9,6 @@ router.get("/no-results", analyticsController.getNoResults);
 router.get("/search-trend", analyticsController.getSearchTrend);
 router.get("/navigation", analyticsController.getNavigationStats);
 router.get("/popular-buildings", analyticsController.getPopularBuildings);
+router.get("/chat", analyticsController.getChatAnalytics);
 
 export default router;

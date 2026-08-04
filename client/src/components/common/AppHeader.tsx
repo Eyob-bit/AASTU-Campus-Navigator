@@ -51,12 +51,13 @@ export function AppHeader() {
         className={cn(
           "fixed inset-x-0 top-0 z-50 transition-all duration-300",
           scrolled || mobileOpen || !isHomePage
-            ? "bg-[#0B132B]/90 backdrop-blur-md border-b border-slate-800/80 shadow-lg shadow-black/40"
-            : "bg-gradient-to-b from-slate-950/80 via-slate-950/40 to-transparent"
+            ? "bg-white/90 dark:bg-[#0B132B]/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 shadow-md dark:shadow-lg dark:shadow-black/40"
+            : "bg-gradient-to-b from-slate-200/80 via-slate-100/40 to-transparent dark:from-slate-950/80 dark:via-slate-950/40 dark:to-transparent"
         )}
       >
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
           {/* ── Logo ── */}
+
           <Link
             to="/"
             className="flex items-center gap-2.5 shrink-0"
