@@ -16,7 +16,7 @@ export function AdminLayout() {
 
   return (
     <div
-      className="flex h-screen bg-gray-50 overflow-hidden"
+      className="flex h-screen bg-gray-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-200"
       style={{ fontFamily: "var(--font-sans, 'Inter', system-ui, sans-serif)" }}
     >
       {/* Mobile sidebar overlay */}

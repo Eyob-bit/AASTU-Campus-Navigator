@@ -221,14 +221,14 @@ export function SceneEditorPage() {
 
   if (!sceneId) {
     return (
-      <div className="flex flex-col h-full bg-gray-50 overflow-y-auto">
+      <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 overflow-y-auto text-slate-900 dark:text-slate-100 transition-colors duration-200">
         {/* Header */}
-        <div className="bg-white border-b border-gray-100 px-8 py-6 flex-shrink-0">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Map size={24} className="text-indigo-600" />
+        <div className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-8 py-6 flex-shrink-0">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Map size={24} className="text-indigo-600 dark:text-indigo-400" />
             Scene Editor
           </h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
             Select a building, floor, and scene to start placing labels and navigation markers.
           </p>
         </div>

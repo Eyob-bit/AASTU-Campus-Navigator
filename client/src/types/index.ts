@@ -22,6 +22,7 @@ export type {
   Office,
   Staff,
   SearchAlias,
+  AliasWithContext,
   PanoramaScene,
   SceneElementType,
   SceneElement,

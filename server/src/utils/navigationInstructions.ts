@@ -71,6 +71,20 @@ export function classifyTurnAngle(angle: number): InstructionType {
 }
 
 /**
+ * Converts a bearing in degrees [0, 360) to a cardinal direction string.
+ */
+export function bearingToCardinal(bearing: number): string {
+  if (bearing >= 337.5 || bearing < 22.5) return "north";
+  if (bearing >= 22.5 && bearing < 67.5) return "northeast";
+  if (bearing >= 67.5 && bearing < 112.5) return "east";
+  if (bearing >= 112.5 && bearing < 157.5) return "southeast";
+  if (bearing >= 157.5 && bearing < 202.5) return "south";
+  if (bearing >= 202.5 && bearing < 247.5) return "southwest";
+  if (bearing >= 247.5 && bearing < 292.5) return "west";
+  return "northwest";
+}
+
+/**
  * Generates human-friendly Google Maps-style turn-by-turn walking instructions
  * given polyline coordinates and graph node details.
  */
@@ -102,13 +116,16 @@ export function generateRouteInstructions(
   const p0 = coordinates[0];
   const p1 = coordinates[1];
   const initialDist = Math.round(calculateHaversineDistance(p0[0], p0[1], p1[0], p1[1]));
+  const initialBearing = calculateBearing(p0[0], p0[1], p1[0], p1[1]);
+  const cardinalDir = bearingToCardinal(initialBearing);
+
   const firstNodeKey = `${p1[0].toFixed(6)},${p1[1].toFixed(6)}`;
   const firstNode = nodeMap.get(firstNodeKey);
   const targetLabel = firstNode?.buildingName || firstNode?.name || "campus path";
 
   instructions.push({
     type: "START",
-    text: `Head toward ${targetLabel}`,
+    text: `Head ${cardinalDir} toward ${targetLabel}`,
     distance: initialDist,
     targetNodeId: firstNode?.id,
     targetNodeName: firstNode?.name,
@@ -116,7 +133,7 @@ export function generateRouteInstructions(
 
   // 2. Intermediate turn instructions
   let accumulatedDist = 0;
-  let prevBearing = calculateBearing(p0[0], p0[1], p1[0], p1[1]);
+  let prevBearing = initialBearing;
 
   for (let i = 1; i < coordinates.length - 1; i++) {
     const curr = coordinates[i];
@@ -140,13 +157,13 @@ export function generateRouteInstructions(
       let actionText = "";
       switch (turnType) {
         case "LEFT":
-          actionText = nodeName ? `Turn left at ${nodeName}` : "Turn left";
+          actionText = nodeName ? `Turn left at ${nodeName}` : "Turn left onto path";
           break;
         case "SLIGHT_LEFT":
           actionText = nodeName ? `Turn slightly left past ${nodeName}` : "Turn slightly left";
           break;
         case "RIGHT":
-          actionText = nodeName ? `Turn right at ${nodeName}` : "Turn right";
+          actionText = nodeName ? `Turn right at ${nodeName}` : "Turn right onto path";
           break;
         case "SLIGHT_RIGHT":
           actionText = nodeName ? `Turn slightly right past ${nodeName}` : "Turn slightly right";
@@ -155,7 +172,7 @@ export function generateRouteInstructions(
           actionText = "Make a U-turn";
           break;
         default:
-          actionText = nodeName ? `Continue past ${nodeName}` : "Continue straight";
+          actionText = nodeName ? `Continue past ${nodeName}` : "Continue straight along campus path";
           break;
       }
 
@@ -191,3 +208,4 @@ export function generateRouteInstructions(
 
   return instructions;
 }
+

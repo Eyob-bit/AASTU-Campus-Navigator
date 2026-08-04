@@ -18,10 +18,10 @@ const sizes = { sm: "px-3 py-1.5 text-xs", md: "px-4 py-2 text-sm", lg: "px-5 py
 
 const variants = {
   primary: "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 shadow-sm",
-  secondary: "bg-blue-50 text-blue-700 hover:bg-blue-100 focus:ring-blue-400",
+  secondary: "bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 focus:ring-blue-400",
   danger: "bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 shadow-sm",
-  ghost: "bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-300",
-  outline: "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 focus:ring-gray-300 shadow-sm",
+  ghost: "bg-transparent text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 focus:ring-gray-300",
+  outline: "bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 focus:ring-gray-300 shadow-sm",
 };
 
 export function Button({

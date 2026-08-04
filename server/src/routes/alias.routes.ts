@@ -5,6 +5,7 @@ import { updateAliasSchema } from "../validators/alias.validator.js";
 
 const router = Router();
 
+router.get("/", aliasController.getAllAliases);
 router.get("/:id", aliasController.getAliasById);
 
 router.patch(

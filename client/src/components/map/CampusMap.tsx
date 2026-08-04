@@ -119,19 +119,29 @@ function MapViewController({
   userLocation,
   shouldCenter,
   setShouldCenter,
+  navStep,
 }: {
   userLocation: { lat: number; lng: number } | null;
   shouldCenter: boolean;
   setShouldCenter: (val: boolean) => void;
+  navStep: string;
 }) {
   const map = useMap();
 
+  // Manual center button click
   useEffect(() => {
     if (shouldCenter && userLocation) {
       map.flyTo([userLocation.lat, userLocation.lng], 18, { animate: true, duration: 1 });
       setShouldCenter(false);
     }
   }, [shouldCenter, userLocation, map, setShouldCenter]);
+
+  // Smooth camera following during active outdoor navigation
+  useEffect(() => {
+    if (navStep === "OUTDOOR_NAV" && userLocation) {
+      map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.8 });
+    }
+  }, [navStep, userLocation, map]);
 
   return null;
 }
@@ -228,6 +238,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           userLocation={userLocation}
           shouldCenter={shouldCenterLocation}
           setShouldCenter={setShouldCenterLocation}
+          navStep={navStep}
         />
 
         <TileLayer

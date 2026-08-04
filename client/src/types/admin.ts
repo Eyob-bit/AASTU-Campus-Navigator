@@ -63,7 +63,47 @@ export interface SearchAlias {
   normalizedAlias: string;
   officeId: string | null;
   staffId: string | null;
+  office?: {
+    id: string;
+    name: string;
+    roomNumber: string;
+    floor?: {
+      id: string;
+      floorNumber: number;
+      building?: {
+        id: string;
+        name: string;
+        code: string;
+      };
+    };
+  } | null;
+  staff?: {
+    id: string;
+    fullName: string;
+    position: string;
+    office?: {
+      id: string;
+      name: string;
+      roomNumber: string;
+      floor?: {
+        id: string;
+        floorNumber: number;
+        building?: {
+          id: string;
+          name: string;
+          code: string;
+        };
+      };
+    };
+  } | null;
   createdAt: string;
+}
+
+export interface AliasWithContext extends SearchAlias {
+  targetName: string;
+  targetType: "Office" | "Staff";
+  buildingName: string;
+  roomNumber?: string;
 }
 
 export interface PanoramaScene {

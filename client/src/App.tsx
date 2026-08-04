@@ -24,11 +24,12 @@ import { FloorsPage } from "@/pages/admin/Floors/FloorsPage";
 import { OfficesPage } from "@/pages/admin/Offices/OfficesPage";
 import { StaffPage } from "@/pages/admin/Staff/StaffPage";
 import { AliasesPage } from "@/pages/admin/Aliases/AliasesPage";
-import { AnnouncementsPage } from "@/pages/admin/Announcements/AnnouncementsPage";
+import { AnalyticsPage } from "@/pages/admin/Analytics/AnalyticsPage";
 import { PanoramaGalleryPage } from "@/pages/admin/PanoramaGallery/PanoramaGalleryPage";
 import { SceneEditorPage } from "@/pages/admin/SceneEditor/SceneEditorPage";
 import { NavigationPreviewPage } from "@/pages/admin/NavigationPreview/NavigationPreviewPage";
 import { SettingsPage } from "@/pages/admin/Settings/SettingsPage";
+import { ProfilePage } from "@/pages/admin/Profile/ProfilePage";
 import { LandmarksPage } from "@/pages/admin/Landmarks/LandmarksPage";
 import { RoadNetworkPage } from "@/pages/admin/RoadNetwork/RoadNetworkPage";
 
@@ -66,18 +67,19 @@ export default function App() {
         }
       >
         <Route index element={<DashboardPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
         <Route path="buildings" element={<BuildingsPage />} />
         <Route path="floors" element={<FloorsPage />} />
         <Route path="offices" element={<OfficesPage />} />
         <Route path="staff" element={<StaffPage />} />
         <Route path="aliases" element={<AliasesPage />} />
-        <Route path="announcements" element={<AnnouncementsPage />} />
         <Route path="panoramas" element={<PanoramaGalleryPage />} />
         <Route path="scene-editor" element={<SceneEditorPage />} />
         <Route path="scene-editor/:sceneId" element={<SceneEditorPage />} />
         <Route path="nav-preview" element={<NavigationPreviewPage />} />
         <Route path="nav-preview/:sceneId" element={<NavigationPreviewPage />} />
         <Route path="road-network" element={<RoadNetworkPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="landmarks" element={<LandmarksPage />} />
       </Route>

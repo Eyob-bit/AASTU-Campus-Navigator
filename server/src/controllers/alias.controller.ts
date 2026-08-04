@@ -5,6 +5,26 @@ import { sendSuccess } from "../utils/response.js";
 const aliasService = new AliasService();
 
 export class AliasController {
+    async getAllAliases(
+        req: Request,
+        res: Response,
+        next: NextFunction
+    ) {
+        try {
+            const aliases = await aliasService.getAllAliases();
+            return sendSuccess(
+                res,
+                {
+                    count: aliases.length,
+                    aliases,
+                },
+                "All search aliases retrieved successfully"
+            );
+        } catch (error) {
+            next(error);
+        }
+    }
+
     async getOfficeAliases(
         req: Request<{ officeId: string }>,
         res: Response,

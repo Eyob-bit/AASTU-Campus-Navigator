@@ -1,6 +1,38 @@
 import { prisma } from "../config/prisma.js";
 
 export class AliasRepository {
+    async findAll() {
+        return prisma.searchAlias.findMany({
+            orderBy: {
+                alias: "asc",
+            },
+            include: {
+                office: {
+                    include: {
+                        floor: {
+                            include: {
+                                building: true,
+                            },
+                        },
+                    },
+                },
+                staff: {
+                    include: {
+                        office: {
+                            include: {
+                                floor: {
+                                    include: {
+                                        building: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+    }
+
     async findAllByOffice(officeId: string) {
         return prisma.searchAlias.findMany({
             where: {

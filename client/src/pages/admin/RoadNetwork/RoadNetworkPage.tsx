@@ -256,42 +256,42 @@ export function RoadNetworkPage() {
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
   return (
-    <div className="flex flex-col h-full bg-slate-950 text-slate-100">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[#0B132B] border-b border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800">
         <div>
-          <h1 className="text-base font-bold text-white flex items-center gap-2">
-            <Compass className="text-cyan-400" size={18} />
+          <h1 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+            <Compass className="text-cyan-600 dark:text-cyan-400" size={18} />
             Road Network Editor
           </h1>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-gray-500 dark:text-slate-400">
             {nodes.length} nodes · {edges.length} road connections inside AASTU campus
           </p>
         </div>
 
         {/* Mode Toggles */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-slate-900 p-1 rounded-xl border border-slate-800">
+          <div className="flex items-center bg-gray-100 dark:bg-slate-900 p-1 rounded-xl border border-gray-200 dark:border-slate-800">
             <button
               onClick={() => setViewMode("map")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                viewMode === "map" ? "bg-cyan-500 text-white shadow-md" : "text-slate-400 hover:text-white"
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                viewMode === "map" ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
               Interactive Map
             </button>
             <button
               onClick={() => setViewMode("nodes")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                viewMode === "nodes" ? "bg-cyan-500 text-white shadow-md" : "text-slate-400 hover:text-white"
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                viewMode === "nodes" ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
               Road Nodes ({nodes.length})
             </button>
             <button
               onClick={() => setViewMode("edges")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                viewMode === "edges" ? "bg-cyan-500 text-white shadow-md" : "text-slate-400 hover:text-white"
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                viewMode === "edges" ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
               }`}
             >
               Connections ({edges.length})
@@ -489,15 +489,15 @@ export function RoadNetworkPage() {
 
       {/* Nodes Table View */}
       {viewMode === "nodes" && (
-        <div className="p-4 flex-1 overflow-y-auto bg-slate-900">
-          <Card className="bg-[#0B132B] border-slate-800 text-slate-100">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h2 className="font-bold text-sm text-white">All Road Waypoint Nodes</h2>
-              <span className="text-xs text-slate-400">{nodes.length} nodes</span>
+        <div className="p-4 flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950">
+          <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-900 dark:text-slate-100">
+            <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+              <h2 className="font-bold text-sm text-gray-900 dark:text-white">All Road Waypoint Nodes</h2>
+              <span className="text-xs text-gray-500 dark:text-slate-400">{nodes.length} nodes</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-800/50 text-slate-400 uppercase font-semibold">
+                <thead className="bg-gray-50 dark:bg-slate-800/50 text-gray-500 dark:text-slate-400 uppercase font-semibold">
                   <tr>
                     <th className="px-4 py-3">Waypoint Name</th>
                     <th className="px-4 py-3">Latitude</th>
@@ -506,15 +506,15 @@ export function RoadNetworkPage() {
                     <th className="px-4 py-3">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                   {nodes.map((node) => {
                     const connCount = edges.filter(
                       (e) => e.fromNodeId === node.id || e.toNodeId === node.id
                     ).length;
 
                     return (
-                      <tr key={node.id} className="hover:bg-slate-800/30">
-                        <td className="px-4 py-3 font-semibold text-white">{node.name}</td>
+                      <tr key={node.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">{node.name}</td>
                         <td className="px-4 py-3 font-mono text-slate-400">{node.latitude.toFixed(6)}</td>
                         <td className="px-4 py-3 font-mono text-slate-400">{node.longitude.toFixed(6)}</td>
                         <td className="px-4 py-3">
@@ -542,15 +542,15 @@ export function RoadNetworkPage() {
 
       {/* Edges Table View */}
       {viewMode === "edges" && (
-        <div className="p-4 flex-1 overflow-y-auto bg-slate-900">
-          <Card className="bg-[#0B132B] border-slate-800 text-slate-100">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h2 className="font-bold text-sm text-white">All Road Connections (Edges)</h2>
-              <span className="text-xs text-slate-400">{edges.length} edges</span>
+        <div className="p-4 flex-1 overflow-y-auto bg-gray-50 dark:bg-slate-950">
+          <Card className="bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-800 text-gray-900 dark:text-slate-100">
+            <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+              <h2 className="font-bold text-sm text-gray-900 dark:text-white">All Road Connections (Edges)</h2>
+              <span className="text-xs text-gray-500 dark:text-slate-400">{edges.length} edges</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-xs text-left">
-                <thead className="bg-slate-800/50 text-slate-400 uppercase font-semibold">
+                <thead className="bg-gray-50 dark:bg-slate-800/50 text-gray-500 dark:text-slate-400 uppercase font-semibold">
                   <tr>
                     <th className="px-4 py-3">From Node</th>
                     <th className="px-4 py-3">To Node</th>
@@ -559,15 +559,15 @@ export function RoadNetworkPage() {
                     <th className="px-4 py-3">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800">
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                   {edges.map((edge) => {
                     const u = nodeMap.get(edge.fromNodeId);
                     const v = nodeMap.get(edge.toNodeId);
 
                     return (
-                      <tr key={edge.id} className="hover:bg-slate-800/30">
-                        <td className="px-4 py-3 font-semibold text-white">{u?.name ?? edge.fromNodeId}</td>
-                        <td className="px-4 py-3 font-semibold text-white">{v?.name ?? edge.toNodeId}</td>
+                      <tr key={edge.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">{u?.name ?? edge.fromNodeId}</td>
+                        <td className="px-4 py-3 font-semibold text-gray-900 dark:text-white">{v?.name ?? edge.toNodeId}</td>
                         <td className="px-4 py-3 font-mono text-cyan-400 font-bold">
                           {Math.round(edge.distance)} m
                         </td>

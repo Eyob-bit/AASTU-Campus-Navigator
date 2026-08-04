@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Building2, Layers, DoorOpen, Users, Map, Settings, Megaphone, ArrowRight, Activity, Plus } from "lucide-react";
+import { Building2, Layers, DoorOpen, Users, Map, Settings, ArrowRight, Activity, Plus } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Card, Button, Skeleton } from "@/components/ui";
 import { useStaff } from "@/hooks/useStaff";
@@ -20,15 +20,15 @@ export function DashboardPage() {
   }, [fetchStaff]);
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 overflow-y-auto">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 overflow-y-auto text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* Header Banner */}
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-8 py-6 sm:py-8 flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 px-4 sm:px-8 py-6 sm:py-8 flex-shrink-0 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2.5">
-            <Activity className="text-blue-600" size={24} />
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
+            <Activity className="text-blue-600 dark:text-blue-400" size={24} />
             Admin Dashboard
           </h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-1">
             Real-time overview of the AASTU campus buildings, offices, navigation paths, and directory staff.
           </p>
         </div>
@@ -265,10 +265,10 @@ export function DashboardPage() {
                   <Plus size={14} className="text-gray-400" />
                 </Link>
 
-                <Link to="/dashboard/announcements" className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-purple-50/40 hover:border-purple-200 transition-all text-xs font-semibold text-gray-700">
+                <Link to="/dashboard/analytics" className="flex items-center justify-between p-3 border border-gray-100 rounded-xl hover:bg-purple-50/40 hover:border-purple-200 transition-all text-xs font-semibold text-gray-700">
                   <span className="flex items-center gap-2.5">
-                    <Megaphone size={16} className="text-purple-500" />
-                    Announcements
+                    <Activity size={16} className="text-purple-500" />
+                    Analytics Dashboard
                   </span>
                   <Plus size={14} className="text-gray-400" />
                 </Link>

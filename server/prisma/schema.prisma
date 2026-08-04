@@ -276,3 +276,38 @@ model RoadEdge {
   @@index([fromNodeId])
   @@index([toNodeId])
 }
+
+model SearchLog {
+  id          String   @id @default(cuid())
+  query       String
+  resultCount Int      @default(0)
+  hasResults  Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([query])
+  @@index([createdAt])
+  @@index([hasResults])
+}
+
+model NavigationLog {
+  id               String    @id @default(cuid())
+  destinationName  String?
+  destinationId    String?
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  cancelled        Boolean   @default(false)
+  walkingDistanceM Float?
+
+  @@index([startedAt])
+  @@index([destinationId])
+}
+
+model AdminProfile {
+  id          String   @id @default(cuid())
+  fullName    String   @default("Admin User")
+  email       String   @default("admin@aastu.edu.et")
+  role        String   @default("Super Admin")
+  avatarUrl   String?  @db.Text
+  passwordHash String  @default("admin")
+  updatedAt   DateTime @updatedAt
+}

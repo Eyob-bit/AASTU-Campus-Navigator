@@ -13,6 +13,8 @@ import landmarkRoutes from "./landmark.routes.js";
 import roadNodeRoutes from "./roadNode.routes.js";
 import roadEdgeRoutes from "./roadEdge.routes.js";
 import roadNavigationRoutes from "./roadNavigation.routes.js";
+import analyticsRoutes from "./analytics.routes.js";
+import adminProfileRoutes from "./adminProfile.routes.js";
 
 const router = Router();
 
@@ -31,6 +33,7 @@ router.use("/navigation", roadNavigationRoutes);
 router.use("/landmarks", landmarkRoutes);
 router.use("/road-nodes", roadNodeRoutes);
 router.use("/road-edges", roadEdgeRoutes);
-
+router.use("/analytics", analyticsRoutes);
+router.use("/admin-profile", adminProfileRoutes);
 
 export default router;

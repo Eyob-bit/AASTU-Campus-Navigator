@@ -9,6 +9,10 @@ export class AliasService {
     private officeRepository = new OfficeRepository();
     private staffRepository = new StaffRepository();
 
+    async getAllAliases() {
+        return this.repository.findAll();
+    }
+
     async getAliasesByOffice(officeId: string) {
         const office = await this.officeRepository.findById(officeId);
         if (!office) {

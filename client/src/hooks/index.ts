@@ -16,4 +16,5 @@ export { useScenePreview } from "./useScenePreview";
 export { useLiveNavigation } from "./useLiveNavigation";
 export { useOutdoorRoute } from "./useOutdoorRoute";
 export { useTurnByTurnNavigation } from "./useTurnByTurnNavigation";
+export { useAdminProfile } from "./useAdminProfile";
 

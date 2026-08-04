@@ -64,15 +64,15 @@ function NoSceneSelected() {
   }, [selectedFloorId]);
 
   return (
-    <div className="flex flex-col h-full bg-gray-50 overflow-y-auto p-3 sm:p-6">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 overflow-y-auto p-3 sm:p-6 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       <div className="max-w-5xl mx-auto w-full space-y-4 sm:space-y-6">
-        <div className="bg-white p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
-              <RotateCcw className="text-indigo-600" size={18} />
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <RotateCcw className="text-indigo-600 dark:text-indigo-400" size={18} />
               Navigation Preview
             </h1>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-1">
               Select a building, floor, and scene to launch interactive indoor navigation preview.
             </p>
           </div>
@@ -86,7 +86,7 @@ function NoSceneSelected() {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           {/* Building Selector */}
           <Card className="p-4 sm:p-5">
-            <h2 className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5 sm:mb-3">
+            <h2 className="text-[11px] sm:text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-2.5 sm:mb-3">
               1. Select Building
             </h2>
             {hierarchyLoading ? (
@@ -104,8 +104,8 @@ function NoSceneSelected() {
                     onClick={() => setSelectedBuildingId(b.id)}
                     className={`w-full text-left px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                       selectedBuildingId === b.id
-                        ? "bg-indigo-50 text-indigo-700 font-semibold"
-                        : "text-gray-600 hover:bg-gray-100"
+                        ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 font-semibold"
+                        : "text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800"
                     }`}
                   >
                     {b.name}
@@ -117,13 +117,13 @@ function NoSceneSelected() {
 
           {/* Floor Selector */}
           <Card className="p-4 sm:p-5">
-            <h2 className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5 sm:mb-3">
+            <h2 className="text-[11px] sm:text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-2.5 sm:mb-3">
               2. Select Floor
             </h2>
             {!selectedBuildingId ? (
-              <p className="text-xs text-gray-400">Select a building first</p>
+              <p className="text-xs text-gray-400 dark:text-slate-400">Select a building first</p>
             ) : buildingFloors.length === 0 ? (
-              <p className="text-xs text-gray-400">No floors added to this building.</p>
+              <p className="text-xs text-gray-400 dark:text-slate-400">No floors added to this building.</p>
             ) : (
               <div className="space-y-1 max-h-48 sm:max-h-64 overflow-y-auto">
                 {buildingFloors.map((f) => (
@@ -132,8 +132,8 @@ function NoSceneSelected() {
                     onClick={() => setSelectedFloorId(f.id)}
                     className={`w-full text-left px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
                       selectedFloorId === f.id
-                        ? "bg-indigo-50 text-indigo-700 font-semibold"
-                        : "text-gray-600 hover:bg-gray-100"
+                        ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-400 font-semibold"
+                        : "text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800"
                     }`}
                   >
                     {formatFloorLabel(f.floorNumber)}
@@ -145,38 +145,38 @@ function NoSceneSelected() {
 
           {/* Scene Selector */}
           <Card className="p-4 sm:p-5 sm:col-span-2 md:col-span-1">
-            <h2 className="text-[11px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-2.5 sm:mb-3">
+            <h2 className="text-[11px] sm:text-xs font-bold text-gray-400 dark:text-slate-400 uppercase tracking-wider mb-2.5 sm:mb-3">
               3. Choose Scene
             </h2>
             {!selectedFloorId ? (
-              <p className="text-xs text-gray-400">Select a floor first</p>
+              <p className="text-xs text-gray-400 dark:text-slate-400">Select a floor first</p>
             ) : scenesLoading ? (
               <div className="space-y-2">
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
               </div>
             ) : scenes.length === 0 ? (
-              <p className="text-xs text-gray-400">No scenes uploaded for this floor.</p>
+              <p className="text-xs text-gray-400 dark:text-slate-400">No scenes uploaded for this floor.</p>
             ) : (
               <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
                 {scenes.map((s) => (
                   <div
                     key={s.id}
                     onClick={() => navigate(`/dashboard/nav-preview/${s.id}`)}
-                    className="group flex items-center justify-between p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-gray-100 bg-white hover:border-indigo-200 hover:bg-indigo-50/30 shadow-sm transition-all cursor-pointer"
+                    className="group flex items-center justify-between p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-indigo-50/30 dark:hover:bg-slate-800 shadow-sm transition-all cursor-pointer"
                   >
                     <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 flex items-center justify-center flex-shrink-0">
                         <ImageIcon size={14} className="sm:w-4 sm:h-4" />
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs font-bold text-gray-900 truncate group-hover:text-indigo-600 transition-colors">
+                        <p className="text-xs font-bold text-gray-900 dark:text-white truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                           {s.name}
                         </p>
-                        <p className="text-[10px] text-gray-400 font-mono truncate">{s.key}</p>
+                        <p className="text-[10px] text-gray-400 dark:text-slate-400 font-mono truncate">{s.key}</p>
                       </div>
                     </div>
-                    <Play size={13} className="text-gray-400 group-hover:text-indigo-600 transition-colors flex-shrink-0 ml-1" />
+                    <Play size={13} className="text-gray-400 dark:text-slate-400 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors flex-shrink-0 ml-1" />
                   </div>
                 ))}
               </div>
@@ -227,32 +227,32 @@ function ScenePreview({ sceneId }: { sceneId: string }) {
   const imageUrl = scene ? getPanoramaImageUrl(scene.imagePath) : null;
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* Breadcrumb — scrollable on mobile */}
-      <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-white border-b border-gray-100 text-xs sm:text-sm flex-shrink-0 overflow-x-auto whitespace-nowrap scrollbar-none">
-        <Link to="/dashboard" className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 bg-white dark:bg-slate-900 border-b border-gray-100 dark:border-slate-800 text-xs sm:text-sm flex-shrink-0 overflow-x-auto whitespace-nowrap scrollbar-none">
+        <Link to="/dashboard" className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 flex-shrink-0">
           <Home size={13} className="sm:w-3.5 sm:h-3.5" />
         </Link>
-        <ChevronRight size={12} className="text-gray-300 flex-shrink-0" />
-        <Link to="/dashboard/nav-preview" className="text-gray-500 hover:text-gray-700 flex-shrink-0">
+        <ChevronRight size={12} className="text-gray-300 dark:text-slate-600 flex-shrink-0" />
+        <Link to="/dashboard/nav-preview" className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 flex-shrink-0">
           Nav Preview
         </Link>
         {building && (
           <>
-            <ChevronRight size={12} className="text-gray-300 flex-shrink-0" />
-            <span className="text-gray-500 flex-shrink-0">{building.name}</span>
+            <ChevronRight size={12} className="text-gray-300 dark:text-slate-600 flex-shrink-0" />
+            <span className="text-gray-500 dark:text-slate-400 flex-shrink-0">{building.name}</span>
           </>
         )}
         {floor && (
           <>
-            <ChevronRight size={12} className="text-gray-300 flex-shrink-0" />
-            <span className="text-gray-500 flex-shrink-0">{formatFloorLabel(floor.floorNumber)}</span>
+            <ChevronRight size={12} className="text-gray-300 dark:text-slate-600 flex-shrink-0" />
+            <span className="text-gray-500 dark:text-slate-400 flex-shrink-0">{formatFloorLabel(floor.floorNumber)}</span>
           </>
         )}
         {scene && (
           <>
-            <ChevronRight size={12} className="text-gray-300 flex-shrink-0" />
-            <span className="text-gray-900 font-medium truncate max-w-[120px] sm:max-w-[200px] flex-shrink-0">
+            <ChevronRight size={12} className="text-gray-300 dark:text-slate-600 flex-shrink-0" />
+            <span className="text-gray-900 dark:text-white font-medium truncate max-w-[120px] sm:max-w-[200px] flex-shrink-0">
               {scene.name}
             </span>
           </>
@@ -260,7 +260,7 @@ function ScenePreview({ sceneId }: { sceneId: string }) {
       </div>
 
       {/* Main viewer container */}
-      <div className="flex-1 relative overflow-hidden m-2 sm:m-4 rounded-xl sm:rounded-2xl border border-gray-200 bg-gray-950 min-h-0 flex flex-col justify-center items-center">
+      <div className="flex-1 relative overflow-hidden m-2 sm:m-4 rounded-xl sm:rounded-2xl border border-gray-200 dark:border-slate-800 bg-gray-950 min-h-0 flex flex-col justify-center items-center">
         {isLoading && <LoadingState />}
         {!isLoading && error && <ErrorState message={error} onRetry={reload} />}
         {!isLoading && !error && !imageUrl && <EmptyState />}
@@ -277,7 +277,7 @@ function ScenePreview({ sceneId }: { sceneId: string }) {
         {history.length > 0 && !isLoading && (
           <button
             onClick={handleGoBack}
-            className="absolute top-2 left-2 sm:top-4 sm:left-4 z-20 flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 bg-white/90 backdrop-blur-md rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold text-gray-800 hover:bg-white shadow-lg transition-all cursor-pointer"
+            className="absolute top-2 left-2 sm:top-4 sm:left-4 z-20 flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-semibold text-gray-800 dark:text-slate-100 border border-gray-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-900 shadow-lg transition-all cursor-pointer"
             aria-label="Go back"
           >
             <ArrowLeft size={13} className="sm:w-3.5 sm:h-3.5" />
@@ -294,7 +294,7 @@ function ScenePreview({ sceneId }: { sceneId: string }) {
       </div>
 
       {/* Footer status bar (responsive grid / wrapping) */}
-      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-6 px-3 sm:px-6 py-2.5 sm:py-3 bg-white border-t border-gray-100 text-xs sm:text-sm flex-shrink-0">
+      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-6 px-3 sm:px-6 py-2.5 sm:py-3 bg-white dark:bg-slate-900 border-t border-gray-100 dark:border-slate-800 text-xs sm:text-sm flex-shrink-0">
         <StatusItem label="Current Scene" value={isLoading ? "Loading…" : (scene?.name ?? "—")} />
         <Divider />
         <StatusItem label="Building" value={isLoading ? "Loading…" : (building?.name ?? "—")} />
@@ -306,7 +306,7 @@ function ScenePreview({ sceneId }: { sceneId: string }) {
             <StatusItem label="Elements" value={`${elements.length}`} />
           </>
         )}
-        <div className="ml-auto flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-400">
+        <div className="ml-auto flex items-center gap-1.5 text-[10px] sm:text-xs text-gray-400 dark:text-slate-400">
           <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
           Interactive Preview
         </div>
@@ -354,12 +354,12 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
 function StatusItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
-      <span className="text-[9px] sm:text-[10px] text-gray-400 uppercase tracking-wide leading-none mb-0.5">{label}</span>
-      <span className="text-gray-900 font-semibold text-xs sm:text-sm leading-tight truncate max-w-[100px] sm:max-w-[160px]">{value}</span>
+      <span className="text-[9px] sm:text-[10px] text-gray-400 dark:text-slate-400 uppercase tracking-wide leading-none mb-0.5">{label}</span>
+      <span className="text-gray-900 dark:text-white font-semibold text-xs sm:text-sm leading-tight truncate max-w-[100px] sm:max-w-[160px]">{value}</span>
     </div>
   );
 }
 
 function Divider() {
-  return <div className="hidden sm:block w-px h-7 bg-gray-100 flex-shrink-0" />;
+  return <div className="hidden sm:block w-px h-7 bg-gray-100 dark:bg-slate-800 flex-shrink-0" />;
 }
