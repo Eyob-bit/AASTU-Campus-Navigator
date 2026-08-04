@@ -136,8 +136,24 @@ function MapViewController({
     }
   }, [shouldCenter, userLocation, map, setShouldCenter]);
 
+  // Listen for AI chatbot "Show on Map" center events
+  useEffect(() => {
+    function handleCenterBuilding(e: Event) {
+      const customEvent = e as CustomEvent<{ lat: number; lng: number; zoom?: number }>;
+      if (customEvent.detail?.lat && customEvent.detail?.lng) {
+        map.flyTo([customEvent.detail.lat, customEvent.detail.lng], customEvent.detail.zoom ?? 19, {
+          animate: true,
+          duration: 1.2,
+        });
+      }
+    }
+    window.addEventListener("aastu_center_building", handleCenterBuilding);
+    return () => window.removeEventListener("aastu_center_building", handleCenterBuilding);
+  }, [map]);
+
   // Smooth camera following during active outdoor navigation
   useEffect(() => {
+
     if (navStep === "OUTDOOR_NAV" && userLocation) {
       map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.8 });
     }

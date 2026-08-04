@@ -1,13 +1,16 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Sparkles, Send, Bot, User, Compass, MapPin, Eye, RotateCcw,
-  Building2, UserCheck, Layers, ChevronRight, MessageSquareText, ShieldAlert,
+  Building2, UserCheck, Layers, ChevronRight,
 } from "lucide-react";
 import { useCampusChat, triggerAppAction } from "@/hooks/useCampusChat";
 import { cn } from "@/utils/cn";
 
 export function ChatbotPage() {
+  const navigate = useNavigate();
   const [input, setInput] = useState("");
+
   const { messages, isTyping, sendMessage, clearChat } = useCampusChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -142,12 +145,17 @@ export function ChatbotPage() {
                       {msg.payload.canNavigate && msg.payload.campusData.entranceLatitude && (
                         <button
                           onClick={() => {
-                            triggerAppAction("START_NAVIGATION", {
-                              name: msg.payload?.campusData?.officeName || msg.payload?.campusData?.buildingName || "Destination",
-                              latitude: msg.payload?.campusData?.entranceLatitude,
-                              longitude: msg.payload?.campusData?.entranceLongitude,
-                              buildingId: msg.payload?.campusData?.buildingId,
-                              officeId: msg.payload?.campusData?.officeId,
+                            navigate("/", {
+                              state: {
+                                chatAction: "START_NAVIGATION",
+                                payload: {
+                                  name: msg.payload?.campusData?.officeName || msg.payload?.campusData?.buildingName || "Destination",
+                                  latitude: msg.payload?.campusData?.entranceLatitude,
+                                  longitude: msg.payload?.campusData?.entranceLongitude,
+                                  buildingId: msg.payload?.campusData?.buildingId,
+                                  officeId: msg.payload?.campusData?.officeId,
+                                },
+                              },
                             });
                           }}
                           className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95"
@@ -159,10 +167,16 @@ export function ChatbotPage() {
                       {msg.payload.campusData.entranceLatitude && (
                         <button
                           onClick={() => {
-                            triggerAppAction("CENTER_MAP", {
-                              latitude: msg.payload?.campusData?.entranceLatitude,
-                              longitude: msg.payload?.campusData?.entranceLongitude,
-                              buildingId: msg.payload?.campusData?.buildingId,
+                            navigate("/", {
+                              state: {
+                                chatAction: "CENTER_MAP",
+                                payload: {
+                                  name: msg.payload?.campusData?.buildingName,
+                                  latitude: msg.payload?.campusData?.entranceLatitude,
+                                  longitude: msg.payload?.campusData?.entranceLongitude,
+                                  buildingId: msg.payload?.campusData?.buildingId,
+                                },
+                              },
                             });
                           }}
                           className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"

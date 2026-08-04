@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Search, User, DoorOpen, Loader2, Navigation2 } from "lucide-react";
 import { CampusMap } from "@/components/map";
 import { searchApi } from "@/api/search.api";
@@ -8,6 +8,7 @@ import type { SearchResult, Landmark, DestinationTarget } from "@/types";
 
 export function HomePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setSelectedResult, startOutdoorNavigation } = useAppStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -15,6 +16,55 @@ export function HomePage() {
   const [landmarkResults, setLandmarkResults] = useState<Landmark[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const [centerTarget, setCenterTarget] = useState<{ lat: number; lng: number; zoom?: number } | null>(null);
+
+  // ── Handle incoming chatbot navigation/map actions via route state ──────────
+  useEffect(() => {
+    const state = location.state as null | {
+      chatAction?: "START_NAVIGATION" | "CENTER_MAP";
+      payload?: {
+        name?: string;
+        latitude?: number;
+        longitude?: number;
+        buildingId?: string;
+        officeId?: string;
+      };
+    };
+
+    if (!state?.chatAction || !state.payload) return;
+
+    if (state.chatAction === "START_NAVIGATION" && state.payload.latitude && state.payload.longitude) {
+      const target: DestinationTarget = {
+        id: state.payload.officeId || state.payload.buildingId || "chat-nav",
+        type: state.payload.officeId ? "OFFICE" : "BUILDING",
+        name: state.payload.name || "Destination",
+        subtitle: "Via AI Campus Assistant",
+        latitude: state.payload.latitude,
+        longitude: state.payload.longitude,
+        roadNodeId: null,
+        buildingId: state.payload.buildingId,
+        buildingName: state.payload.name,
+        officeId: state.payload.officeId,
+      };
+      startOutdoorNavigation(target);
+    }
+
+    if (state.chatAction === "CENTER_MAP" && state.payload.latitude && state.payload.longitude) {
+      setCenterTarget({ lat: state.payload.latitude, lng: state.payload.longitude, zoom: 19 });
+    }
+
+    // Clear consumed state so back-nav doesn't retrigger
+    window.history.replaceState({}, "");
+  }, [location.state, startOutdoorNavigation]);
+
+  // Dispatch map center event when centerTarget is set
+  useEffect(() => {
+    if (!centerTarget) return;
+    window.dispatchEvent(new CustomEvent("aastu_center_building", { detail: centerTarget }));
+    setCenterTarget(null);
+  }, [centerTarget]);
+
+
 
   // Live search effect on query change
   useEffect(() => {
