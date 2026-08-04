@@ -2,7 +2,7 @@ import { NavLink } from "react-router-dom";
 import {
   LayoutDashboard, Building2, Layers, DoorOpen, Users,
   Search, BarChart3, Image, Map, Navigation, Settings,
-  LogOut, ChevronLeft, ChevronRight, MapPin, Compass, User,
+  LogOut, ChevronLeft, ChevronRight, MapPin, Compass, User, FileText,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -25,10 +25,11 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "scene-editor",  label: "Scene Editor",        icon: Map,             path: "/dashboard/scene-editor" },
   { id: "nav-preview",   label: "Navigation Preview",  icon: Navigation,      path: "/dashboard/nav-preview" },
   { id: "road-network",  label: "Road Network",        icon: Compass,         path: "/dashboard/road-network" },
-  { id: "landmarks",     label: "Landmarks",            icon: MapPin,          path: "/dashboard/landmarks" },
+  { id: "landmarks",        label: "Landmarks",          icon: MapPin,     path: "/dashboard/landmarks" },
+  { id: "info-content",    label: "Info Content",        icon: FileText,   path: "/dashboard/info-content" },
 
-  { id: "profile",       label: "My Profile",          icon: User,            path: "/dashboard/profile" },
-  { id: "settings",      label: "Settings",            icon: Settings,        path: "/dashboard/settings" },
+  { id: "profile",          label: "My Profile",         icon: User,       path: "/dashboard/profile" },
+  { id: "settings",         label: "Settings",           icon: Settings,   path: "/dashboard/settings" },
 ];
 
 interface SidebarProps {

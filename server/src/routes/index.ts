@@ -15,6 +15,7 @@ import roadEdgeRoutes from "./roadEdge.routes.js";
 import roadNavigationRoutes from "./roadNavigation.routes.js";
 import analyticsRoutes from "./analytics.routes.js";
 import adminProfileRoutes from "./adminProfile.routes.js";
+import infoContentRoutes from "./infoContent.routes.js";
 import { chatRouter } from "./chat.routes.js";
 
 const router = Router();
@@ -36,6 +37,7 @@ router.use("/road-nodes", roadNodeRoutes);
 router.use("/road-edges", roadEdgeRoutes);
 router.use("/analytics", analyticsRoutes);
 router.use("/admin-profile", adminProfileRoutes);
+router.use("/info-content", infoContentRoutes);
 router.use("/chat", chatRouter);
 
-export default router;
+export default router;
