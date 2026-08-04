@@ -34,8 +34,9 @@ export function ChatbotPage() {
   };
 
   return (
-    <div className="relative h-[calc(100dvh-7.5rem)] sm:h-[calc(100vh-8rem)] w-full max-w-4xl mx-auto bg-slate-50 dark:bg-[#080E1E] text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800/80 shadow-2xl transition-colors">
+    <div className="relative h-[calc(100dvh-10rem)] sm:h-[calc(100vh-10.5rem)] w-full max-w-4xl mx-auto my-2 sm:my-3 bg-slate-50 dark:bg-[#080E1E] text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800/80 shadow-2xl transition-colors">
       {/* ── Top Header Bar ─────────────────────────────────────────────────── */}
+
       <div className="px-5 py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-indigo-900/90 dark:via-slate-900 dark:to-purple-950/90 border-b border-indigo-500/30 dark:border-slate-800 flex items-center justify-between flex-shrink-0 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-white/20 dark:bg-indigo-500/20 border border-white/30 dark:border-indigo-400/30 flex items-center justify-center flex-shrink-0 shadow-inner">
