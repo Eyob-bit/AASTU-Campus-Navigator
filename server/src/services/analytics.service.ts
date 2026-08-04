@@ -55,4 +55,10 @@ export class AnalyticsService {
         const since = this.parseRangeToDate(range);
         return this.repository.getPopularBuildings(limit ?? 8, since);
     }
+
+    async getChatAnalytics(range?: string, limit?: number) {
+        const since = this.parseRangeToDate(range);
+        return this.repository.getChatAnalytics(limit ?? 10, since);
+    }
 }
+

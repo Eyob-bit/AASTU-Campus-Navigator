@@ -163,6 +163,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     userLocation,
     setUserLocation,
     activeRoute,
+    startOutdoorNavigation,
   } = useAppStore();
 
   // Fetch A* route from server; handles auto-rerouting on position change
@@ -170,6 +171,43 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
 
   const [tileMode, setTileMode] = useState<TileMode>("street");
   const [shouldCenterLocation, setShouldCenterLocation] = useState<boolean>(false);
+
+  // Listen for AI Chatbot Action Triggers
+  useEffect(() => {
+    function handleStartNav(e: Event) {
+      const customEvent = e as CustomEvent<{
+        name: string;
+        latitude: number;
+        longitude: number;
+        buildingId?: string;
+        officeId?: string;
+      }>;
+      if (customEvent.detail && customEvent.detail.latitude && customEvent.detail.longitude) {
+        startOutdoorNavigation({
+          name: customEvent.detail.name || "Destination",
+          latitude: customEvent.detail.latitude,
+          longitude: customEvent.detail.longitude,
+          buildingId: customEvent.detail.buildingId,
+          officeId: customEvent.detail.officeId,
+        });
+      }
+    }
+
+    function handleOpenPanorama(e: Event) {
+      const customEvent = e as CustomEvent<{ sceneId: string }>;
+      if (customEvent.detail?.sceneId) {
+        window.location.href = `/dashboard/nav-preview/${customEvent.detail.sceneId}`;
+      }
+    }
+
+    window.addEventListener("aastu_start_navigation", handleStartNav);
+    window.addEventListener("aastu_open_panorama", handleOpenPanorama);
+
+    return () => {
+      window.removeEventListener("aastu_start_navigation", handleStartNav);
+      window.removeEventListener("aastu_open_panorama", handleOpenPanorama);
+    };
+  }, [startOutdoorNavigation]);
 
   useEffect(() => {
     delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;

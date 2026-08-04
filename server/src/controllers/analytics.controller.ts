@@ -67,6 +67,18 @@ export class AnalyticsController {
             next(error);
         }
     }
+
+    async getChatAnalytics(req: Request, res: Response, next: NextFunction) {
+        try {
+            const range = req.query.range as string | undefined;
+            const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+            const data = await analyticsService.getChatAnalytics(range, limit);
+            return sendSuccess(res, data, "AI Chat analytics retrieved successfully");
+        } catch (error) {
+            next(error);
+        }
+    }
 }
 
 export const analyticsController = new AnalyticsController();
+

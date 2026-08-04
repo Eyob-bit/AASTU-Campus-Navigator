@@ -169,4 +169,36 @@ export class AnalyticsRepository {
             visits: g._count.destinationName,
         }));
     }
+
+    async getChatAnalytics(limit: number = 10, since?: Date) {
+        const dateFilter = since ? { createdAt: { gte: since } } : {};
+
+        const [totalChats, matchedChats, topQueriesGroup, unhandledGroup] = await Promise.all([
+            prisma.chatLog.count({ where: dateFilter }),
+            prisma.chatLog.count({ where: { ...dateFilter, hasMatch: true } }),
+            prisma.chatLog.groupBy({
+                by: ["message"],
+                where: { ...dateFilter, hasMatch: true },
+                _count: { message: true },
+                orderBy: { _count: { message: "desc" } },
+                take: limit,
+            }),
+            prisma.chatLog.groupBy({
+                by: ["message"],
+                where: { ...dateFilter, hasMatch: false },
+                _count: { message: true },
+                orderBy: { _count: { message: "desc" } },
+                take: limit,
+            }),
+        ]);
+
+        return {
+            totalChats,
+            matchedChats,
+            matchRate: totalChats > 0 ? Math.round((matchedChats / totalChats) * 100) : 100,
+            topChatQueries: topQueriesGroup.map((g) => ({ message: g.message, count: g._count.message })),
+            unhandledChatQueries: unhandledGroup.map((g) => ({ message: g.message, count: g._count.message })),
+        };
+    }
 }
+
