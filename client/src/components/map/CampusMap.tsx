@@ -56,16 +56,16 @@ interface TileToggleProps {
 function TileToggle({ mode, onToggle }: TileToggleProps) {
   return (
     <div
-      className="absolute top-16 sm:top-4 right-3 sm:right-4 z-[1000] flex overflow-hidden rounded-xl shadow-2xl"
+      className="absolute bottom-40 right-3 sm:right-4 z-[1000]"
       style={{ zIndex: 1000 }}
     >
       <button
         onClick={onToggle}
-        className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold transition-all cursor-pointer ${
+        className={`flex items-center gap-1.5 px-2.5 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-2xl backdrop-blur-md active:scale-95 ${
           mode === "street"
             ? "bg-[#0B132B]/95 text-white border border-slate-700 hover:bg-slate-800 hover:border-cyan-400"
             : "bg-white/95 text-slate-900 border border-gray-300 hover:bg-gray-100 hover:border-blue-500"
-        } backdrop-blur-md shadow-lg active:scale-95`}
+        }`}
         title={mode === "street" ? "Switch to Satellite View" : "Switch to Street View"}
       >
         {mode === "street" ? (
@@ -83,6 +83,7 @@ function TileToggle({ mode, onToggle }: TileToggleProps) {
     </div>
   );
 }
+
 
 // ── Floating GPS & Map Navigation Controls ────────────────────────────────────
 interface MapControlsProps {
