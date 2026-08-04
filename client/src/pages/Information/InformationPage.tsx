@@ -47,20 +47,20 @@ const PORTALS_AND_SERVICES = [
 
 export function InformationPage() {
   return (
-    <div className="min-h-screen w-full bg-[#080E1E] text-slate-100 px-4 py-6 sm:px-6 lg:px-8 space-y-6 max-w-3xl mx-auto pb-24">
+    <div className="min-h-screen w-full bg-slate-50 dark:bg-[#080E1E] text-slate-900 dark:text-slate-100 px-4 py-6 sm:px-6 lg:px-8 space-y-6 max-w-3xl mx-auto pb-24 transition-colors">
       {/* Header */}
       <div className="text-center space-y-1">
-        <h1 className="font-display text-xl font-bold tracking-wide text-slate-100">
+        <h1 className="font-display text-xl font-bold tracking-wide text-slate-900 dark:text-slate-100">
           AASTU Campus Information
         </h1>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           Official portals, centers of excellence, and campus channels
         </p>
       </div>
 
       {/* 1. University Social Media & Channels */}
-      <div className="rounded-2xl border border-slate-800/90 bg-[#0B132B]/90 p-5 backdrop-blur-md space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800/90 bg-white/90 dark:bg-[#0B132B]/90 p-5 backdrop-blur-md space-y-4 shadow-sm dark:shadow-md transition-colors">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-cyan-400 flex items-center gap-2">
           <span>University Social Media & Channels</span>
         </h2>
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
@@ -72,7 +72,7 @@ export function InformationPage() {
                 href={ch.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2.5 rounded-xl border border-slate-700/60 bg-[#131F3F]/70 px-3 py-2.5 text-xs font-medium text-slate-200 transition-all hover:bg-[#1A2952] hover:border-cyan-500/50"
+                className="flex items-center gap-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-[#131F3F]/70 px-3 py-2.5 text-xs font-medium text-slate-700 dark:text-slate-200 transition-all hover:bg-slate-100 dark:hover:bg-[#1A2952] hover:border-blue-400 dark:hover:border-cyan-500/50"
               >
                 <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${ch.color}`}>
                   <Icon className="h-4 w-4" />
@@ -85,8 +85,8 @@ export function InformationPage() {
       </div>
 
       {/* 2. Centers of Excellence */}
-      <div className="rounded-2xl border border-slate-800/90 bg-[#0B132B]/90 p-5 backdrop-blur-md space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800/90 bg-white/90 dark:bg-[#0B132B]/90 p-5 backdrop-blur-md space-y-4 shadow-sm dark:shadow-md transition-colors">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-cyan-400">
           Centers of Excellence
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -95,14 +95,14 @@ export function InformationPage() {
             return (
               <div
                 key={idx}
-                className="flex items-start gap-3 rounded-xl border border-slate-700/50 bg-[#131F3F]/60 p-3"
+                className="flex items-start gap-3 rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-[#131F3F]/60 p-3"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-400 mt-0.5">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 mt-0.5">
                   <Icon className="h-4.5 w-4.5" />
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-slate-100">{center.name}</h3>
-                  <p className="text-[11px] text-slate-400 leading-snug mt-0.5">{center.desc}</p>
+                  <h3 className="text-xs font-bold text-slate-900 dark:text-slate-100">{center.name}</h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug mt-0.5">{center.desc}</p>
                 </div>
               </div>
             );
@@ -111,8 +111,8 @@ export function InformationPage() {
       </div>
 
       {/* 3. Faculty Portals & Services */}
-      <div className="rounded-2xl border border-slate-800/90 bg-[#0B132B]/90 p-5 backdrop-blur-md space-y-4">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800/90 bg-white/90 dark:bg-[#0B132B]/90 p-5 backdrop-blur-md space-y-4 shadow-sm dark:shadow-md transition-colors">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-cyan-400">
           Faculty Portals & Services
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -122,9 +122,9 @@ export function InformationPage() {
               <Link
                 key={idx}
                 to={portal.path}
-                className="flex items-center gap-3 rounded-xl border border-slate-700/60 bg-[#131F3F]/80 px-4 py-3 text-xs font-semibold text-slate-200 transition-all hover:bg-[#1A2952] hover:border-cyan-500/50"
+                className="flex items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700/60 bg-slate-50 dark:bg-[#131F3F]/80 px-4 py-3 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-all hover:bg-slate-100 dark:hover:bg-[#1A2952] hover:border-blue-400 dark:hover:border-cyan-500/50"
               >
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/15 text-blue-600 dark:text-blue-400">
                   <Icon className="h-4 w-4" />
                 </div>
                 <span>{portal.label}</span>
@@ -135,21 +135,22 @@ export function InformationPage() {
       </div>
 
       {/* 4. Key Contacts */}
-      <div className="rounded-2xl border border-slate-800/90 bg-[#0B132B]/90 p-5 backdrop-blur-md space-y-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-cyan-400">
+      <div className="rounded-2xl border border-slate-200 dark:border-slate-800/90 bg-white/90 dark:bg-[#0B132B]/90 p-5 backdrop-blur-md space-y-3 shadow-sm dark:shadow-md transition-colors">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-blue-600 dark:text-cyan-400">
           Key Contacts
         </h2>
         <div className="space-y-2 text-xs">
-          <div className="flex items-center gap-3 text-slate-300">
-            <Phone className="h-4 w-4 text-emerald-400 shrink-0" />
-            <span>Main Reception: <strong className="text-white">+251 11 888 0000</strong></span>
+          <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
+            <Phone className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            <span>Main Reception: <strong className="text-slate-900 dark:text-white">+251 11 888 0000</strong></span>
           </div>
-          <div className="flex items-center gap-3 text-slate-300">
-            <Mail className="h-4 w-4 text-cyan-400 shrink-0" />
-            <span>Admissions: <a href="mailto:admissions@aastu.edu.et" className="text-cyan-400 underline">admissions@aastu.edu.et</a></span>
+          <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
+            <Mail className="h-4 w-4 text-blue-600 dark:text-cyan-400 shrink-0" />
+            <span>Admissions: <a href="mailto:admissions@aastu.edu.et" className="text-blue-600 dark:text-cyan-400 underline">admissions@aastu.edu.et</a></span>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
