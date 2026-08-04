@@ -16,7 +16,14 @@ export function HomePage() {
   const [landmarkResults, setLandmarkResults] = useState<Landmark[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [centerTarget, setCenterTarget] = useState<{ lat: number; lng: number; zoom?: number } | null>(null);
+
+  // Use a stable ref for startOutdoorNavigation to avoid it being a dep that
+  // causes re-renders, which would otherwise create an infinite loop.
+  const startNavRef = useRef(startOutdoorNavigation);
+  useEffect(() => { startNavRef.current = startOutdoorNavigation; });
+
+  // Track the last processed state key so we only fire once per navigation
+  const consumedStateRef = useRef<string | null>(null);
 
   // ── Handle incoming chatbot navigation/map actions via route state ──────────
   useEffect(() => {
@@ -33,6 +40,11 @@ export function HomePage() {
 
     if (!state?.chatAction || !state.payload) return;
 
+    // Build a unique key for this state so we don't process it twice
+    const stateKey = `${state.chatAction}_${state.payload.latitude}_${state.payload.longitude}`;
+    if (consumedStateRef.current === stateKey) return;
+    consumedStateRef.current = stateKey;
+
     if (state.chatAction === "START_NAVIGATION" && state.payload.latitude && state.payload.longitude) {
       const target: DestinationTarget = {
         id: state.payload.officeId || state.payload.buildingId || "chat-nav",
@@ -46,24 +58,26 @@ export function HomePage() {
         buildingName: state.payload.name,
         officeId: state.payload.officeId,
       };
-      startOutdoorNavigation(target);
+      // Use the ref to avoid stale closure / dep array issues
+      startNavRef.current(target);
     }
 
     if (state.chatAction === "CENTER_MAP" && state.payload.latitude && state.payload.longitude) {
-      setCenterTarget({ lat: state.payload.latitude, lng: state.payload.longitude, zoom: 19 });
+      // Small delay so MapViewController is mounted and listening
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent("aastu_center_building", {
+            detail: { lat: state.payload!.latitude, lng: state.payload!.longitude, zoom: 19 },
+          })
+        );
+      }, 300);
     }
 
-    // Clear consumed state so back-nav doesn't retrigger
+    // Clear route state so back-navigation doesn't retrigger
     window.history.replaceState({}, "");
-  }, [location.state, startOutdoorNavigation]);
-
-  // Dispatch map center event when centerTarget is set
-  useEffect(() => {
-    if (!centerTarget) return;
-    window.dispatchEvent(new CustomEvent("aastu_center_building", { detail: centerTarget }));
-    setCenterTarget(null);
-  }, [centerTarget]);
-
+  // Only run when location.state actually changes — do NOT include startOutdoorNavigation
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
 
   // Live search effect on query change
