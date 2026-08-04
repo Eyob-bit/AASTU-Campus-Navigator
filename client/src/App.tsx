@@ -32,6 +32,7 @@ import { SettingsPage } from "@/pages/admin/Settings/SettingsPage";
 import { ProfilePage } from "@/pages/admin/Profile/ProfilePage";
 import { LandmarksPage } from "@/pages/admin/Landmarks/LandmarksPage";
 import { RoadNetworkPage } from "@/pages/admin/RoadNetwork/RoadNetworkPage";
+import { InformationContentPage } from "@/pages/admin/InformationContent/InformationContentPage";
 
 export default function App() {
   return (
@@ -82,6 +83,7 @@ export default function App() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="landmarks" element={<LandmarksPage />} />
+        <Route path="info-content" element={<InformationContentPage />} />
       </Route>
 
       {/* ── Fallback ── */}

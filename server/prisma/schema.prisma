@@ -328,3 +328,46 @@ model ChatLog {
   @@index([hasMatch])
 }
 
+// ── Information Page Content (admin-editable) ──────────────────────────────
+
+model InfoChannel {
+  id          String   @id @default(cuid())
+  label       String
+  url         String
+  platform    String   @default("telegram")  // telegram | facebook | youtube | tiktok | website
+  colorClass  String   @default("text-sky-400 bg-sky-500/10")
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
+
+model InfoContact {
+  id        String   @id @default(cuid())
+  type      String   @default("phone")  // phone | email
+  label     String
+  value     String
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model InfoLink {
+  id        String   @id @default(cuid())
+  label     String
+  url       String
+  iconName  String   @default("Link")  // Lucide icon name
+  isActive  Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+  @@index([sortOrder])
+}
