@@ -4,7 +4,7 @@ import {
   Sparkles, Send, Bot, User, Compass, MapPin, Eye, RotateCcw,
   Building2, UserCheck, Layers, ChevronRight,
 } from "lucide-react";
-import { useCampusChat, triggerAppAction } from "@/hooks/useCampusChat";
+import { useCampusChat } from "@/hooks/useCampusChat";
 import { cn } from "@/utils/cn";
 
 export function ChatbotPage() {

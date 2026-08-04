@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Search, User, DoorOpen, Loader2, Navigation2 } from "lucide-react";
+import { Search, User, DoorOpen, Loader2, Navigation2, Building2 } from "lucide-react";
 import { CampusMap } from "@/components/map";
 import { searchApi } from "@/api/search.api";
 import { useAppStore } from "@/store";
@@ -308,7 +308,7 @@ export function HomePage() {
                             {landmark.name}
                           </p>
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
-                            {landmark.type} {landmark.building ? `· ${landmark.building.name}` : ""}
+                            {landmark.category} {landmark.building ? `· ${landmark.building.name}` : ""}
                           </p>
                         </div>
                       </div>

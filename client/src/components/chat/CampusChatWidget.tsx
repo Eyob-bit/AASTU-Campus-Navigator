@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import {
   Sparkles, X, Send, Bot, User, Compass, MapPin, Eye, RotateCcw,
-  Building2, UserCheck, Layers, ChevronRight, MessageSquareText,
+  Building2, UserCheck, Layers, ChevronRight,
 } from "lucide-react";
 import { useCampusChat, triggerAppAction } from "@/hooks/useCampusChat";
 import { cn } from "@/utils/cn";
