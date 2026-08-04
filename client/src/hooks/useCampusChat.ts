@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { chatApi, type ChatResponsePayload } from "@/api/chat.api";
 
 export interface ChatMessage {

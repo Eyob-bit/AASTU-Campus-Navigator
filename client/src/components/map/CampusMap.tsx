@@ -175,6 +175,8 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
       }>;
       if (customEvent.detail && customEvent.detail.latitude && customEvent.detail.longitude) {
         startOutdoorNavigation({
+          id: customEvent.detail.officeId || customEvent.detail.buildingId || "custom-target",
+          type: customEvent.detail.officeId ? "OFFICE" : "BUILDING",
           name: customEvent.detail.name || "Destination",
           latitude: customEvent.detail.latitude,
           longitude: customEvent.detail.longitude,
