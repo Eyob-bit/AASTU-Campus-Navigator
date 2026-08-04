@@ -1,7 +1,5 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { AppHeader, AppBottomNav } from "@/components/common";
-import { CampusChatWidget } from "@/components/chat/CampusChatWidget";
-
 export function MainLayout() {
   const location = useLocation();
   const isHomePage = location.pathname === "/";
@@ -13,7 +11,6 @@ export function MainLayout() {
         <Outlet />
       </main>
       <AppBottomNav />
-      <CampusChatWidget />
     </div>
   );
 }

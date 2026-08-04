@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Sidebar, AdminHeader } from "@/components/layout";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
-import { CampusChatWidget } from "@/components/chat/CampusChatWidget";
 
 export function AdminLayout() {
   const [collapsed, setCollapsed]       = useState(false);
@@ -54,7 +53,6 @@ export function AdminLayout() {
           <Outlet />
         </main>
       </div>
-      <CampusChatWidget />
     </div>
   );
 }
