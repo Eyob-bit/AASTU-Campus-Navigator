@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, RotateCcw, Loader2, AlertTriangle, Layers, DoorOpen, Building, User } from "lucide-react";
+import { ArrowLeft, RotateCcw, Loader2, AlertTriangle, DoorOpen, Building, User } from "lucide-react";
 import { useScenePreview } from "@/hooks/useScenePreview";
 import { ScenePreviewViewer } from "@/pages/admin/NavigationPreview/ScenePreviewViewer";
 import { DestinationReachedModal } from "@/components/navigation";
@@ -17,9 +17,6 @@ export function PublicPanoramaPage({ overrideSceneId }: PublicPanoramaPageProps 
   const navigate = useNavigate();
   const { navStep, destinationTarget } = useAppStore();
 
-  const [selectedFloor, setSelectedFloor] = useState<number>(
-    destinationTarget?.floorNumber ?? 1
-  );
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const {
@@ -75,7 +72,6 @@ export function PublicPanoramaPage({ overrideSceneId }: PublicPanoramaPageProps 
     );
   }
 
-  const floorsList = [0, 1, 2, 3];
 
   return (
     <div className="fixed inset-0 bg-gray-950 overflow-hidden">
@@ -137,31 +133,6 @@ export function PublicPanoramaPage({ overrideSceneId }: PublicPanoramaPageProps 
         </span>
       )}
 
-      {/* Top-Right Floor Switcher Control Bar */}
-      <div className="absolute top-4 right-4 z-50 flex items-center gap-1.5 bg-[#0B132B]/95 p-1.5 rounded-2xl border border-cyan-500/40 shadow-2xl backdrop-blur-xl">
-        <span className="flex items-center gap-1 text-[10px] font-bold text-cyan-400 uppercase tracking-wider px-2">
-          <Layers size={13} />
-          <span>Floor</span>
-        </span>
-        <div className="flex items-center gap-1">
-          {floorsList.map((fNum) => {
-            const isActive = selectedFloor === fNum;
-            return (
-              <button
-                key={fNum}
-                onClick={() => setSelectedFloor(fNum)}
-                className={`px-2.5 py-1 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/30"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800"
-                }`}
-              >
-                {fNum === 0 ? "G" : `F${fNum}`}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Target Office Details Overlay Badge (when navigated to an office/staff) */}
       {destinationTarget && (
@@ -186,7 +157,7 @@ export function PublicPanoramaPage({ overrideSceneId }: PublicPanoramaPageProps 
                 <span className="text-slate-400">Room:</span>
                 <strong className="text-cyan-300">{destinationTarget.roomNumber}</strong>
                 <span>·</span>
-                <span>Floor {destinationTarget.floorNumber ?? selectedFloor}</span>
+              <span>Floor {destinationTarget.floorNumber ?? ""}</span>
               </p>
             )}
             {destinationTarget.buildingName && (

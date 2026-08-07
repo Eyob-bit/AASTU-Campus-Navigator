@@ -31,10 +31,16 @@ export function ScenePreviewViewer({
     let isMounted = true;
     containerRef.current.innerHTML = "";
 
+    // Detect mobile to use smaller tile size (avoids GPU memory exhaustion)
+    const isMobile = window.innerWidth < 768 || navigator.maxTouchPoints > 0;
+
     try {
       const viewer = new Viewer(containerRef.current);
-      const source = ImageUrlSource.fromString(imageUrl);
-      const geometry = new EquirectGeometry([{ tileSize: 1024, size: 4096 }]);
+      // crossOrigin: 'anonymous' is required for Cloudinary (cross-origin) images in WebGL
+      const source = ImageUrlSource.fromString(imageUrl, { crossOrigin: 'anonymous' } as any);
+      const tileSize = isMobile ? 512 : 1024;
+      const size = isMobile ? 2048 : 4096;
+      const geometry = new EquirectGeometry([{ tileSize, size }]);
       const view = new RectilinearView({ yaw: 0, pitch: 0, fov: 1.2 });
       const scene = viewer.createScene({ source, geometry, view });
       scene.switchTo();
