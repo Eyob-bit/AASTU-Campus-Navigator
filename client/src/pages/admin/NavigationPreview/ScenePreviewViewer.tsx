@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import { EquirectGeometry, ImageUrlSource, RectilinearView, Viewer } from "marzipano";
-import { Info, DoorOpen, Eye, Compass } from "lucide-react";
+import { Info, DoorOpen, Eye, Compass, Loader2 } from "lucide-react";
 import type { SceneElement } from "@/types";
 import { NeonChevronArrow, getNeonChevronArrowHtml } from "@/components/common";
 
@@ -24,9 +24,59 @@ export function ScenePreviewViewer({
   const [marzipanoError, setMarzipanoError] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<{ element: SceneElement; x: number; y: number } | null>(null);
 
+  // Resolved URL — cross-origin Cloudinary URLs are converted to blob URLs
+  // so WebGL can use them as textures without CORS restrictions.
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+
+  useEffect(() => {
+    if (!imageUrl) {
+      setResolvedImageUrl(null);
+      return;
+    }
+
+    const isExternal = imageUrl.startsWith("http://") || imageUrl.startsWith("https://");
+
+    if (!isExternal) {
+      // Same-origin path — no CORS issue, use directly
+      setResolvedImageUrl(imageUrl);
+      return;
+    }
+
+    // Cross-origin (Cloudinary) — fetch as blob so WebGL can use it as a texture
+    let blobUrl: string | null = null;
+    let cancelled = false;
+    setImageLoading(true);
+    setResolvedImageUrl(null);
+
+    fetch(imageUrl, { mode: "cors", cache: "force-cache" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Image fetch failed");
+        return res.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        blobUrl = URL.createObjectURL(blob);
+        setResolvedImageUrl(blobUrl);
+      })
+      .catch(() => {
+        // Fallback: use direct URL (may still work on some browsers)
+        if (!cancelled) setResolvedImageUrl(imageUrl);
+      })
+      .finally(() => {
+        if (!cancelled) setImageLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+      setImageLoading(false);
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [imageUrl]);
+
   // Initialize Marzipano 360° Viewer and mount 3D spherical hotspots
   useEffect(() => {
-    if (!use3D || !containerRef.current || !imageUrl) return;
+    if (!use3D || !containerRef.current || !resolvedImageUrl) return;
 
     let isMounted = true;
     containerRef.current.innerHTML = "";
@@ -36,9 +86,8 @@ export function ScenePreviewViewer({
 
     try {
       const viewer = new Viewer(containerRef.current);
-      // crossOrigin: 'anonymous' is required for Cloudinary (cross-origin) images in WebGL
-      // @ts-ignore - Marzipano types don't declare the second options arg, but it works at runtime
-      const source = ImageUrlSource.fromString(imageUrl, { crossOrigin: 'anonymous' });
+      // resolvedImageUrl is a same-origin blob URL — no WebGL CORS issues
+      const source = ImageUrlSource.fromString(resolvedImageUrl);
       const tileSize = isMobile ? 512 : 1024;
       const size = isMobile ? 2048 : 4096;
       const geometry = new EquirectGeometry([{ tileSize, size }]);
@@ -130,7 +179,7 @@ export function ScenePreviewViewer({
         containerRef.current.innerHTML = "";
       }
     };
-  }, [imageUrl, use3D, elements, onArrowClick]);
+  }, [resolvedImageUrl, use3D, elements, onArrowClick]);
 
   // Close tooltip on outside click
   useEffect(() => {
@@ -177,6 +226,14 @@ export function ScenePreviewViewer({
         </div>
       )}
 
+      {/* Loading overlay when preparing cross-origin image blob */}
+      {imageLoading && (
+        <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-gray-950/80 backdrop-blur-sm text-cyan-400">
+          <Loader2 size={32} className="animate-spin mb-2" />
+          <span className="text-xs font-medium text-slate-300">Loading 360° texture…</span>
+        </div>
+      )}
+
       {/* Mode 1: 360° Spherical View with Smooth Zoom-Forward Crossfade Transition */}
       {use3D ? (
         <div className="relative w-full h-full">
@@ -207,7 +264,7 @@ export function ScenePreviewViewer({
             className="relative w-full max-h-full overflow-hidden rounded-xl border border-gray-800"
             style={{
               aspectRatio: "2 / 1",
-              backgroundImage: `url(${imageUrl})`,
+              backgroundImage: `url(${resolvedImageUrl || imageUrl})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
               backgroundRepeat: "no-repeat",
