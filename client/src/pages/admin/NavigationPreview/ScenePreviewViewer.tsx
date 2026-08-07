@@ -37,7 +37,8 @@ export function ScenePreviewViewer({
     try {
       const viewer = new Viewer(containerRef.current);
       // crossOrigin: 'anonymous' is required for Cloudinary (cross-origin) images in WebGL
-      const source = ImageUrlSource.fromString(imageUrl, { crossOrigin: 'anonymous' } as any);
+      // @ts-ignore - Marzipano types don't declare the second options arg, but it works at runtime
+      const source = ImageUrlSource.fromString(imageUrl, { crossOrigin: 'anonymous' });
       const tileSize = isMobile ? 512 : 1024;
       const size = isMobile ? 2048 : 4096;
       const geometry = new EquirectGeometry([{ tileSize, size }]);
