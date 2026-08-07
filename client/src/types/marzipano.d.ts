@@ -15,7 +15,7 @@ declare module "marzipano" {
   }
 
   export class EquirectGeometry {
-    constructor(levels: Array<{ tileSize: number; size: number }>);
+    constructor(levels: Array<{ width: number } | { tileSize: number; size: number }>);
   }
 
   export class RectilinearView {

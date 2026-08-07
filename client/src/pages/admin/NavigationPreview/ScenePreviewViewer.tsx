@@ -88,9 +88,8 @@ export function ScenePreviewViewer({
       const viewer = new Viewer(containerRef.current);
       // resolvedImageUrl is a same-origin blob URL — no WebGL CORS issues
       const source = ImageUrlSource.fromString(resolvedImageUrl);
-      const tileSize = isMobile ? 512 : 1024;
-      const size = isMobile ? 2048 : 4096;
-      const geometry = new EquirectGeometry([{ tileSize, size }]);
+      const width = isMobile ? 2048 : 4096;
+      const geometry = new EquirectGeometry([{ width }]);
       const view = new RectilinearView({ yaw: 0, pitch: 0, fov: 1.2 });
       const scene = viewer.createScene({ source, geometry, view });
       scene.switchTo();

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   EquirectGeometry,
   ImageUrlSource,
@@ -40,8 +40,45 @@ export function PanoramaViewer({
     navigation?.entryScene.imagePath
   );
 
+  const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!containerRef.current || !activeImageUrl) {
+    if (!activeImageUrl) {
+      setResolvedImageUrl(null);
+      return;
+    }
+
+    const isExternal = activeImageUrl.startsWith("http://") || activeImageUrl.startsWith("https://");
+    if (!isExternal) {
+      setResolvedImageUrl(activeImageUrl);
+      return;
+    }
+
+    let blobUrl: string | null = null;
+    let cancelled = false;
+
+    fetch(activeImageUrl, { mode: "cors", cache: "force-cache" })
+      .then((res) => {
+        if (!res.ok) throw new Error("Image fetch failed");
+        return res.blob();
+      })
+      .then((blob) => {
+        if (cancelled) return;
+        blobUrl = URL.createObjectURL(blob);
+        setResolvedImageUrl(blobUrl);
+      })
+      .catch(() => {
+        if (!cancelled) setResolvedImageUrl(activeImageUrl);
+      });
+
+    return () => {
+      cancelled = true;
+      if (blobUrl) URL.revokeObjectURL(blobUrl);
+    };
+  }, [activeImageUrl]);
+
+  useEffect(() => {
+    if (!containerRef.current || !resolvedImageUrl) {
       return;
     }
 
@@ -51,9 +88,12 @@ export function PanoramaViewer({
       viewerRef.current = null;
     }
 
+    const isMobile = window.innerWidth < 768 || navigator.maxTouchPoints > 0;
+    const width = isMobile ? 2048 : 4096;
+
     const viewer = new Viewer(containerRef.current);
-    const source = ImageUrlSource.fromString(activeImageUrl);
-    const geometry = new EquirectGeometry([{ tileSize: 1024, size: 4096 }]);
+    const source = ImageUrlSource.fromString(resolvedImageUrl);
+    const geometry = new EquirectGeometry([{ width }]);
     const view = new RectilinearView({ yaw: 0, pitch: 0, fov: 1.2 });
     const scene = viewer.createScene({ source, geometry, view });
 
@@ -65,7 +105,7 @@ export function PanoramaViewer({
       viewer.destroy();
       viewerRef.current = null;
     };
-  }, [activeImageUrl]);
+  }, [resolvedImageUrl]);
 
   const totalSteps = path.length > 0 ? path.length : 1;
   const isFinalStep = currentStepIndex >= totalSteps - 1;
