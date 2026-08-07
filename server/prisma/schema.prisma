@@ -144,9 +144,10 @@ model PanoramaScene {
   id           String @id @default(cuid())
   key          String @unique
   name         String
-  imagePath    String
-  imageFilename String?
-  displayOrder Int    @default(0)
+  imagePath          String
+  imageFilename      String?
+  cloudinaryPublicId String?
+  displayOrder       Int      @default(0)
   isEntryScene Boolean @default(false)
 
   floorId String

@@ -2,6 +2,7 @@ import { SceneRepository } from "../repositories/scene.repository.js";
 import { FloorRepository } from "../repositories/floor.repository.js";
 import { ApiError } from "../utils/ApiError.js";
 import { deleteFile } from "../utils/file.util.js";
+import cloudinary from "../config/cloudinary.js";
 import path from "path";
 
 export class SceneService {
@@ -42,6 +43,7 @@ export class SceneService {
         },
         file: Express.Multer.File
     ) {
+        console.log("UPLOADED FILE:", file);
         const floor = await this.floorRepository.findById(floorId);
         if (!floor) {
             throw new ApiError(404, "Floor not found");
@@ -75,14 +77,16 @@ export class SceneService {
             oldEntrySceneId = entryScene.id;
         }
 
+        const imagePath = file.path;
+        const cloudinaryPublicId = file.filename;
         const imageFilename = file.filename;
-        const imagePath = `uploads/panoramas/${imageFilename}`;
 
         return this.repository.createSceneWithEntrySwitch(
             {
                 ...data,
                 imageFilename,
                 imagePath,
+                cloudinaryPublicId,
                 isEntryScene,
                 floorId,
             },
@@ -149,10 +153,12 @@ export class SceneService {
 
         let imagePath = scene.imagePath;
         let imageFilename = scene.imageFilename;
+        let cloudinaryPublicId = scene.cloudinaryPublicId;
 
         if (file) {
+            imagePath = file.path;
+            cloudinaryPublicId = file.filename;
             imageFilename = file.filename;
-            imagePath = `uploads/panoramas/${imageFilename}`;
         }
 
         const updatedScene = await this.repository.updateSceneWithEntrySwitch(
@@ -161,13 +167,18 @@ export class SceneService {
                 ...data,
                 imagePath,
                 imageFilename,
+                cloudinaryPublicId,
             },
             oldEntrySceneId
         );
 
         // Delete old image only after the database has successfully updated
         if (file) {
-            if (scene.imageFilename) {
+            if (scene.cloudinaryPublicId) {
+                await cloudinary.uploader.destroy(scene.cloudinaryPublicId).catch((err) =>
+                    console.error("Failed to delete old image from Cloudinary:", err)
+                );
+            } else if (scene.imageFilename) {
                 await deleteFile(path.join("uploads", "panoramas", scene.imageFilename)).catch((err) =>
                     console.error("Failed to delete old image after database update:", err)
                 );
@@ -194,11 +205,15 @@ export class SceneService {
             );
         }
 
-        // Delete physical file
-        if (scene.imageFilename) {
-            await deleteFile(path.join("uploads", "panoramas", scene.imageFilename));
+        // Delete image from Cloudinary or local disk
+        if (scene.cloudinaryPublicId) {
+            await cloudinary.uploader.destroy(scene.cloudinaryPublicId).catch((err) =>
+                console.error("Failed to delete image from Cloudinary:", err)
+            );
+        } else if (scene.imageFilename) {
+            await deleteFile(path.join("uploads", "panoramas", scene.imageFilename)).catch(() => {});
         } else if (scene.imagePath) {
-            await deleteFile(scene.imagePath);
+            await deleteFile(scene.imagePath).catch(() => {});
         }
 
         return this.repository.delete(id);

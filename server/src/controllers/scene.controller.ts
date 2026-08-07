@@ -3,6 +3,7 @@ import { SceneService } from "../services/scene.service.js";
 import { sendSuccess } from "../utils/response.js";
 import { ApiError } from "../utils/ApiError.js";
 import { deleteFile } from "../utils/file.util.js";
+import cloudinary from "../config/cloudinary.js";
 
 const sceneService = new SceneService();
 
@@ -73,6 +74,7 @@ export class SceneController {
             if (!req.file) {
                 throw new ApiError(400, "A scene must have one panorama image.");
             }
+            console.log("UPLOADED FILE IN CONTROLLER:", req.file);
 
             const scene = await sceneService.createScene(
                 req.params.floorId,
@@ -88,9 +90,15 @@ export class SceneController {
             );
         } catch (error) {
             if (req.file) {
-                deleteFile(req.file.path).catch((err) =>
-                    console.error("Failed to delete file after creation error:", err)
-                );
+                if (req.file.filename) {
+                    cloudinary.uploader.destroy(req.file.filename).catch((err) =>
+                        console.error("Failed to delete Cloudinary file after creation error:", err)
+                    );
+                } else if (req.file.path) {
+                    deleteFile(req.file.path).catch((err) =>
+                        console.error("Failed to delete file after creation error:", err)
+                    );
+                }
             }
             next(error);
         }
@@ -115,9 +123,15 @@ export class SceneController {
             );
         } catch (error) {
             if (req.file) {
-                deleteFile(req.file.path).catch((err) =>
-                    console.error("Failed to delete file after update error:", err)
-                );
+                if (req.file.filename) {
+                    cloudinary.uploader.destroy(req.file.filename).catch((err) =>
+                        console.error("Failed to delete Cloudinary file after update error:", err)
+                    );
+                } else if (req.file.path) {
+                    deleteFile(req.file.path).catch((err) =>
+                        console.error("Failed to delete file after update error:", err)
+                    );
+                }
             }
             next(error);
         }

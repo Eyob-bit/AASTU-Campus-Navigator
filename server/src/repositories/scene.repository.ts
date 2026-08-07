@@ -102,6 +102,7 @@ export class SceneRepository {
         key: string;
         imagePath: string;
         imageFilename?: string | null;
+        cloudinaryPublicId?: string | null;
         displayOrder?: number;
         isEntryScene?: boolean;
         floorId: string;
@@ -112,6 +113,7 @@ export class SceneRepository {
                 key: data.key,
                 imagePath: data.imagePath,
                 imageFilename: data.imageFilename,
+                cloudinaryPublicId: data.cloudinaryPublicId,
                 displayOrder: data.displayOrder ?? 0,
                 isEntryScene: data.isEntryScene ?? false,
                 floorId: data.floorId,
@@ -125,6 +127,7 @@ export class SceneRepository {
             key: string;
             imagePath: string;
             imageFilename?: string | null;
+            cloudinaryPublicId?: string | null;
             displayOrder?: number;
             isEntryScene?: boolean;
             floorId: string;
@@ -146,6 +149,7 @@ export class SceneRepository {
                     key: data.key,
                     imagePath: data.imagePath,
                     imageFilename: data.imageFilename,
+                    cloudinaryPublicId: data.cloudinaryPublicId,
                     displayOrder: data.displayOrder ?? 0,
                     isEntryScene: data.isEntryScene ?? false,
                     floorId: data.floorId,
@@ -161,6 +165,7 @@ export class SceneRepository {
             key?: string;
             imagePath?: string;
             imageFilename?: string | null;
+            cloudinaryPublicId?: string | null;
             displayOrder?: number;
             isEntryScene?: boolean;
         }
@@ -180,6 +185,7 @@ export class SceneRepository {
             key?: string;
             imagePath?: string;
             imageFilename?: string | null;
+            cloudinaryPublicId?: string | null;
             displayOrder?: number;
             isEntryScene?: boolean;
         },
