@@ -176,7 +176,9 @@ export function EditorPanorama360Viewer({
         if (e.stopImmediatePropagation) e.stopImmediatePropagation();
       };
       wrapper.addEventListener("pointerdown", stopProp);
+      wrapper.addEventListener("mousedown",   stopProp);
       wrapper.addEventListener("touchstart",  stopProp);
+      wrapper.addEventListener("click",       stopProp);   // ← prevent click from reaching handleContainerClick
 
       if (isDraft) {
         // Ghost pulsing marker for element being placed
