@@ -497,7 +497,7 @@ export function SceneEditorPage() {
                     imageUrl={imageUrl}
                     isPlacingElement={!!activeTool}
                     onClick={handleViewerClick}
-                    onBgMouseDown={handleViewerBgMouseDown}
+                    onBgClick={handleViewerBgMouseDown}
                     elements={elements}
                     selectedElementId={selectedElementId}
                     draft={draft}
