@@ -8,7 +8,7 @@ import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { useBuildings } from "@/hooks/useBuildings";
 import { useLandmarks } from "@/hooks/useLandmarks";
 import { useAppStore } from "@/store";
-import { useOutdoorRoute } from "@/hooks";
+import { useOutdoorRoute, useLiveNavigation } from "@/hooks";
 import { OutdoorNavOverlay, ArrivalBottomSheet, BuildingTransitionOverlay, IndoorGuidanceCard } from "@/components/navigation";
 
 import { BuildingMarker } from "./BuildingMarker";
@@ -126,11 +126,10 @@ function MapViewController({
     return () => window.removeEventListener("aastu_center_building", handleCenterBuilding);
   }, [map]);
 
-  // Smooth camera following during active outdoor navigation
+  // Fast camera following during active outdoor navigation
   useEffect(() => {
-
     if (navStep === "OUTDOOR_NAV" && userLocation) {
-      map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.8 });
+      map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.25 });
     }
   }, [navStep, userLocation, map]);
 
@@ -156,6 +155,15 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     activeRoute,
     startOutdoorNavigation,
   } = useAppStore();
+
+  // Continuous high-accuracy live GPS tracking
+  const { userPosition } = useLiveNavigation({ enabled: true });
+
+  useEffect(() => {
+    if (userPosition) {
+      setUserLocation({ lat: userPosition.latitude, lng: userPosition.longitude });
+    }
+  }, [userPosition, setUserLocation]);
 
   // Fetch A* route from server; handles auto-rerouting on position change
   useOutdoorRoute();
@@ -321,10 +329,22 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         tileMode={tileMode}
         onToggleTile={() => setTileMode((m) => m === "street" ? "satellite" : "street")}
         onCenterLocation={() => {
-          if (!userLocation) {
-            setUserLocation({ lat: 8.88218, lng: 38.79665 });
+          if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+                setShouldCenterLocation(true);
+              },
+              () => {
+                if (!userLocation) setUserLocation({ lat: 8.88218, lng: 38.79665 });
+                setShouldCenterLocation(true);
+              },
+              { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+          } else {
+            if (!userLocation) setUserLocation({ lat: 8.88218, lng: 38.79665 });
+            setShouldCenterLocation(true);
           }
-          setShouldCenterLocation(true);
         }}
       />
 

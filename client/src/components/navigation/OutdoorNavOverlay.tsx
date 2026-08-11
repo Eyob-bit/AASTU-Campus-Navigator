@@ -14,23 +14,11 @@ import {
   ChevronDown,
   ChevronUp,
   Flag,
-  Volume2,
-  VolumeX,
 } from "lucide-react";
 import { useAppStore } from "@/store";
 import { useLiveNavigation, useTurnByTurnNavigation } from "@/hooks";
 import { formatDistance } from "@/utils/geo";
 import type { InstructionType, RouteInstruction } from "@/api/roadNetwork.api";
-
-// ── Voice Guidance helper ──────────────────────────────────────────────────────
-function speakInstruction(text: string) {
-  if (!("speechSynthesis" in window)) return;
-  window.speechSynthesis.cancel(); // Stop any active speech
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 1.0;
-  utterance.pitch = 1.0;
-  window.speechSynthesis.speak(utterance);
-}
 
 // ── Turn Emoji & Icon Visuals ──────────────────────────────────────────────────
 function TurnBadge({ type }: { type: InstructionType }) {
@@ -181,7 +169,6 @@ export function OutdoorNavOverlay() {
 
   const [isRerouting, setIsRerouting] = useState(false);
   const [showSteps, setShowSteps] = useState(false);
-  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
 
   // Dedicated turn-by-turn navigation engine
   const {
@@ -193,13 +180,6 @@ export function OutdoorNavOverlay() {
     progressPercent,
     totalSteps,
   } = useTurnByTurnNavigation();
-
-  // Voice Guidance announcement when instruction changes
-  useEffect(() => {
-    if (isVoiceEnabled && currentInstruction?.text) {
-      speakInstruction(currentInstruction.text);
-    }
-  }, [isVoiceEnabled, currentInstructionIndex, currentInstruction?.text]);
 
   // Ref to detect new route fetches (reroute flash)
   const prevRouteLenRef = useRef<number | undefined>(undefined);
@@ -284,27 +264,6 @@ export function OutdoorNavOverlay() {
             title={showSteps ? "Minimize card" : "Expand navigation details"}
           >
             {showSteps ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
-
-          {/* Voice toggle */}
-          <button
-            onClick={() => {
-              const next = !isVoiceEnabled;
-              setIsVoiceEnabled(next);
-              if (next && currentInstruction?.text) {
-                speakInstruction(currentInstruction.text);
-              } else if (!next && "speechSynthesis" in window) {
-                window.speechSynthesis.cancel();
-              }
-            }}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-all cursor-pointer ${
-              isVoiceEnabled
-                ? "bg-cyan-500 text-white shadow-md shadow-cyan-500/30"
-                : "bg-slate-800/80 text-slate-400 hover:bg-slate-700 hover:text-white"
-            }`}
-            title={isVoiceEnabled ? "Mute Voice" : "Enable Voice"}
-          >
-            {isVoiceEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
           </button>
 
           {/* Cancel */}

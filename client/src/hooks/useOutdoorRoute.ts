@@ -4,11 +4,11 @@ import { useAppStore } from "@/store";
 import { calculateDistanceInMeters } from "@/utils/geo";
 
 // Distance threshold (meters) from last fetch position that triggers a reroute
-const REROUTE_THRESHOLD_METERS = 25;
+const REROUTE_THRESHOLD_METERS = 15;
 // Cross-track distance threshold (meters) from active route polyline that triggers instant reroute
-const OFF_ROUTE_THRESHOLD_METERS = 20;
+const OFF_ROUTE_THRESHOLD_METERS = 12;
 // Minimum milliseconds between consecutive route fetches (debounce)
-const REROUTE_DEBOUNCE_MS = 4000;
+const REROUTE_DEBOUNCE_MS = 2000;
 
 function distanceToSegment(
   pLat: number, pLng: number,

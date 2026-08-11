@@ -99,8 +99,8 @@ export function useLiveNavigation({
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 3000,
+        timeout: 10000,
+        maximumAge: 0,
       }
     );
   }, [targetLat, targetLng, arrivalThresholdMeters, stopTracking]);
