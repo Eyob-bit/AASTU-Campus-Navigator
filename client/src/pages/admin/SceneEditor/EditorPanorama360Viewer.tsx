@@ -6,6 +6,23 @@ import type { SceneElement, SceneElementType } from "@/types";
 import type { DraftElement } from "./ElementPropertyPanel";
 import { cn } from "@/utils/cn";
 
+// ── Coordinate helpers ────────────────────────────────────────────────────────
+// Equirectangular convention:
+//   x ∈ [0,1]:  left→right    ↔  yaw   ∈ [-π, +π]
+//   y ∈ [0,1]:  top→bottom    ↔  pitch ∈ [+π/2, -π/2]  (top = zenith = positive pitch in Marzipano)
+function xyToSpherical(x: number, y: number) {
+  return {
+    yaw:   (x - 0.5) * 2 * Math.PI,
+    pitch: (0.5 - y) * Math.PI,       // ← corrected: top of image = positive pitch (above horizon)
+  };
+}
+function sphericalToXY(yaw: number, pitch: number) {
+  return {
+    x: Math.max(0, Math.min(1, yaw   / (2 * Math.PI) + 0.5)),
+    y: Math.max(0, Math.min(1, 0.5 - pitch / Math.PI)),   // ← corrected inverse
+  };
+}
+
 interface EditorPanorama360ViewerProps {
   imageUrl: string;
   isPlacingElement?: boolean;
@@ -33,7 +50,6 @@ export function EditorPanorama360Viewer({
   const viewerRef    = useRef<Viewer | null>(null);
   const viewRef      = useRef<RectilinearView | null>(null);
   const sceneRef     = useRef<Scene | null>(null);
-  // Store all created Marzipano Hotspot instances so they can be properly destroyed
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const hotspotsRef  = useRef<any[]>([]);
 
@@ -42,9 +58,12 @@ export function EditorPanorama360Viewer({
   const [marzipanoError,   setMarzipanoError]   = useState<string | null>(null);
   const [viewerReady,      setViewerReady]      = useState(0);
 
-  const bgDragOrigin = useRef<{ x: number; y: number } | null>(null);
+  // Set to true in a hotspot's native mousedown so React's synthetic onMouseDown
+  // on the container knows to skip background handling for that event.
+  const hotspotClickedRef = useRef(false);
+  const bgDragOrigin      = useRef<{ x: number; y: number } | null>(null);
 
-  // ── Cross-origin image resolution (Cloudinary → blob URL for WebGL) ─────────
+  // ── Cross-origin image resolution ────────────────────────────────────────────
   useEffect(() => {
     if (!imageUrl) { setResolvedImageUrl(null); return; }
 
@@ -133,23 +152,21 @@ export function EditorPanorama360Viewer({
 
     const hotspotContainer = scene.hotspotContainer();
 
-    // 1. Properly destroy all previously registered Marzipano hotspots
+    // Properly destroy all previously registered Marzipano hotspot instances
     hotspotsRef.current.forEach((hp) => {
       try {
-        if (hp && typeof hp.destroy === "function") {
-          hp.destroy();
-        } else if (hotspotContainer && typeof (hotspotContainer as any).removeHotspot === "function") {
+        if (typeof hp?.destroy === "function") hp.destroy();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        else if (typeof (hotspotContainer as any).removeHotspot === "function")
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (hotspotContainer as any).removeHotspot(hp);
-        }
       } catch (_) {}
     });
     hotspotsRef.current = [];
 
-    // Also remove any remaining DOM elements with data-editor-hotspot attribute
+    // Defensive: clear any stale DOM nodes too
     const hc = containerRef.current?.querySelector(".marzipano-hotspot-container") as HTMLElement | null;
-    if (hc) {
-      hc.querySelectorAll("[data-editor-hotspot]").forEach((n) => n.remove());
-    }
+    if (hc) hc.querySelectorAll("[data-editor-hotspot]").forEach((n) => n.remove());
 
     const renderHotspot = (
       id: string,
@@ -161,8 +178,7 @@ export function EditorPanorama360Viewer({
       isSelected: boolean,
       isDraft: boolean
     ) => {
-      const yaw   = (x - 0.5) * 2 * Math.PI;
-      const pitch = (y - 0.5) * Math.PI;
+      const { yaw, pitch } = xyToSpherical(x, y);
 
       const wrapper = document.createElement("div");
       wrapper.setAttribute("data-editor-hotspot", id);
@@ -242,14 +258,18 @@ export function EditorPanorama360Viewer({
         </div>
       `;
 
-      // ── Interaction: drag to reposition, click to select ────────────────────
       let dragOrigin: { mx: number; my: number } | null = null;
       let isDragging = false;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let hotspotInstance: any = null;
 
       const handleMouseDown = (e: MouseEvent) => {
-        // Stop event from bubbling to container so background click handler doesn't run
+        // Signal React's synthetic onMouseDown on the outer container that this
+        // event originated from a hotspot — it must not start background handling.
+        // Native DOM listeners fire BEFORE React's synthetic event delegation,
+        // so this flag is set before handleBgMouseDown reads it.
+        hotspotClickedRef.current = true;
+
         e.stopPropagation();
         e.preventDefault();
 
@@ -259,14 +279,12 @@ export function EditorPanorama360Viewer({
         const onMouseMove = (me: MouseEvent) => {
           if (!dragOrigin || !containerRef.current || !viewRef.current) return;
           const dist = Math.abs(me.clientX - dragOrigin.mx) + Math.abs(me.clientY - dragOrigin.my);
-          if (dist > 4) {
+          if (dist > 6) {
             isDragging = true;
-            if (hotspotInstance) {
-              const rect   = containerRef.current.getBoundingClientRect();
-              const sph    = viewRef.current.screenToCoordinates({ x: me.clientX - rect.left, y: me.clientY - rect.top });
-              if (sph && typeof hotspotInstance.setCoordinates === "function") {
-                hotspotInstance.setCoordinates({ yaw: sph.yaw, pitch: sph.pitch });
-              }
+            if (hotspotInstance && typeof hotspotInstance.setCoordinates === "function") {
+              const rect = containerRef.current.getBoundingClientRect();
+              const sph  = viewRef.current.screenToCoordinates({ x: me.clientX - rect.left, y: me.clientY - rect.top });
+              if (sph) hotspotInstance.setCoordinates({ yaw: sph.yaw, pitch: sph.pitch });
             }
           }
         };
@@ -277,14 +295,12 @@ export function EditorPanorama360Viewer({
           if (!dragOrigin) return;
 
           if (!isDragging) {
-            // Pure click → select this element
             onSelectRef.current(id);
           } else if (containerRef.current && viewRef.current) {
             const rect = containerRef.current.getBoundingClientRect();
             const sph  = viewRef.current.screenToCoordinates({ x: me.clientX - rect.left, y: me.clientY - rect.top });
             if (sph) {
-              const nx = Math.max(0, Math.min(1, sph.yaw   / (2 * Math.PI) + 0.5));
-              const ny = Math.max(0, Math.min(1, sph.pitch /      Math.PI  + 0.5));
+              const { x: nx, y: ny } = sphericalToXY(sph.yaw, sph.pitch);
               onDragEndRef.current(id, nx, ny);
             }
           }
@@ -295,8 +311,10 @@ export function EditorPanorama360Viewer({
         document.addEventListener("mouseup",   onMouseUp);
       };
 
+      // Stop Marzipano panning on pointerdown/touchstart without using stopImmediatePropagation
+      // (so that mousedown listener still fires on same element)
       wrapper.addEventListener("pointerdown", (e) => e.stopPropagation());
-      wrapper.addEventListener("touchstart",  (e) => e.stopPropagation());
+      wrapper.addEventListener("touchstart",  (e) => e.stopPropagation(), { passive: true });
       wrapper.addEventListener("click",       (e) => e.stopPropagation());
       wrapper.addEventListener("mousedown",   handleMouseDown);
 
@@ -305,12 +323,10 @@ export function EditorPanorama360Viewer({
       hotspotsRef.current.push(hotspotInstance);
     };
 
-    // Draft ghost marker
     if (draft) {
       renderHotspot("draft", draft.type, draft.x, draft.y, null, null, false, true);
     }
 
-    // Saved element hotspots
     elements.forEach((el) => {
       renderHotspot(el.id, el.type, el.x, el.y, el.label, el.rotation, el.id === selectedElementId, false);
     });
@@ -318,8 +334,11 @@ export function EditorPanorama360Viewer({
     return () => {
       hotspotsRef.current.forEach((hp) => {
         try {
-          if (hp && typeof hp.destroy === "function") hp.destroy();
-          else if (hotspotContainer && typeof (hotspotContainer as any).removeHotspot === "function") (hotspotContainer as any).removeHotspot(hp);
+          if (typeof hp?.destroy === "function") hp.destroy();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          else if (typeof (hotspotContainer as any).removeHotspot === "function")
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (hotspotContainer as any).removeHotspot(hp);
         } catch (_) {}
       });
       hotspotsRef.current = [];
@@ -327,27 +346,35 @@ export function EditorPanorama360Viewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewerReady, elements, selectedElementId, draft]);
 
-  // ── Background pointer interaction: place element or deselect ───────────────
+  // ── Background interaction ─────────────────────────────────────────────────
+  // React's synthetic events fire AFTER native DOM bubble listeners, so by the
+  // time handleBgMouseDown fires, hotspotClickedRef.current is already set if a
+  // hotspot's native mousedown listener ran first.
   function handleBgMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    if (hotspotClickedRef.current) {
+      // A hotspot consumed this mousedown — clear the flag and do nothing here.
+      hotspotClickedRef.current = false;
+      return;
+    }
     bgDragOrigin.current = { x: e.clientX, y: e.clientY };
   }
 
   function handleBgMouseUp(e: React.MouseEvent<HTMLDivElement>) {
+    // If bgDragOrigin was never set (hotspot consumed the mousedown), bail out.
     if (!bgDragOrigin.current || !containerRef.current || !viewRef.current) return;
 
     const dx = Math.abs(e.clientX - bgDragOrigin.current.x);
     const dy = Math.abs(e.clientY - bgDragOrigin.current.y);
     bgDragOrigin.current = null;
 
-    // Only treat as click if the mouse didn't move significantly (not a pan drag)
+    // Ignore panning gestures — only act on genuine short taps
     if (dx > 8 || dy > 8) return;
 
     if (isPlacingRef.current && onClickRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const sph  = viewRef.current.screenToCoordinates({ x: e.clientX - rect.left, y: e.clientY - rect.top });
       if (sph) {
-        const x = Math.max(0, Math.min(1, sph.yaw   / (2 * Math.PI) + 0.5));
-        const y = Math.max(0, Math.min(1, sph.pitch /      Math.PI  + 0.5));
+        const { x, y } = sphericalToXY(sph.yaw, sph.pitch);
         onClickRef.current(x, y);
       }
     } else if (!isPlacingRef.current) {
@@ -364,10 +391,8 @@ export function EditorPanorama360Viewer({
         isPlacingElement ? "cursor-crosshair" : "cursor-default"
       )}
     >
-      {/* Marzipano 360° container */}
       <div ref={containerRef} className="w-full h-full min-h-[420px]" />
 
-      {/* Keyframe for draft pulse */}
       <style>{`
         @keyframes editorPulse {
           0%, 100% { opacity: 1; }
@@ -375,7 +400,6 @@ export function EditorPanorama360Viewer({
         }
       `}</style>
 
-      {/* Loading overlay */}
       {imageLoading && (
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center bg-gray-950/80 backdrop-blur-sm text-indigo-400">
           <Loader2 size={32} className="animate-spin mb-2" />
