@@ -17,9 +17,16 @@ function xyToSpherical(x: number, y: number) {
   };
 }
 function sphericalToXY(yaw: number, pitch: number) {
+  // Normalize yaw into [-π, π] range so full 360° rotational panning wraps correctly
+  let normYaw = (yaw + Math.PI) % (2 * Math.PI);
+  if (normYaw < 0) normYaw += 2 * Math.PI;
+  normYaw -= Math.PI;
+
+  const normPitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
+
   return {
-    x: Math.max(0, Math.min(1, yaw   / (2 * Math.PI) + 0.5)),
-    y: Math.max(0, Math.min(1, pitch /      Math.PI  + 0.5)),
+    x: Math.max(0, Math.min(1, normYaw / (2 * Math.PI) + 0.5)),
+    y: Math.max(0, Math.min(1, normPitch / Math.PI + 0.5)),
   };
 }
 
