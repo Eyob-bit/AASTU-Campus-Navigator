@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ChevronRight, Map } from "lucide-react";
+import { ChevronRight, Map, Compass, Eye } from "lucide-react";
 import { ConfirmDialog, ErrorBanner, ToastContainer, Card, Skeleton } from "@/components/ui";
 import { useScene } from "@/hooks/useScene";
 import { useToast } from "@/hooks/useToast";
@@ -14,6 +14,7 @@ import type {
   OfficeOption,
 } from "@/types";
 import { EditorPanoramaViewer } from "./EditorPanoramaViewer";
+import { EditorPanorama360Viewer } from "./EditorPanorama360Viewer";
 import { ElementMarker } from "./ElementMarker";
 import { EditorToolbar, type ActiveTool } from "./EditorToolbar";
 import { ElementPropertyPanel, type DraftElement, type ElementSavePayload } from "./ElementPropertyPanel";
@@ -133,6 +134,7 @@ export function SceneEditorPage() {
   const [selectedElementId,  setSelectedElementId]  = useState<string | null>(null);
   const [draft,              setDraft]              = useState<DraftElement | null>(null);
   const [isSaving,           setIsSaving]           = useState(false);
+  const [viewMode,           setViewMode]           = useState<"360" | "2D">("360");
 
   const selectedElement = elements.find((el) => el.id === selectedElementId) ?? null;
   const panelElement: SceneElement | DraftElement | null = draft ?? selectedElement;
@@ -417,8 +419,41 @@ export function SceneEditorPage() {
             Scene Editor
           </h1>
         </div>
-        <div className="text-xs text-gray-400">
-          {elements.length} element{elements.length !== 1 ? "s" : ""}
+
+        {/* View Mode Toggle Switch */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl border border-gray-200 dark:border-slate-700 shadow-inner">
+            <button
+              onClick={() => setViewMode("360")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                viewMode === "360"
+                  ? "bg-indigo-600 text-white shadow-md"
+                  : "text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white"
+              )}
+              title="Interactive 360° Panorama Editor"
+            >
+              <Compass size={14} />
+              <span>360° View</span>
+            </button>
+            <button
+              onClick={() => setViewMode("2D")}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer",
+                viewMode === "2D"
+                  ? "bg-indigo-600 text-white shadow-md"
+                  : "text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-white"
+              )}
+              title="Flat 2D Equirectangular Layout Editor"
+            >
+              <Eye size={14} />
+              <span>2D View</span>
+            </button>
+          </div>
+
+          <div className="text-xs text-gray-400">
+            {elements.length} element{elements.length !== 1 ? "s" : ""}
+          </div>
         </div>
       </div>
 
@@ -435,7 +470,7 @@ export function SceneEditorPage() {
         />
 
         {/* ── Panorama viewer ─────────────────────────────────────────────── */}
-        <main className="flex-1 overflow-auto p-4 bg-gray-50" data-panorama-container>
+        <main className="flex-1 overflow-auto p-4 bg-gray-50 flex flex-col justify-between" data-panorama-container>
           {isLoading && (
             <div className="flex items-center justify-center h-64 text-sm text-gray-400">
               Loading scene…
@@ -455,35 +490,53 @@ export function SceneEditorPage() {
                    activeTool === "OFFICE_LABEL" ? "office label" : "info marker"}.
                 </p>
               )}
-              <EditorPanoramaViewer
-                imageUrl={imageUrl}
-                isPlacingElement={!!activeTool}
-                onClick={handleViewerClick}
-                onBgMouseDown={handleViewerBgMouseDown}
-              >
-                {/* Ghost draft marker */}
-                {draft && (
-                  <span
-                    className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-                    style={{ left: `${draft.x * 100}%`, top: `${draft.y * 100}%` }}
-                  >
-                    <span className="w-8 h-8 rounded-full border-2 border-dashed border-white bg-black/40 flex items-center justify-center animate-pulse">
-                      <span className="w-2 h-2 rounded-full bg-white" />
-                    </span>
-                  </span>
-                )}
-                {elements.map((el) => (
-                  <ElementMarker
-                    key={el.id}
-                    element={el}
-                    isSelected={el.id === selectedElementId}
-                    onSelect={() => handleElementSelect(el.id)}
-                    onDragEnd={(x, y) => handleDragEnd(el.id, x, y)}
+
+              {viewMode === "360" ? (
+                <div className="flex-1 min-h-[440px] w-full">
+                  <EditorPanorama360Viewer
+                    imageUrl={imageUrl}
+                    isPlacingElement={!!activeTool}
+                    onClick={handleViewerClick}
+                    onBgMouseDown={handleViewerBgMouseDown}
+                    elements={elements}
+                    selectedElementId={selectedElementId}
+                    draft={draft}
+                    onSelect={handleElementSelect}
+                    onDragEnd={handleDragEnd}
                   />
-                ))}
-              </EditorPanoramaViewer>
+                </div>
+              ) : (
+                <EditorPanoramaViewer
+                  imageUrl={imageUrl}
+                  isPlacingElement={!!activeTool}
+                  onClick={handleViewerClick}
+                  onBgMouseDown={handleViewerBgMouseDown}
+                >
+                  {/* Ghost draft marker */}
+                  {draft && (
+                    <span
+                      className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                      style={{ left: `${draft.x * 100}%`, top: `${draft.y * 100}%` }}
+                    >
+                      <span className="w-8 h-8 rounded-full border-2 border-dashed border-white bg-black/40 flex items-center justify-center animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-white" />
+                      </span>
+                    </span>
+                  )}
+                  {elements.map((el) => (
+                    <ElementMarker
+                      key={el.id}
+                      element={el}
+                      isSelected={el.id === selectedElementId}
+                      onSelect={() => handleElementSelect(el.id)}
+                      onDragEnd={(x, y) => handleDragEnd(el.id, x, y)}
+                    />
+                  ))}
+                </EditorPanoramaViewer>
+              )}
+
               <p className="text-[10px] text-gray-400 text-center mt-2">
-                Click an element to edit · Drag to reposition
+                Click an element to edit · Drag to reposition {viewMode === "360" ? "in 360° space" : ""}
               </p>
             </>
           )}
