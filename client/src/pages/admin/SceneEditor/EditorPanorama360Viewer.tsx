@@ -33,15 +33,16 @@ export function EditorPanorama360Viewer({
   const viewerRef    = useRef<Viewer | null>(null);
   const viewRef      = useRef<RectilinearView | null>(null);
   const sceneRef     = useRef<Scene | null>(null);
+  // Store all created Marzipano Hotspot instances so they can be properly destroyed
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const hotspotsRef  = useRef<any[]>([]);
 
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
   const [imageLoading,     setImageLoading]     = useState(false);
   const [marzipanoError,   setMarzipanoError]   = useState<string | null>(null);
   const [viewerReady,      setViewerReady]      = useState(0);
 
-  // Track whether a drag started on the background (so mouseup on bg doesn't deselect after placing)
   const bgDragOrigin = useRef<{ x: number; y: number } | null>(null);
-  const hotspotClickedRef = useRef(false); // set to true when a hotspot handles its own mousedown
 
   // ── Cross-origin image resolution (Cloudinary → blob URL for WebGL) ─────────
   useEffect(() => {
@@ -87,6 +88,7 @@ export function EditorPanorama360Viewer({
     let isMounted = true;
     containerRef.current.innerHTML = "";
     sceneRef.current = null;
+    hotspotsRef.current = [];
 
     const isMobile = window.innerWidth < 768 || navigator.maxTouchPoints > 0;
 
@@ -118,6 +120,7 @@ export function EditorPanorama360Viewer({
         viewerRef.current = null;
         viewRef.current   = null;
         sceneRef.current  = null;
+        hotspotsRef.current = [];
       }
       if (containerRef.current) containerRef.current.innerHTML = "";
     };
@@ -130,9 +133,23 @@ export function EditorPanorama360Viewer({
 
     const hotspotContainer = scene.hotspotContainer();
 
-    // Clear old editor hotspots without destroying the whole container
+    // 1. Properly destroy all previously registered Marzipano hotspots
+    hotspotsRef.current.forEach((hp) => {
+      try {
+        if (hp && typeof hp.destroy === "function") {
+          hp.destroy();
+        } else if (hotspotContainer && typeof (hotspotContainer as any).removeHotspot === "function") {
+          (hotspotContainer as any).removeHotspot(hp);
+        }
+      } catch (_) {}
+    });
+    hotspotsRef.current = [];
+
+    // Also remove any remaining DOM elements with data-editor-hotspot attribute
     const hc = containerRef.current?.querySelector(".marzipano-hotspot-container") as HTMLElement | null;
-    if (hc) hc.querySelectorAll("[data-editor-hotspot]").forEach((n) => n.remove());
+    if (hc) {
+      hc.querySelectorAll("[data-editor-hotspot]").forEach((n) => n.remove());
+    }
 
     const renderHotspot = (
       id: string,
@@ -163,11 +180,11 @@ export function EditorPanorama360Viewer({
             <div style="width:0.5rem;height:0.5rem;border-radius:50%;background:white;"></div>
           </div>
         `;
-        // Draft markers: stop all events so they don't interfere with placement clicks
         ["pointerdown","mousedown","touchstart","click"].forEach((evt) =>
           wrapper.addEventListener(evt, (e) => { e.stopPropagation(); e.stopImmediatePropagation(); })
         );
-        hotspotContainer.createHotspot(wrapper, { yaw, pitch });
+        const hp = hotspotContainer.createHotspot(wrapper, { yaw, pitch });
+        hotspotsRef.current.push(hp);
         return;
       }
 
@@ -232,10 +249,7 @@ export function EditorPanorama360Viewer({
       let hotspotInstance: any = null;
 
       const handleMouseDown = (e: MouseEvent) => {
-        // Tell the container's mousedown handler NOT to treat this as a background click
-        hotspotClickedRef.current = true;
-
-        // Stop Marzipano from starting a pan drag on this mousedown
+        // Stop event from bubbling to container so background click handler doesn't run
         e.stopPropagation();
         e.preventDefault();
 
@@ -250,7 +264,9 @@ export function EditorPanorama360Viewer({
             if (hotspotInstance) {
               const rect   = containerRef.current.getBoundingClientRect();
               const sph    = viewRef.current.screenToCoordinates({ x: me.clientX - rect.left, y: me.clientY - rect.top });
-              if (sph) hotspotInstance.setCoordinates({ yaw: sph.yaw, pitch: sph.pitch });
+              if (sph && typeof hotspotInstance.setCoordinates === "function") {
+                hotspotInstance.setCoordinates({ yaw: sph.yaw, pitch: sph.pitch });
+              }
             }
           }
         };
@@ -279,17 +295,14 @@ export function EditorPanorama360Viewer({
         document.addEventListener("mouseup",   onMouseUp);
       };
 
-      // Only stop pointerdown/touchstart for Marzipano pan prevention.
-      // Do NOT use stopImmediatePropagation here — handleMouseDown must still fire.
       wrapper.addEventListener("pointerdown", (e) => e.stopPropagation());
       wrapper.addEventListener("touchstart",  (e) => e.stopPropagation());
-      // Stop click from bubbling to container (otherwise container deselects immediately)
-      wrapper.addEventListener("click",       (e) => { e.stopPropagation(); });
-      // handleMouseDown handles selection + drag
+      wrapper.addEventListener("click",       (e) => e.stopPropagation());
       wrapper.addEventListener("mousedown",   handleMouseDown);
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       hotspotInstance = hotspotContainer.createHotspot(wrapper, { yaw, pitch }) as any;
+      hotspotsRef.current.push(hotspotInstance);
     };
 
     // Draft ghost marker
@@ -302,25 +315,24 @@ export function EditorPanorama360Viewer({
       renderHotspot(el.id, el.type, el.x, el.y, el.label, el.rotation, el.id === selectedElementId, false);
     });
 
+    return () => {
+      hotspotsRef.current.forEach((hp) => {
+        try {
+          if (hp && typeof hp.destroy === "function") hp.destroy();
+          else if (hotspotContainer && typeof (hotspotContainer as any).removeHotspot === "function") (hotspotContainer as any).removeHotspot(hp);
+        } catch (_) {}
+      });
+      hotspotsRef.current = [];
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewerReady, elements, selectedElementId, draft]);
 
   // ── Background pointer interaction: place element or deselect ───────────────
-  // We use onMouseDown on the container so we can distinguish bg vs hotspot taps.
   function handleBgMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    // If a hotspot's mousedown already fired, skip background handling entirely
-    if (hotspotClickedRef.current) {
-      hotspotClickedRef.current = false;
-      return;
-    }
     bgDragOrigin.current = { x: e.clientX, y: e.clientY };
   }
 
   function handleBgMouseUp(e: React.MouseEvent<HTMLDivElement>) {
-    if (hotspotClickedRef.current) {
-      hotspotClickedRef.current = false;
-      return;
-    }
     if (!bgDragOrigin.current || !containerRef.current || !viewRef.current) return;
 
     const dx = Math.abs(e.clientX - bgDragOrigin.current.x);

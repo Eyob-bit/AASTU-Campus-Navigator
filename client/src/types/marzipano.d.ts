@@ -29,14 +29,23 @@ declare module "marzipano" {
     screenToCoordinates(coords: { x: number; y: number }): { yaw: number; pitch: number } | null;
   }
 
+  export interface Hotspot {
+    setCoordinates(coords: { yaw: number; pitch: number }): void;
+    destroy(): void;
+  }
+
+  export interface HotspotContainer {
+    createHotspot(
+      element: HTMLElement,
+      coords: { yaw: number; pitch: number }
+    ): Hotspot;
+    removeHotspot(hotspot: Hotspot): void;
+    destroy(): void;
+  }
+
   export interface Scene {
     switchTo(): void;
     destroy(): void;
-    hotspotContainer(): {
-      createHotspot(
-        element: HTMLElement,
-        coords: { yaw: number; pitch: number }
-      ): any;
-    };
+    hotspotContainer(): HotspotContainer;
   }
 }
