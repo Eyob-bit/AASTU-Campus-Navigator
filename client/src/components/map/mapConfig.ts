@@ -19,7 +19,7 @@ export type TileMode = keyof typeof TILE_LAYERS;
 // ── AASTU Campus Constants ───────────────────────────────────────────────────
 export const AASTU_CENTER: [number, number] = [8.8885, 38.809];
 export const DEFAULT_ZOOM = 16;
-export const MIN_ZOOM = 12;
+export const MIN_ZOOM = 11;
 export const MAX_ZOOM = 22;
 
 /**
@@ -77,6 +77,6 @@ export const AASTU_CAMPUS_BOUNDARY: [number, number][] = [
 ];
 
 export const CAMPUS_BOUNDS = L.latLngBounds(
-  L.latLng(8.870, 38.792), // SW corner (comfort buffer)
-  L.latLng(8.902, 38.825)  // NE corner
+  L.latLng(8.855, 38.770), // SW corner (wider comfort buffer)
+  L.latLng(8.920, 38.840)  // NE corner
 );

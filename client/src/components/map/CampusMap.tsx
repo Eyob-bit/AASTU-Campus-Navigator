@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -102,10 +102,41 @@ function MapViewController({
   navStep: string;
 }) {
   const map = useMap();
+  const { destinationTarget } = useAppStore();
+  const [isFollowingUser, setIsFollowingUser] = useState(true);
+  const hasFitRouteRef = useRef(false);
 
-  // Manual center button click
+  // Pause camera auto-follow when user manually drags the map
+  useEffect(() => {
+    function handleUserDrag() {
+      setIsFollowingUser(false);
+    }
+    map.on("dragstart", handleUserDrag);
+    return () => {
+      map.off("dragstart", handleUserDrag);
+    };
+  }, [map]);
+
+  // Auto fit bounds to show both user pin and destination when navigation starts
+  useEffect(() => {
+    if (navStep === "OUTDOOR_NAV" && destinationTarget && userLocation && !hasFitRouteRef.current) {
+      const bounds = L.latLngBounds(
+        [userLocation.lat, userLocation.lng],
+        [destinationTarget.latitude, destinationTarget.longitude]
+      );
+      map.fitBounds(bounds, { padding: [60, 60], maxZoom: 18, animate: true, duration: 1 });
+      hasFitRouteRef.current = true;
+    }
+    if (navStep !== "OUTDOOR_NAV") {
+      hasFitRouteRef.current = false;
+      setIsFollowingUser(true);
+    }
+  }, [navStep, destinationTarget, userLocation, map]);
+
+  // Manual center button click: re-enable auto-follow and fly to position
   useEffect(() => {
     if (shouldCenter && userLocation) {
+      setIsFollowingUser(true);
       map.flyTo([userLocation.lat, userLocation.lng], 18, { animate: true, duration: 1 });
       setShouldCenter(false);
     }
@@ -116,6 +147,7 @@ function MapViewController({
     function handleCenterBuilding(e: Event) {
       const customEvent = e as CustomEvent<{ lat: number; lng: number; zoom?: number }>;
       if (customEvent.detail?.lat && customEvent.detail?.lng) {
+        setIsFollowingUser(false);
         map.flyTo([customEvent.detail.lat, customEvent.detail.lng], customEvent.detail.zoom ?? 19, {
           animate: true,
           duration: 1.2,
@@ -126,12 +158,12 @@ function MapViewController({
     return () => window.removeEventListener("aastu_center_building", handleCenterBuilding);
   }, [map]);
 
-  // Fast camera following during active outdoor navigation
+  // Camera following during active outdoor navigation ONLY if user is not manually dragging
   useEffect(() => {
-    if (navStep === "OUTDOOR_NAV" && userLocation) {
+    if (navStep === "OUTDOOR_NAV" && userLocation && isFollowingUser) {
       map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.25 });
     }
-  }, [navStep, userLocation, map]);
+  }, [navStep, userLocation, isFollowingUser, map]);
 
   return null;
 }
@@ -262,7 +294,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
         maxBounds={CAMPUS_BOUNDS}
-        maxBoundsViscosity={1.0}
+        maxBoundsViscosity={0.5}
         bounceAtZoomLimits={false}
         scrollWheelZoom
         dragging
