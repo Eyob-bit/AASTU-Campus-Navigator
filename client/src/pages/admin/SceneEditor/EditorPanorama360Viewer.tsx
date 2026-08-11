@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { EquirectGeometry, ImageUrlSource, RectilinearView, Viewer } from "marzipano";
+import type { Scene } from "marzipano";
 import { Loader2 } from "lucide-react";
 import type { SceneElement, SceneElementType } from "@/types";
 import type { DraftElement } from "./ElementPropertyPanel";
@@ -17,18 +18,6 @@ interface EditorPanorama360ViewerProps {
   onDragEnd: (id: string, x: number, y: number) => void;
 }
 
-const COLOUR_MAP: Record<SceneElementType, string> = {
-  ARROW: "bg-blue-600 border-blue-400 text-white",
-  OFFICE_LABEL: "bg-emerald-600 border-emerald-400 text-white",
-  INFORMATION: "bg-amber-500 border-amber-300 text-white",
-};
-
-const SELECTED_RING: Record<SceneElementType, string> = {
-  ARROW: "ring-2 ring-blue-300 ring-offset-2 ring-offset-black/50",
-  OFFICE_LABEL: "ring-2 ring-emerald-300 ring-offset-2 ring-offset-black/50",
-  INFORMATION: "ring-2 ring-amber-300 ring-offset-2 ring-offset-black/50",
-};
-
 export function EditorPanorama360Viewer({
   imageUrl,
   isPlacingElement = false,
@@ -41,14 +30,18 @@ export function EditorPanorama360Viewer({
   onDragEnd,
 }: EditorPanorama360ViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const viewerRef = useRef<Viewer | null>(null);
-  const viewRef = useRef<RectilinearView | null>(null);
+  const viewerRef    = useRef<Viewer | null>(null);
+  const viewRef      = useRef<RectilinearView | null>(null);
+  // Store the active Marzipano Scene directly so the hotspot effect can use it
+  const sceneRef     = useRef<Scene | null>(null);
 
   const [resolvedImageUrl, setResolvedImageUrl] = useState<string | null>(null);
-  const [imageLoading, setImageLoading] = useState(false);
-  const [marzipanoError, setMarzipanoError] = useState<string | null>(null);
+  const [imageLoading,     setImageLoading]     = useState(false);
+  const [marzipanoError,   setMarzipanoError]   = useState<string | null>(null);
+  // Counter incremented whenever the viewer initializes; triggers hotspot effect
+  const [viewerReady, setViewerReady] = useState(0);
 
-  // Handle cross-origin image resolution (e.g. Cloudinary) via blob URL
+  // ── Cross-origin image resolution (Cloudinary → blob URL for WebGL) ─────────
   useEffect(() => {
     if (!imageUrl) {
       setResolvedImageUrl(null);
@@ -90,102 +83,76 @@ export function EditorPanorama360Viewer({
     };
   }, [imageUrl]);
 
-  // Store current props in refs for event handlers to avoid stale closures
-  const isPlacingRef = useRef(isPlacingElement);
-  isPlacingRef.current = isPlacingElement;
-
-  const onClickRef = useRef(onClick);
-  onClickRef.current = onClick;
-
+  // ── Keep callback refs fresh so event handlers never close over stale values ─
+  const isPlacingRef     = useRef(isPlacingElement);
+  isPlacingRef.current   = isPlacingElement;
+  const onClickRef       = useRef(onClick);
+  onClickRef.current     = onClick;
   const onBgMouseDownRef = useRef(onBgMouseDown);
   onBgMouseDownRef.current = onBgMouseDown;
+  const onSelectRef      = useRef(onSelect);
+  onSelectRef.current    = onSelect;
+  const onDragEndRef     = useRef(onDragEnd);
+  onDragEndRef.current   = onDragEnd;
 
-  const onSelectRef = useRef(onSelect);
-  onSelectRef.current = onSelect;
-
-  const onDragEndRef = useRef(onDragEnd);
-  onDragEndRef.current = onDragEnd;
-
-  // Initialize Marzipano Viewer
+  // ── Initialize Marzipano Viewer ─────────────────────────────────────────────
   useEffect(() => {
     if (!containerRef.current || !resolvedImageUrl) return;
 
     let isMounted = true;
     containerRef.current.innerHTML = "";
+    sceneRef.current = null;
 
     const isMobile = window.innerWidth < 768 || navigator.maxTouchPoints > 0;
 
     try {
-      const viewer = new Viewer(containerRef.current);
-      const source = ImageUrlSource.fromString(resolvedImageUrl);
-      const width = isMobile ? 2048 : 4096;
+      const viewer   = new Viewer(containerRef.current);
+      const source   = ImageUrlSource.fromString(resolvedImageUrl);
+      const width    = isMobile ? 2048 : 4096;
       const geometry = new EquirectGeometry([{ width }]);
-      const view = new RectilinearView({ yaw: 0, pitch: 0, fov: 1.2 });
-      const scene = viewer.createScene({ source, geometry, view });
+      const view     = new RectilinearView({ yaw: 0, pitch: 0, fov: 1.2 });
+      const scene    = viewer.createScene({ source, geometry, view });
       scene.switchTo();
 
       if (isMounted) {
         viewerRef.current = viewer;
-        viewRef.current = view;
+        viewRef.current   = view;
+        sceneRef.current  = scene;       // ← scene stored here, not via _scene
         setMarzipanoError(null);
+        setViewerReady((n) => n + 1);   // ← wake up hotspot effect
       }
     } catch (err) {
       console.warn("Marzipano 360° viewer error:", err);
-      if (isMounted) {
-        setMarzipanoError("Failed to load 360° WebGL view.");
-      }
+      if (isMounted) setMarzipanoError("Failed to load 360° WebGL view.");
     }
 
     return () => {
       isMounted = false;
       if (viewerRef.current) {
-        try {
-          viewerRef.current.destroy();
-        } catch (_) {}
+        try { viewerRef.current.destroy(); } catch (_) {}
         viewerRef.current = null;
-        viewRef.current = null;
+        viewRef.current   = null;
+        sceneRef.current  = null;
       }
-      if (containerRef.current) {
-        containerRef.current.innerHTML = "";
-      }
+      if (containerRef.current) containerRef.current.innerHTML = "";
     };
   }, [resolvedImageUrl]);
 
-  // Handle clicking the 360 panorama canvas for element placement or bg selection clear
-  function handleContainerClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!containerRef.current || !viewRef.current) return;
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const coords = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    const spherical = viewRef.current.screenToCoordinates(coords);
-
-    if (isPlacingRef.current && onClickRef.current && spherical) {
-      const x = Math.max(0, Math.min(1, spherical.yaw / (2 * Math.PI) + 0.5));
-      const y = Math.max(0, Math.min(1, spherical.pitch / Math.PI + 0.5));
-      onClickRef.current(x, y);
-    } else if (!isPlacingRef.current) {
-      onBgMouseDownRef.current?.();
-    }
-  }
-
-  // Mount/update Marzipano Hotspots whenever elements, selectedElementId, or draft change
+  // ── Mount / refresh 3-D hotspots ────────────────────────────────────────────
+  // Runs when the viewer first becomes ready AND whenever elements/selection/draft change.
   useEffect(() => {
-    if (!viewerRef.current || !containerRef.current) return;
+    const scene = sceneRef.current;
+    if (!scene) return;
 
-    // Get active scene from Marzipano viewer instance
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const activeScene = (viewerRef.current as any)._scene;
-    if (!activeScene) return;
+    const hotspotContainer = scene.hotspotContainer();
 
-    const hotspotContainer = activeScene.hotspotContainer();
-    // Clear existing hotspots
-    const containerDom = containerRef.current.querySelector(".marzipano-hotspot-container") || containerRef.current;
+    // Remove previously mounted editor hotspots (avoid duplicates on re-render)
+    const hc = containerRef.current?.querySelector(".marzipano-hotspot-container") as HTMLElement | null;
+    if (hc) {
+      hc.querySelectorAll("[data-editor-hotspot]").forEach((n) => n.remove());
+    }
 
-    // Remove old element DOM nodes created by hotspots
-    const oldHotspots = containerDom.querySelectorAll("[data-editor-hotspot]");
-    oldHotspots.forEach((node) => node.remove());
-
-    // Helper to create and attach hotspot DOM node
+    // ── Helper: create & register one hotspot ─────────────────────────────────
     const renderHotspot = (
       id: string,
       type: SceneElementType,
@@ -196,134 +163,186 @@ export function EditorPanorama360Viewer({
       isSelected: boolean,
       isDraft: boolean
     ) => {
-      const yaw = (x - 0.5) * 2 * Math.PI;
+      const yaw   = (x - 0.5) * 2 * Math.PI;
       const pitch = (y - 0.5) * Math.PI;
 
       const wrapper = document.createElement("div");
       wrapper.setAttribute("data-editor-hotspot", id);
-      wrapper.className = cn(
-        "pointer-events-auto select-none transition-transform z-30",
-        isDraft ? "cursor-default" : "cursor-grab active:cursor-grabbing hover:scale-110"
-      );
+      // Use inline styles — Tailwind classes are NOT processed for DOM nodes created outside React
+      wrapper.style.cssText = "position:relative; pointer-events:auto; user-select:none; z-index:30;";
 
-      // Stop Marzipano from handling drag/pan when interacting with hotspots
       const stopProp = (e: Event) => {
         e.stopPropagation();
         if (e.stopImmediatePropagation) e.stopImmediatePropagation();
       };
       wrapper.addEventListener("pointerdown", stopProp);
-      wrapper.addEventListener("touchstart", stopProp);
+      wrapper.addEventListener("touchstart",  stopProp);
 
       if (isDraft) {
+        // Ghost pulsing marker for element being placed
         wrapper.innerHTML = `
-          <div class="relative -translate-x-1/2 -translate-y-1/2">
-            <span class="w-8 h-8 rounded-full border-2 border-dashed border-white bg-black/40 flex items-center justify-center animate-pulse shadow-lg">
-              <span class="w-2 h-2 rounded-full bg-white"></span>
-            </span>
+          <div style="
+            transform:translate(-50%,-50%);
+            width:2rem; height:2rem; border-radius:50%;
+            border:2px dashed white;
+            background:rgba(0,0,0,0.4);
+            display:flex; align-items:center; justify-content:center;
+            animation:editorPulse 1.5s ease-in-out infinite;
+          ">
+            <div style="width:0.5rem;height:0.5rem;border-radius:50%;background:white;"></div>
           </div>
         `;
-      } else {
-        const colour = COLOUR_MAP[type] || "bg-blue-600 border-blue-400 text-white";
-        const ring = isSelected ? SELECTED_RING[type] : "";
-        const displayLabel = label ?? type;
-        const rotateStyle = rotation ? `transform: rotate(${rotation}deg);` : "";
-
-        wrapper.innerHTML = `
-          <div class="flex flex-col items-center gap-0.5 -translate-x-1/2 -translate-y-1/2">
-            <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center shadow-lg transition-all ${colour} ${ring}">
-              <div style="${rotateStyle}" class="flex items-center justify-center">
-                ${
-                  type === "ARROW"
-                    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`
-                    : type === "OFFICE_LABEL"
-                    ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12h12"/><path d="M6 7h12"/><path d="M6 17h12"/></svg>`
-                    : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`
-                }
-              </div>
-            </div>
-            ${
-              displayLabel !== type
-                ? `<span class="text-[10px] font-semibold text-white bg-black/75 backdrop-blur-sm px-1.5 py-0.5 rounded shadow whitespace-nowrap max-w-[90px] truncate">${displayLabel}</span>`
-                : ""
-            }
-          </div>
-        `;
-
-        // Handle dragging marker in 360 space
-        let dragOrigin: { mx: number; my: number; startX: number; startY: number } | null = null;
-        let isDragging = false;
-
-        const handleMouseDown = (e: MouseEvent) => {
-          e.stopPropagation();
-          e.preventDefault();
-          dragOrigin = { mx: e.clientX, my: e.clientY, startX: x, startY: y };
-          isDragging = false;
-
-          const onMouseMove = (me: MouseEvent) => {
-            if (!dragOrigin || !containerRef.current || !viewRef.current) return;
-            const dist = Math.abs(me.clientX - dragOrigin.mx) + Math.abs(me.clientY - dragOrigin.my);
-            if (dist > 4) isDragging = true;
-
-            const rect = containerRef.current.getBoundingClientRect();
-            const coords = { x: me.clientX - rect.left, y: me.clientY - rect.top };
-            const spherical = viewRef.current.screenToCoordinates(coords);
-
-            if (spherical && hotspotRef) {
-              hotspotRef.setCoordinates({ yaw: spherical.yaw, pitch: spherical.pitch });
-            }
-          };
-
-          const onMouseUp = (me: MouseEvent) => {
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
-
-            if (!dragOrigin) return;
-
-            if (!isDragging) {
-              onSelectRef.current(id);
-            } else if (containerRef.current && viewRef.current) {
-              const rect = containerRef.current.getBoundingClientRect();
-              const coords = { x: me.clientX - rect.left, y: me.clientY - rect.top };
-              const spherical = viewRef.current.screenToCoordinates(coords);
-              if (spherical) {
-                const nx = Math.max(0, Math.min(1, spherical.yaw / (2 * Math.PI) + 0.5));
-                const ny = Math.max(0, Math.min(1, spherical.pitch / Math.PI + 0.5));
-                onDragEndRef.current(id, nx, ny);
-              }
-            }
-            dragOrigin = null;
-          };
-
-          document.addEventListener("mousemove", onMouseMove);
-          document.addEventListener("mouseup", onMouseUp);
-        };
-
-        wrapper.addEventListener("mousedown", handleMouseDown);
+        hotspotContainer.createHotspot(wrapper, { yaw, pitch });
+        return;
       }
 
+      // ── Saved element hotspot ────────────────────────────────────────────────
+      const bgColour =
+        type === "ARROW"        ? "#2563eb" :
+        type === "OFFICE_LABEL" ? "#059669" : "#f59e0b";
+
+      const borderColour =
+        type === "ARROW"        ? "#60a5fa" :
+        type === "OFFICE_LABEL" ? "#34d399" : "#fcd34d";
+
+      const ringStyle = isSelected
+        ? `box-shadow:0 0 0 3px ${borderColour}, 0 0 0 5px rgba(0,0,0,0.4);`
+        : "";
+
+      const rotateStyle = rotation ? `transform:rotate(${rotation}deg);` : "";
+
+      const svgIcon =
+        type === "ARROW"
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>`
+          : type === "OFFICE_LABEL"
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12h12"/><path d="M6 7h12"/><path d="M6 17h12"/></svg>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>`;
+
+      const displayLabel = label ?? "";
+      const labelHtml = displayLabel
+        ? `<span style="
+              margin-top:2px;
+              font-size:10px;
+              font-weight:600;
+              color:white;
+              background:rgba(0,0,0,0.75);
+              backdrop-filter:blur(4px);
+              padding:1px 6px;
+              border-radius:4px;
+              white-space:nowrap;
+              max-width:100px;
+              overflow:hidden;
+              text-overflow:ellipsis;
+              display:block;
+            ">${displayLabel}</span>`
+        : "";
+
+      wrapper.innerHTML = `
+        <div style="
+          transform:translate(-50%,-50%);
+          display:flex; flex-direction:column; align-items:center; gap:2px;
+          cursor:grab;
+        ">
+          <div style="
+            width:2rem; height:2rem; border-radius:50%;
+            border:2px solid ${borderColour};
+            background:${bgColour};
+            display:flex; align-items:center; justify-content:center;
+            box-shadow:0 2px 8px rgba(0,0,0,0.5);
+            transition:transform 0.15s;
+            ${ringStyle}
+          ">
+            <div style="${rotateStyle} display:flex; align-items:center; justify-content:center;">
+              ${svgIcon}
+            </div>
+          </div>
+          ${labelHtml}
+        </div>
+      `;
+
+      // ── Drag & click interaction ───────────────────────────────────────────
+      let dragOrigin: { mx: number; my: number } | null = null;
+      let isDragging = false;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hotspotRef: any = hotspotContainer.createHotspot(wrapper, { yaw, pitch });
+      let hotspotInstance: any = null;
+
+      const handleMouseDown = (e: MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        dragOrigin = { mx: e.clientX, my: e.clientY };
+        isDragging = false;
+
+        const onMouseMove = (me: MouseEvent) => {
+          if (!dragOrigin || !containerRef.current || !viewRef.current) return;
+          const dist = Math.abs(me.clientX - dragOrigin.mx) + Math.abs(me.clientY - dragOrigin.my);
+          if (dist > 4) {
+            isDragging = true;
+            if (hotspotInstance) {
+              const rect   = containerRef.current.getBoundingClientRect();
+              const coords = { x: me.clientX - rect.left, y: me.clientY - rect.top };
+              const sph    = viewRef.current.screenToCoordinates(coords);
+              if (sph) hotspotInstance.setCoordinates({ yaw: sph.yaw, pitch: sph.pitch });
+            }
+          }
+        };
+
+        const onMouseUp = (me: MouseEvent) => {
+          document.removeEventListener("mousemove", onMouseMove);
+          document.removeEventListener("mouseup",   onMouseUp);
+          if (!dragOrigin) return;
+
+          if (!isDragging) {
+            onSelectRef.current(id);
+          } else if (containerRef.current && viewRef.current) {
+            const rect   = containerRef.current.getBoundingClientRect();
+            const coords = { x: me.clientX - rect.left, y: me.clientY - rect.top };
+            const sph    = viewRef.current.screenToCoordinates(coords);
+            if (sph) {
+              const nx = Math.max(0, Math.min(1, sph.yaw   / (2 * Math.PI) + 0.5));
+              const ny = Math.max(0, Math.min(1, sph.pitch /      Math.PI  + 0.5));
+              onDragEndRef.current(id, nx, ny);
+            }
+          }
+          dragOrigin = null;
+        };
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup",   onMouseUp);
+      };
+
+      wrapper.addEventListener("mousedown", handleMouseDown);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      hotspotInstance = hotspotContainer.createHotspot(wrapper, { yaw, pitch }) as any;
     };
 
-    // Render draft hotspot if present
+    // Draft ghost marker
     if (draft) {
       renderHotspot("draft", draft.type, draft.x, draft.y, null, null, false, true);
     }
 
-    // Render existing elements as hotspots
+    // Saved elements
     elements.forEach((el) => {
-      renderHotspot(
-        el.id,
-        el.type,
-        el.x,
-        el.y,
-        el.label,
-        el.rotation,
-        el.id === selectedElementId,
-        false
-      );
+      renderHotspot(el.id, el.type, el.x, el.y, el.label, el.rotation, el.id === selectedElementId, false);
     });
-  }, [elements, selectedElementId, draft]);
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerReady, elements, selectedElementId, draft]);
+
+  // ── Click on 360 canvas: place element or deselect ─────────────────────────
+  function handleContainerClick(e: React.MouseEvent<HTMLDivElement>) {
+    if (!containerRef.current || !viewRef.current) return;
+    const rect   = containerRef.current.getBoundingClientRect();
+    const coords = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const sph    = viewRef.current.screenToCoordinates(coords);
+
+    if (isPlacingRef.current && onClickRef.current && sph) {
+      const x = Math.max(0, Math.min(1, sph.yaw   / (2 * Math.PI) + 0.5));
+      const y = Math.max(0, Math.min(1, sph.pitch /      Math.PI  + 0.5));
+      onClickRef.current(x, y);
+    } else if (!isPlacingRef.current) {
+      onBgMouseDownRef.current?.();
+    }
+  }
 
   return (
     <div
@@ -333,8 +352,16 @@ export function EditorPanorama360Viewer({
         isPlacingElement ? "cursor-crosshair" : "cursor-default"
       )}
     >
-      {/* Marzipano 360 Container */}
+      {/* Marzipano 360° container */}
       <div ref={containerRef} className="w-full h-full min-h-[420px]" />
+
+      {/* Keyframe for draft pulse (needed since we use inline styles, not Tailwind) */}
+      <style>{`
+        @keyframes editorPulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.45; }
+        }
+      `}</style>
 
       {/* Loading overlay */}
       {imageLoading && (
