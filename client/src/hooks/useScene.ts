@@ -77,6 +77,8 @@ export function useScene(): UseSceneReturn {
     body: UpdateSceneElementBody,
   ): Promise<void> => {
     setError(null);
+    // Optimistically update local elements state immediately for responsive UI
+    setElements((prev) => prev.map((el) => (el.id === id ? { ...el, ...body } : el)));
     try {
       const updated = await sceneElementApi.update(id, body);
       setElements((prev) => prev.map((el) => (el.id === id ? updated : el)));

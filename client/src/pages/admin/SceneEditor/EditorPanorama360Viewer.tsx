@@ -264,7 +264,7 @@ export function EditorPanorama360Viewer({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let hotspotInstance: any = null;
 
-      const handleMouseDown = (e: MouseEvent) => {
+      const handleStartDrag = (e: MouseEvent | PointerEvent) => {
         hotspotClickedRef.current = true;
         e.stopPropagation();
         e.preventDefault();
@@ -272,29 +272,36 @@ export function EditorPanorama360Viewer({
         dragOrigin = { mx: e.clientX, my: e.clientY };
         isDragging = false;
 
-        const onMouseMove = (me: MouseEvent) => {
+        const onMove = (me: MouseEvent | PointerEvent) => {
           if (!dragOrigin || !containerRef.current || !viewRef.current) return;
           const dist = Math.abs(me.clientX - dragOrigin.mx) + Math.abs(me.clientY - dragOrigin.my);
-          if (dist > 6) {
+          if (dist > 4) {
             isDragging = true;
             if (hotspotInstance && typeof hotspotInstance.setCoordinates === "function") {
               const rect = containerRef.current.getBoundingClientRect();
-              const sph  = viewRef.current.screenToCoordinates({ x: me.clientX - rect.left, y: me.clientY - rect.top });
+              const clampX = Math.max(0, Math.min(rect.width, me.clientX - rect.left));
+              const clampY = Math.max(0, Math.min(rect.height, me.clientY - rect.top));
+              const sph = viewRef.current.screenToCoordinates({ x: clampX, y: clampY });
               if (sph) hotspotInstance.setCoordinates({ yaw: sph.yaw, pitch: sph.pitch });
             }
           }
         };
 
-        const onMouseUp = (me: MouseEvent) => {
-          document.removeEventListener("mousemove", onMouseMove);
-          document.removeEventListener("mouseup",   onMouseUp);
+        const onEnd = (me: MouseEvent | PointerEvent) => {
+          document.removeEventListener("pointermove", onMove);
+          document.removeEventListener("pointerup",   onEnd);
+          document.removeEventListener("mousemove",   onMove);
+          document.removeEventListener("mouseup",     onEnd);
+
           if (!dragOrigin) return;
 
           if (!isDragging) {
             onSelectRef.current(id);
           } else if (containerRef.current && viewRef.current) {
             const rect = containerRef.current.getBoundingClientRect();
-            const sph  = viewRef.current.screenToCoordinates({ x: me.clientX - rect.left, y: me.clientY - rect.top });
+            const clampX = Math.max(0, Math.min(rect.width, me.clientX - rect.left));
+            const clampY = Math.max(0, Math.min(rect.height, me.clientY - rect.top));
+            const sph = viewRef.current.screenToCoordinates({ x: clampX, y: clampY });
             if (sph) {
               const { x: nx, y: ny } = sphericalToXY(sph.yaw, sph.pitch);
               onDragEndRef.current(id, nx, ny);
@@ -303,14 +310,16 @@ export function EditorPanorama360Viewer({
           dragOrigin = null;
         };
 
-        document.addEventListener("mousemove", onMouseMove);
-        document.addEventListener("mouseup",   onMouseUp);
+        document.addEventListener("pointermove", onMove);
+        document.addEventListener("pointerup",   onEnd);
+        document.addEventListener("mousemove",   onMove);
+        document.addEventListener("mouseup",     onEnd);
       };
 
-      wrapper.addEventListener("pointerdown", (e) => e.stopPropagation());
+      wrapper.addEventListener("pointerdown", handleStartDrag);
+      wrapper.addEventListener("mousedown",   handleStartDrag);
       wrapper.addEventListener("touchstart",  (e) => e.stopPropagation(), { passive: true });
       wrapper.addEventListener("click",       (e) => e.stopPropagation());
-      wrapper.addEventListener("mousedown",   handleMouseDown);
 
       hotspotInstance = hotspotContainer.createHotspot(wrapper, { yaw, pitch });
       return { wrapper, hotspotInstance };
