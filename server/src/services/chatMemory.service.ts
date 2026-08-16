@@ -12,6 +12,7 @@ export interface SessionMemory {
   lastStaffId?: string;
   lastStaffName?: string;
   lastRoomNumber?: string;
+  lastFloorId?: string;
   lastFloorNumber?: number;
   lastEntranceLatitude?: number;
   lastEntranceLongitude?: number;

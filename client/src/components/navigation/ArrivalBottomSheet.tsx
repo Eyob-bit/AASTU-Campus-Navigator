@@ -1,4 +1,4 @@
-import { CheckCircle2, ArrowRight, X, Building, MapPin } from "lucide-react";
+import { CheckCircle2, ArrowRight, X, Building, MapPin, Layers } from "lucide-react";
 import { useAppStore } from "@/store";
 
 export function ArrivalBottomSheet() {
@@ -6,8 +6,15 @@ export function ArrivalBottomSheet() {
 
   if (!destinationTarget) return null;
 
-  const isIndoorTarget =
-    destinationTarget.type === "OFFICE" || destinationTarget.type === "STAFF";
+  const isOfficeTarget = destinationTarget.type === "OFFICE";
+  const isStaffTarget = destinationTarget.type === "STAFF";
+  const isIndoorTarget = isOfficeTarget || isStaffTarget;
+
+  const floorNum = destinationTarget.floorNumber;
+  const roomNum = destinationTarget.roomNumber;
+  const officeName = destinationTarget.officeName;
+  const staffName = destinationTarget.staffName;
+  const buildingDisplayName = destinationTarget.buildingName || destinationTarget.name;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[1100] p-3 sm:p-6 pb-20 sm:pb-6 flex justify-center pointer-events-none">
@@ -29,7 +36,7 @@ export function ArrivalBottomSheet() {
         {/* Destination Info */}
         <div className="space-y-1">
           <h2 className="text-lg font-bold text-white tracking-wide">
-            {destinationTarget.name}
+            {buildingDisplayName}
           </h2>
           <p className="text-xs text-slate-300 flex items-center gap-1.5">
             {destinationTarget.buildingName ? (
@@ -49,9 +56,43 @@ export function ArrivalBottomSheet() {
               </>
             )}
           </p>
-          <p className="text-xs text-slate-400 pt-1">
-            You are now at the entrance of your target destination.
-          </p>
+
+          {/* Office/Staff-specific indoor instructions */}
+          {isIndoorTarget && floorNum !== undefined && (
+            <div className="mt-3 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-3 space-y-1.5">
+              <div className="flex items-center gap-1.5 text-cyan-300 text-xs font-semibold">
+                <Layers className="h-3.5 w-3.5 shrink-0" />
+                <span>Indoor Destination</span>
+              </div>
+              {isStaffTarget && staffName && (
+                <p className="text-xs text-slate-200">
+                  <strong>{staffName}</strong>'s office is on{" "}
+                  <strong className="text-cyan-300">Floor {floorNum}</strong>
+                  {roomNum && (
+                    <>, Room <strong className="text-cyan-300">{roomNum}</strong></>
+                  )}.
+                </p>
+              )}
+              {isOfficeTarget && officeName && (
+                <p className="text-xs text-slate-200">
+                  <strong>{officeName}</strong> is on{" "}
+                  <strong className="text-cyan-300">Floor {floorNum}</strong>
+                  {roomNum && (
+                    <>, Room <strong className="text-cyan-300">{roomNum}</strong></>
+                  )}.
+                </p>
+              )}
+              <p className="text-[10px] text-slate-400 pt-0.5">
+                Please go to Floor {floorNum} to continue.
+              </p>
+            </div>
+          )}
+
+          {!isIndoorTarget && (
+            <p className="text-xs text-slate-400 pt-1">
+              You are now at the entrance of your target destination.
+            </p>
+          )}
         </div>
 
         {/* Action Buttons */}
@@ -61,7 +102,9 @@ export function ArrivalBottomSheet() {
               onClick={enterBuilding}
               className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-cyan-500/30 hover:from-cyan-400 hover:to-blue-500 transition-all cursor-pointer active:scale-95"
             >
-              <span>Enter Building</span>
+              <span>
+                {floorNum !== undefined ? `Enter Building → Floor ${floorNum}` : "Enter Building"}
+              </span>
               <ArrowRight className="h-4 w-4" />
             </button>
           ) : (

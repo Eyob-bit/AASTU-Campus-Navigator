@@ -152,12 +152,20 @@ export function CampusChatWidget() {
                           {msg.payload.canNavigate && msg.payload.campusData.entranceLatitude && (
                             <button
                               onClick={() => {
+                                const cd = msg.payload?.campusData;
                                 triggerAppAction("START_NAVIGATION", {
-                                  name: msg.payload?.campusData?.officeName || msg.payload?.campusData?.buildingName || "Destination",
-                                  latitude: msg.payload?.campusData?.entranceLatitude,
-                                  longitude: msg.payload?.campusData?.entranceLongitude,
-                                  buildingId: msg.payload?.campusData?.buildingId,
-                                  officeId: msg.payload?.campusData?.officeId,
+                                  name: cd?.officeName || cd?.staffName || cd?.buildingName || "Destination",
+                                  latitude: cd?.entranceLatitude,
+                                  longitude: cd?.entranceLongitude,
+                                  buildingId: cd?.buildingId,
+                                  buildingName: cd?.buildingName,
+                                  officeId: cd?.officeId,
+                                  officeName: cd?.officeName,
+                                  floorId: (cd as any)?.floorId,
+                                  floorNumber: cd?.floorNumber,
+                                  roomNumber: cd?.roomNumber,
+                                  staffName: cd?.staffName,
+                                  entrySceneId: cd?.entrySceneId,
                                 });
                               }}
                               className="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-xs"

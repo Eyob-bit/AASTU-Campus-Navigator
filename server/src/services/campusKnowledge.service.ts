@@ -93,7 +93,11 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
     const item = bestAliasMatch.aliasObj;
     if (item.office) {
       const b = item.office.floor.building;
-      const entryScene = b.floors.flatMap((f) => f.scenes)[0];
+      // Find the entry scene for the SPECIFIC target floor, not the first floor
+      const targetFloorScenes = item.office.floor.id
+        ? b.floors.find((f: any) => f.id === item.office!.floor.id)?.scenes
+        : undefined;
+      const entryScene = targetFloorScenes?.[0] ?? b.floors.flatMap((f: any) => f.scenes)[0];
 
       return {
         confidence: bestAliasMatch.score,
@@ -122,6 +126,11 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
     if (item.staff) {
       const off = item.staff.office;
       const b = off.floor.building;
+      // For staff alias matches, resolve the floor entry scene from the office floor
+      const staffEntryScene = await prisma.panoramaScene.findFirst({
+        where: { floorId: off.floor.id, isEntryScene: true },
+        select: { id: true },
+      });
 
       return {
         confidence: bestAliasMatch.score,
@@ -139,9 +148,11 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
           buildingId: b.id,
           buildingName: b.name,
           buildingCode: b.code,
+          floorId: off.floor.id,
           floorNumber: off.floor.floorNumber,
           entranceLatitude: b.entranceLatitude,
           entranceLongitude: b.entranceLongitude,
+          entrySceneId: staffEntryScene?.id,
         },
         clarificationCandidates: [],
       };
@@ -181,6 +192,11 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
     const st = bestStaffMatch.staff;
     const off = st.office;
     const b = off.floor.building;
+    // Resolve the entry scene for the specific floor the staff member's office is on
+    const staffFloorEntryScene = await prisma.panoramaScene.findFirst({
+      where: { floorId: off.floor.id, isEntryScene: true },
+      select: { id: true },
+    });
 
     return {
       confidence: bestStaffMatch.score,
@@ -198,9 +214,11 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
         buildingId: b.id,
         buildingName: b.name,
         buildingCode: b.code,
+        floorId: off.floor.id,
         floorNumber: off.floor.floorNumber,
         entranceLatitude: b.entranceLatitude,
         entranceLongitude: b.entranceLongitude,
+        entrySceneId: staffFloorEntryScene?.id,
       },
       clarificationCandidates: [],
     };
@@ -247,7 +265,9 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
   if (bestOfficeMatch && bestOfficeMatch.score >= 0.65) {
     const off = bestOfficeMatch.office;
     const b = off.floor.building;
-    const entryScene = b.floors.flatMap((f) => f.scenes)[0];
+    // Find the entry scene for the SPECIFIC target floor, not the first floor of the building
+    const officeFloorScenes = b.floors.find((f: any) => f.id === off.floor.id)?.scenes;
+    const entryScene = officeFloorScenes?.[0] ?? b.floors.flatMap((f: any) => f.scenes)[0];
 
     return {
       confidence: bestOfficeMatch.score,

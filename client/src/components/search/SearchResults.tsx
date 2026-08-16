@@ -42,6 +42,8 @@ export function SearchResults({ results }: SearchResultsProps) {
       staffPhone: result.staff?.phone,
       staffEmail: result.staff?.email,
       entranceImage: result.building.entranceImage,
+      // Floor-specific entry scene so Show Inside opens the correct floor panorama
+      entrySceneId: result.entryScene?.id ?? null,
     };
 
     startOutdoorNavigation(target);

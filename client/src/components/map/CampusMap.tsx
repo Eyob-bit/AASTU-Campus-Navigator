@@ -452,17 +452,35 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         latitude: number;
         longitude: number;
         buildingId?: string;
+        buildingName?: string;
         officeId?: string;
+        officeName?: string;
+        floorId?: string;
+        floorNumber?: number;
+        roomNumber?: string;
+        staffId?: string;
+        staffName?: string;
+        entrySceneId?: string;
       }>;
-      if (customEvent.detail && customEvent.detail.latitude && customEvent.detail.longitude) {
+      const d = customEvent.detail;
+      if (d && d.latitude && d.longitude) {
+        const isStaff = Boolean(d.staffId);
+        const isOffice = Boolean(d.officeId) && !isStaff;
         startOutdoorNavigation({
-          id: customEvent.detail.officeId || customEvent.detail.buildingId || "custom-target",
-          type: customEvent.detail.officeId ? "OFFICE" : "BUILDING",
-          name: customEvent.detail.name || "Destination",
-          latitude: customEvent.detail.latitude,
-          longitude: customEvent.detail.longitude,
-          buildingId: customEvent.detail.buildingId,
-          officeId: customEvent.detail.officeId,
+          id: d.staffId || d.officeId || d.buildingId || "custom-target",
+          type: isStaff ? "STAFF" : isOffice ? "OFFICE" : "BUILDING",
+          name: d.name || "Destination",
+          latitude: d.latitude,
+          longitude: d.longitude,
+          buildingId: d.buildingId,
+          buildingName: d.buildingName,
+          officeId: d.officeId,
+          officeName: d.officeName,
+          floorId: d.floorId,
+          floorNumber: d.floorNumber,
+          roomNumber: d.roomNumber,
+          staffName: d.staffName,
+          entrySceneId: d.entrySceneId,
         });
       }
     }

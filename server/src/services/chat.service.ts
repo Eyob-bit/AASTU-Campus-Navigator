@@ -17,6 +17,7 @@ export interface ChatResponsePayload {
     buildingId?: string;
     buildingName?: string;
     buildingCode?: string;
+    floorId?: string;
     floorNumber?: number;
     roomNumber?: string;
     officeId?: string;
@@ -56,8 +57,13 @@ export async function processChatMessage(
         buildingName: memory.lastBuildingName,
         officeId: memory.lastOfficeId,
         officeName: memory.lastOfficeName,
+        floorId: memory.lastFloorId,
+        floorNumber: memory.lastFloorNumber,
+        roomNumber: memory.lastRoomNumber,
+        staffName: memory.lastStaffName,
         entranceLatitude: memory.lastEntranceLatitude,
         entranceLongitude: memory.lastEntranceLongitude,
+        entrySceneId: memory.lastEntrySceneId,
       },
       suggestions: ["Cancel Navigation", "Show on Map"],
       followUpChips: ["Show nearby buildings", "Show inside"],
@@ -86,6 +92,8 @@ export async function processChatMessage(
       campusData: {
         buildingId: memory.lastBuildingId,
         buildingName: memory.lastBuildingName,
+        floorId: memory.lastFloorId,
+        floorNumber: memory.lastFloorNumber,
         entrySceneId: memory.lastEntrySceneId,
       },
       suggestions: ["Start Navigation", "Show on Map"],
@@ -146,6 +154,7 @@ export async function processChatMessage(
       lastStaffId: m.staffId,
       lastStaffName: m.staffName,
       lastRoomNumber: m.roomNumber,
+      lastFloorId: m.floorId,
       lastFloorNumber: m.floorNumber,
       lastEntranceLatitude: m.entranceLatitude,
       lastEntranceLongitude: m.entranceLongitude,
@@ -186,6 +195,7 @@ export async function processChatMessage(
         buildingId: m.buildingId,
         buildingName: m.buildingName,
         buildingCode: m.buildingCode,
+        floorId: m.floorId,
         floorNumber: m.floorNumber,
         roomNumber: m.roomNumber,
         officeId: m.officeId,
