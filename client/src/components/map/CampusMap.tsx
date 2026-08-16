@@ -120,6 +120,24 @@ function MapControls({
   );
 }
 
+// ── Master Helper: Apply Map Rotation Transform safely ────────────────────────
+function applyMapRotation(map: L.Map, angle: number) {
+  const container = map.getContainer();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapPane = ((map as any)._mapPane || container.querySelector(".leaflet-map-pane")) as HTMLElement | null;
+  if (!mapPane) return;
+
+  mapPane.style.transformOrigin = "50% 50%";
+  const currentTransform = mapPane.style.transform || "";
+  const baseTransform = currentTransform.replace(/rotate\([^)]*\)/g, "").trim();
+
+  if (angle !== 0) {
+    mapPane.style.transform = `${baseTransform} rotate(${angle}deg)`;
+  } else {
+    mapPane.style.transform = baseTransform;
+  }
+}
+
 // ── MapRotationController — real two-finger touch map rotation controller ──────
 function MapRotationController({
   rotationAngle,
@@ -132,10 +150,11 @@ function MapRotationController({
   const rotationRef = useRef(rotationAngle);
   rotationRef.current = rotationAngle;
 
-  // 1. Keep map instance updated with current rotation angle
+  // 1. Keep map instance updated with current rotation angle ref
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (map as any)._mapRotationAngle = rotationAngle;
+    applyMapRotation(map, rotationAngle);
   }, [map, rotationAngle]);
 
   // 2. Patch Leaflet's L.DomUtil.setPosition & L.Map.prototype.mouseEventToContainerPoint
@@ -147,10 +166,7 @@ function MapRotationController({
       L.DomUtil.setPosition = function (el: HTMLElement, point: L.Point) {
         domUtilAny._origSetPosition.call(this, el, point);
         if (el && el.classList && el.classList.contains("leaflet-map-pane")) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const mapObj = (el as any)._leaflet_map || map;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const angle = (mapObj as any)?._mapRotationAngle || 0;
+          const angle = rotationRef.current || 0;
           if (angle) {
             el.style.transformOrigin = "50% 50%";
             const base = el.style.transform.replace(/rotate\([^)]*\)/g, "").trim();
@@ -166,8 +182,7 @@ function MapRotationController({
       mapProtoAny._origMouseEventToContainerPoint = L.Map.prototype.mouseEventToContainerPoint;
       L.Map.prototype.mouseEventToContainerPoint = function (e: MouseEvent | Touch): L.Point {
         const point = mapProtoAny._origMouseEventToContainerPoint.call(this, e);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const angle = (this as any)?._mapRotationAngle || 0;
+        const angle = rotationRef.current || 0;
         if (!angle) return point;
 
         const size = this.getSize();
@@ -185,7 +200,19 @@ function MapRotationController({
     }
   }, [map]);
 
-  // 3. Attach _leaflet_map property to .leaflet-map-pane DOM element
+  // 3. Re-enforce rotation on all Leaflet map view & movement events
+  useEffect(() => {
+    function enforceRotation() {
+      applyMapRotation(map, rotationRef.current);
+    }
+
+    map.on("move moveend drag dragend zoom zoomend viewreset zoomanim resize", enforceRotation);
+    return () => {
+      map.off("move moveend drag dragend zoom zoomend viewreset zoomanim resize", enforceRotation);
+    };
+  }, [map]);
+
+  // 4. Attach _leaflet_map property to .leaflet-map-pane DOM element
   useEffect(() => {
     const container = map.getContainer();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -195,7 +222,7 @@ function MapRotationController({
     }
   }, [map]);
 
-  // 4. Two-finger rotation touch gesture handler
+  // 5. Two-finger rotation touch gesture handler
   useEffect(() => {
     const container = map.getContainer();
     let initialTouchAngle = 0;
@@ -225,14 +252,8 @@ function MapRotationController({
           rotationRef.current = newAngle;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (map as any)._mapRotationAngle = newAngle;
+          applyMapRotation(map, newAngle);
           setRotationAngle(newAngle);
-
-          const mapPane = container.querySelector(".leaflet-map-pane") as HTMLElement | null;
-          if (mapPane) {
-            mapPane.style.transformOrigin = "50% 50%";
-            const base = mapPane.style.transform.replace(/rotate\([^)]*\)/g, "").trim();
-            mapPane.style.transform = `${base} rotate(${newAngle}deg)`;
-          }
         }
       }
     }
@@ -255,17 +276,6 @@ function MapRotationController({
       container.removeEventListener("touchcancel", handleTouchEnd);
     };
   }, [map, setRotationAngle]);
-
-  // 5. Apply CSS rotation transform whenever rotationAngle state updates
-  useEffect(() => {
-    const container = map.getContainer();
-    const mapPane = container.querySelector(".leaflet-map-pane") as HTMLElement | null;
-    if (mapPane) {
-      mapPane.style.transformOrigin = "50% 50%";
-      const base = mapPane.style.transform.replace(/rotate\([^)]*\)/g, "").trim();
-      mapPane.style.transform = `${base} rotate(${rotationAngle}deg)`;
-    }
-  }, [map, rotationAngle]);
 
   return null;
 }
