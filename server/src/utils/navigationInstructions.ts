@@ -19,6 +19,8 @@ export interface RouteInstruction {
   targetNodeName?: string | null;
 }
 
+export type CardinalDirection = "north" | "east" | "south" | "west";
+
 /**
  * Calculates initial bearing (heading) in degrees [0, 360) from point 1 to point 2.
  */
@@ -71,22 +73,30 @@ export function classifyTurnAngle(angle: number): InstructionType {
 }
 
 /**
- * Converts a bearing in degrees [0, 360) to a cardinal direction string.
+ * Converts a bearing in degrees [0, 360) to one of 4 cardinal directions:
+ * North: 315° -> 45°
+ * East:  45°  -> 135°
+ * South: 135° -> 225°
+ * West:  225° -> 315°
  */
-export function bearingToCardinal(bearing: number): string {
-  if (bearing >= 337.5 || bearing < 22.5) return "north";
-  if (bearing >= 22.5 && bearing < 67.5) return "northeast";
-  if (bearing >= 67.5 && bearing < 112.5) return "east";
-  if (bearing >= 112.5 && bearing < 157.5) return "southeast";
-  if (bearing >= 157.5 && bearing < 202.5) return "south";
-  if (bearing >= 202.5 && bearing < 247.5) return "southwest";
-  if (bearing >= 247.5 && bearing < 292.5) return "west";
-  return "northwest";
+export function bearingTo4Cardinal(bearing: number): CardinalDirection {
+  const norm = ((bearing % 360) + 360) % 360;
+  if (norm >= 45 && norm < 135) return "east";
+  if (norm >= 135 && norm < 225) return "south";
+  if (norm >= 225 && norm < 315) return "west";
+  return "north";
 }
 
 /**
- * Generates human-friendly Google Maps-style turn-by-turn walking instructions
- * given polyline coordinates and graph node details.
+ * Backward compatibility alias for bearingTo4Cardinal
+ */
+export function bearingToCardinal(bearing: number): string {
+  return bearingTo4Cardinal(bearing);
+}
+
+/**
+ * Generates simple, human-friendly walking instructions based on cardinal directions
+ * (North, South, East, West) derived strictly from route geometry.
  */
 export function generateRouteInstructions(
   coordinates: [number, number][],
@@ -117,87 +127,78 @@ export function generateRouteInstructions(
   const p1 = coordinates[1];
   const initialDist = Math.round(calculateHaversineDistance(p0[0], p0[1], p1[0], p1[1]));
   const initialBearing = calculateBearing(p0[0], p0[1], p1[0], p1[1]);
-  const cardinalDir = bearingToCardinal(initialBearing);
+  let currentCardinal = bearingTo4Cardinal(initialBearing);
+  let prevBearing = initialBearing;
 
   const firstNodeKey = `${p1[0].toFixed(6)},${p1[1].toFixed(6)}`;
   const firstNode = nodeMap.get(firstNodeKey);
-  const targetLabel = firstNode?.buildingName || firstNode?.name || "campus path";
 
   instructions.push({
     type: "START",
-    text: `Head ${cardinalDir} toward ${targetLabel}`,
+    text: `Start by heading ${currentCardinal}`,
     distance: initialDist,
-    targetNodeId: firstNode?.id,
-    targetNodeName: firstNode?.name,
+    targetNodeId: firstNode?.id || pathNodes[0]?.id,
+    targetNodeName: firstNode?.name || pathNodes[0]?.name,
   });
 
-  // 2. Intermediate turn instructions
-  let accumulatedDist = 0;
-  let prevBearing = initialBearing;
+  let accumulatedDist = initialDist;
 
+  // 2. Process intermediate route segments for meaningful cardinal turns
   for (let i = 1; i < coordinates.length - 1; i++) {
     const curr = coordinates[i];
     const next = coordinates[i + 1];
     const segDist = calculateHaversineDistance(curr[0], curr[1], next[0], next[1]);
-    accumulatedDist += segDist;
 
-    const currBearing = calculateBearing(curr[0], curr[1], next[0], next[1]);
-    const turnAngle = calculateTurnAngle(prevBearing, currBearing);
-    const turnType = classifyTurnAngle(turnAngle);
+    const segBearing = calculateBearing(curr[0], curr[1], next[0], next[1]);
+    const segCardinal = bearingTo4Cardinal(segBearing);
+    const turnAngle = calculateTurnAngle(prevBearing, segBearing);
 
     const currNodeKey = `${curr[0].toFixed(6)},${curr[1].toFixed(6)}`;
     const currNode = nodeMap.get(currNodeKey);
 
-    // Only create a turn instruction if there's a real turn (not straight) or named landmark
-    if (turnType !== "STRAIGHT" || currNode?.name || currNode?.buildingName) {
-      const nodeName = currNode?.buildingName
-        ? `${currNode.buildingName} entrance`
-        : currNode?.name;
+    // Meaningful turn detection:
+    // Requires a cardinal direction change AND a turn angle magnitude >= 30°
+    const isCardinalChange = segCardinal !== currentCardinal && Math.abs(turnAngle) >= 30;
 
-      let actionText = "";
-      switch (turnType) {
-        case "LEFT":
-          actionText = nodeName ? `Turn left at ${nodeName}` : "Turn left onto path";
-          break;
-        case "SLIGHT_LEFT":
-          actionText = nodeName ? `Turn slightly left past ${nodeName}` : "Turn slightly left";
-          break;
-        case "RIGHT":
-          actionText = nodeName ? `Turn right at ${nodeName}` : "Turn right onto path";
-          break;
-        case "SLIGHT_RIGHT":
-          actionText = nodeName ? `Turn slightly right past ${nodeName}` : "Turn slightly right";
-          break;
-        case "UTURN":
-          actionText = "Make a U-turn";
-          break;
-        default:
-          actionText = nodeName ? `Continue past ${nodeName}` : "Continue straight along campus path";
-          break;
+    if (isCardinalChange) {
+      let turnType: InstructionType = "RIGHT";
+      if (Math.abs(turnAngle) > 135) {
+        turnType = "UTURN";
+      } else if (turnAngle < -25) {
+        turnType = turnAngle < -65 ? "LEFT" : "SLIGHT_LEFT";
+      } else {
+        turnType = turnAngle > 65 ? "RIGHT" : "SLIGHT_RIGHT";
       }
 
       instructions.push({
         type: turnType,
-        text: actionText,
-        distance: Math.round(accumulatedDist),
+        text: `Turn ${segCardinal}`,
+        distance: Math.round(segDist),
         targetNodeId: currNode?.id,
         targetNodeName: currNode?.name,
       });
 
-      accumulatedDist = 0; // Reset for next instruction segment
+      currentCardinal = segCardinal;
+      accumulatedDist = segDist;
+    } else {
+      // Continuing in same cardinal direction
+      accumulatedDist += segDist;
+      const lastInst = instructions[instructions.length - 1];
+      if (lastInst) {
+        lastInst.distance += Math.round(segDist);
+      }
     }
 
-    prevBearing = currBearing;
-  }
-
-  // Add remaining distance to last turn if any
-  if (instructions.length > 0 && accumulatedDist > 0) {
-    const lastInst = instructions[instructions.length - 1];
-    lastInst.distance += Math.round(accumulatedDist);
+    prevBearing = segBearing;
   }
 
   // 3. Final Arrival instruction
-  const finalDestName = destName || pathNodes[pathNodes.length - 1]?.buildingName || pathNodes[pathNodes.length - 1]?.name || "destination";
+  const finalDestName =
+    destName ||
+    pathNodes[pathNodes.length - 1]?.buildingName ||
+    pathNodes[pathNodes.length - 1]?.name ||
+    "destination";
+
   instructions.push({
     type: "ARRIVE",
     text: `Arrive at ${finalDestName}`,
@@ -208,4 +209,5 @@ export function generateRouteInstructions(
 
   return instructions;
 }
+
 

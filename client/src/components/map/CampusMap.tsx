@@ -107,14 +107,33 @@ function MapViewController({
   const [isFollowingUser, setIsFollowingUser] = useState(true);
   const hasFitRouteRef = useRef(false);
 
-  // Pause camera auto-follow when user manually drags the map
+  // Pause camera auto-follow when user manually interacts with the map (drag, zoom, touch, wheel)
   useEffect(() => {
-    function handleUserDrag() {
+    function handleUserInteraction() {
       setIsFollowingUser(false);
     }
-    map.on("dragstart", handleUserDrag);
+
+    map.on("dragstart", handleUserInteraction);
+    map.on("zoomstart", handleUserInteraction);
+    map.on("movestart", (e) => {
+      if ((e as L.LeafletEvent & { originalEvent?: unknown }).originalEvent) {
+        setIsFollowingUser(false);
+      }
+    });
+
+    const container = map.getContainer();
+    const handleTouch = () => {
+      setIsFollowingUser(false);
+    };
+
+    container.addEventListener("touchstart", handleTouch, { passive: true });
+    container.addEventListener("wheel", handleUserInteraction, { passive: true });
+
     return () => {
-      map.off("dragstart", handleUserDrag);
+      map.off("dragstart", handleUserInteraction);
+      map.off("zoomstart", handleUserInteraction);
+      container.removeEventListener("touchstart", handleTouch);
+      container.removeEventListener("wheel", handleUserInteraction);
     };
   }, [map]);
 
@@ -134,11 +153,12 @@ function MapViewController({
     }
   }, [navStep, destinationTarget, userLocation, map]);
 
-  // Manual center button click: re-enable auto-follow and fly to position
+  // Manual center button click: re-enable auto-follow and fly to position while preserving preferred zoom
   useEffect(() => {
     if (shouldCenter && userLocation) {
       setIsFollowingUser(true);
-      map.flyTo([userLocation.lat, userLocation.lng], 18, { animate: true, duration: 1 });
+      const targetZoom = Math.max(map.getZoom(), 17);
+      map.flyTo([userLocation.lat, userLocation.lng], targetZoom, { animate: true, duration: 1 });
       setShouldCenter(false);
     }
   }, [shouldCenter, userLocation, map, setShouldCenter]);
