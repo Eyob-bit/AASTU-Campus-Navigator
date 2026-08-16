@@ -5,6 +5,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
+import { calculateDistanceInMeters } from "@/utils/geo";
 import { useBuildings } from "@/hooks/useBuildings";
 import { useLandmarks } from "@/hooks/useLandmarks";
 import { useAppStore } from "@/store";
@@ -158,10 +159,32 @@ function MapViewController({
     return () => window.removeEventListener("aastu_center_building", handleCenterBuilding);
   }, [map]);
 
+  const lastPanPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastPanTimeRef = useRef<number>(0);
+
   // Camera following during active outdoor navigation ONLY if user is not manually dragging
   useEffect(() => {
     if (navStep === "OUTDOOR_NAV" && userLocation && isFollowingUser) {
-      map.panTo([userLocation.lat, userLocation.lng], { animate: true, duration: 0.25 });
+      const now = Date.now();
+      const lastPos = lastPanPosRef.current;
+      const elapsed = now - lastPanTimeRef.current;
+
+      const dist = lastPos
+        ? calculateDistanceInMeters(userLocation.lat, userLocation.lng, lastPos.lat, lastPos.lng)
+        : Infinity;
+
+      // Smooth camera follow: trigger pan if moved >= 2.5m and at least 400ms elapsed since last pan
+      if (lastPos === null || (dist >= 2.5 && elapsed >= 400)) {
+        lastPanPosRef.current = userLocation;
+        lastPanTimeRef.current = now;
+        map.panTo([userLocation.lat, userLocation.lng], {
+          animate: true,
+          duration: 0.4,
+          easeLinearity: 0.4,
+        });
+      }
+    } else if (navStep !== "OUTDOOR_NAV") {
+      lastPanPosRef.current = null;
     }
   }, [navStep, userLocation, isFollowingUser, map]);
 

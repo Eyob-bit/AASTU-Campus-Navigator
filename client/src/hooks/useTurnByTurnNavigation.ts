@@ -24,6 +24,7 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
     activeRoute,
     currentInstructionIndex,
     setCurrentInstructionIndex,
+    triggerArrival,
   } = useAppStore();
 
   const instructions = activeRoute?.instructions ?? [];
@@ -126,6 +127,13 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
   const isArrived =
     currentInstruction?.type === "ARRIVE" ||
     (remainingInstructionDistance !== null && remainingInstructionDistance <= STEP_ADVANCE_RADIUS_METERS && currentInstructionIndex === totalSteps - 1);
+
+  // Trigger arrival bottom sheet when arrived during OUTDOOR_NAV
+  useEffect(() => {
+    if (navStep === "OUTDOOR_NAV" && isArrived) {
+      triggerArrival();
+    }
+  }, [navStep, isArrived, triggerArrival]);
 
   return {
     currentInstructionIndex,

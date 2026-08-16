@@ -3,12 +3,10 @@ import { roadNetworkApi } from "@/api/roadNetwork.api";
 import { useAppStore } from "@/store";
 import { calculateDistanceInMeters } from "@/utils/geo";
 
-// Distance threshold (meters) from last fetch position that triggers a reroute
-const REROUTE_THRESHOLD_METERS = 15;
-// Cross-track distance threshold (meters) from active route polyline that triggers instant reroute
-const OFF_ROUTE_THRESHOLD_METERS = 12;
+// Cross-track distance threshold (meters) from active route polyline that triggers reroute
+const OFF_ROUTE_THRESHOLD_METERS = 15;
 // Minimum milliseconds between consecutive route fetches (debounce)
-const REROUTE_DEBOUNCE_MS = 2000;
+const REROUTE_DEBOUNCE_MS = 3000;
 
 function distanceToSegment(
   pLat: number, pLng: number,
@@ -27,25 +25,69 @@ function distanceToSegment(
   return calculateDistanceInMeters(pLat, pLng, projLat, projLng);
 }
 
-function minDistanceToPolyline(lat: number, lng: number, polyline: [number, number][]): number {
-  if (polyline.length < 2) return Infinity;
-  let minDist = Infinity;
+/**
+  * Fast off-route check:
+  * First tests segments near the user's current progress index (window of ~5 segments).
+  * Only performs a full polyline scan if local window distance > threshold.
+  */
+function isUserOffRoute(
+  lat: number,
+  lng: number,
+  polyline: [number, number][],
+  lastSegIdxRef: React.MutableRefObject<number>
+): boolean {
+  if (polyline.length < 2) return false;
+
+  const startIdx = Math.max(0, lastSegIdxRef.current - 1);
+  const endIdx = Math.min(polyline.length - 1, lastSegIdxRef.current + 4);
+
+  let minWindowDist = Infinity;
+  let bestSegIdx = lastSegIdxRef.current;
+
+  for (let i = startIdx; i < endIdx; i++) {
+    const d = distanceToSegment(
+      lat, lng,
+      polyline[i][0], polyline[i][1],
+      polyline[i + 1][0], polyline[i + 1][1]
+    );
+    if (d < minWindowDist) {
+      minWindowDist = d;
+      bestSegIdx = i;
+    }
+  }
+
+  if (minWindowDist <= OFF_ROUTE_THRESHOLD_METERS) {
+    lastSegIdxRef.current = bestSegIdx;
+    return false;
+  }
+
+  // Fallback: full polyline search only when window check exceeds threshold
+  let minFullDist = Infinity;
+  let fullBestIdx = 0;
   for (let i = 0; i < polyline.length - 1; i++) {
     const d = distanceToSegment(
       lat, lng,
       polyline[i][0], polyline[i][1],
       polyline[i + 1][0], polyline[i + 1][1]
     );
-    if (d < minDist) minDist = d;
+    if (d < minFullDist) {
+      minFullDist = d;
+      fullBestIdx = i;
+    }
   }
-  return minDist;
+
+  if (minFullDist <= OFF_ROUTE_THRESHOLD_METERS) {
+    lastSegIdxRef.current = fullBestIdx;
+    return false;
+  }
+
+  return true; // User has genuinely moved off-route
 }
 
 /**
- * Fetches the outdoor A* route from the server when navigation is active.
- * Automatically re-fetches (reroutes) when the user moves off-route or
- * strays more than REROUTE_THRESHOLD_METERS away from the last fetch position.
- * Results are written directly into the global store via `setActiveRoute`.
+ * Fetches the outdoor A* route from the server when outdoor navigation is active.
+ * Only re-fetches (reroutes) when the user moves off-route or target changes.
+ * Avoids recalculating A* for every GPS step while walking correctly on route.
  */
 export function useOutdoorRoute() {
   const {
@@ -60,6 +102,14 @@ export function useOutdoorRoute() {
   const lastFetchTimeRef = useRef<number>(0);
   const isFetchingRef = useRef<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
+  const requestIdRef = useRef<number>(0);
+  const lastSegIdxRef = useRef<number>(0);
+
+  // Keep a ref to activeRoute to avoid activeRoute in effect dependency array
+  const activeRouteRef = useRef(activeRoute);
+  useEffect(() => {
+    activeRouteRef.current = activeRoute;
+  }, [activeRoute]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -73,6 +123,7 @@ export function useOutdoorRoute() {
       if (!destinationTarget) return;
       if (isFetchingRef.current) return;
 
+      const currentRequestId = ++requestIdRef.current;
       isFetchingRef.current = true;
 
       try {
@@ -87,16 +138,19 @@ export function useOutdoorRoute() {
               }),
         });
 
-        if (isMountedRef.current) {
+        // Stale response guard: only update if this is still the latest request
+        if (isMountedRef.current && currentRequestId === requestIdRef.current) {
           setActiveRoute(route);
           lastFetchPosRef.current = { lat: fromLat, lng: fromLng };
           lastFetchTimeRef.current = Date.now();
+          lastSegIdxRef.current = 0;
         }
       } catch (err) {
-        // Silently fail — WalkingRoutePolyline will keep showing last known route
         console.warn("[useOutdoorRoute] Route fetch failed:", err);
       } finally {
-        isFetchingRef.current = false;
+        if (currentRequestId === requestIdRef.current) {
+          isFetchingRef.current = false;
+        }
       }
     },
     [destinationTarget, setActiveRoute]
@@ -110,32 +164,28 @@ export function useOutdoorRoute() {
     const now = Date.now();
     const lastPos = lastFetchPosRef.current;
 
-    // Determine if we need a fresh fetch
     const neverFetched = lastPos === null;
     const debouncePassed = now - lastFetchTimeRef.current > REROUTE_DEBOUNCE_MS;
 
-    const movedEnough =
-      lastPos !== null &&
-      calculateDistanceInMeters(lat, lng, lastPos.lat, lastPos.lng) >
-        REROUTE_THRESHOLD_METERS;
+    // Check off-route status using fast segment-window search
+    const currentCoords = activeRouteRef.current?.coordinates ?? [];
+    const offRoute =
+      currentCoords.length >= 2 &&
+      isUserOffRoute(lat, lng, currentCoords, lastSegIdxRef);
 
-    // Cross-track off-route detection
-    const activeCoords = activeRoute?.coordinates ?? [];
-    const isOffRoute =
-      activeCoords.length >= 2 &&
-      minDistanceToPolyline(lat, lng, activeCoords) > OFF_ROUTE_THRESHOLD_METERS;
-
-    if (neverFetched || (debouncePassed && (movedEnough || isOffRoute))) {
+    if (neverFetched || (debouncePassed && offRoute)) {
       fetchRoute(lat, lng);
     }
-  }, [navStep, userLocation, destinationTarget, activeRoute, fetchRoute]);
+  }, [navStep, userLocation, destinationTarget, fetchRoute]);
 
-  // When navigation ends, reset tracking refs
+  // When navigation ends or destination changes, reset tracking refs
   useEffect(() => {
     if (navStep === "IDLE") {
       lastFetchPosRef.current = null;
       lastFetchTimeRef.current = 0;
+      lastSegIdxRef.current = 0;
     }
   }, [navStep]);
 }
+
 

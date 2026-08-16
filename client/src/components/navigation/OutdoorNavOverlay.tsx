@@ -16,7 +16,7 @@ import {
   Flag,
 } from "lucide-react";
 import { useAppStore } from "@/store";
-import { useLiveNavigation, useTurnByTurnNavigation } from "@/hooks";
+import { useTurnByTurnNavigation } from "@/hooks";
 import { formatDistance } from "@/utils/geo";
 import type { InstructionType, RouteInstruction } from "@/api/roadNetwork.api";
 
@@ -162,9 +162,7 @@ export function OutdoorNavOverlay() {
   const {
     destinationTarget,
     activeRoute,
-    triggerArrival,
     finishNavigation,
-    setUserLocation,
   } = useAppStore();
 
   const [isRerouting, setIsRerouting] = useState(false);
@@ -183,22 +181,6 @@ export function OutdoorNavOverlay() {
 
   // Ref to detect new route fetches (reroute flash)
   const prevRouteLenRef = useRef<number | undefined>(undefined);
-
-  // Live GPS tracking watcher
-  const { userPosition } = useLiveNavigation({
-    targetLat: destinationTarget?.latitude,
-    targetLng: destinationTarget?.longitude,
-    arrivalThresholdMeters: 15,
-    enabled: Boolean(destinationTarget),
-    onArrival: triggerArrival,
-  });
-
-  // Feed GPS coordinates into global store
-  useEffect(() => {
-    if (userPosition) {
-      setUserLocation({ lat: userPosition.latitude, lng: userPosition.longitude });
-    }
-  }, [userPosition, setUserLocation]);
 
   // Flash "Rerouting…" when route recalculates
   useEffect(() => {
