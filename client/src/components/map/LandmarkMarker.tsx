@@ -40,7 +40,7 @@ function makeLandmarkIcon(
     iconAnchor: [16, 58],
     popupAnchor: [0, -60],
     html: `
-      <div style="
+      <div class="map-marker-unrotate" style="
         display:flex;flex-direction:column;align-items:center;
         pointer-events:none;
       ">

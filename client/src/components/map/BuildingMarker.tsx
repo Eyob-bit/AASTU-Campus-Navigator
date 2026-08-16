@@ -8,7 +8,7 @@ import type { Building } from "@/types";
 
 function makeBuildingIcon(name: string, code: string): L.DivIcon {
   const html = `
-    <div style="
+    <div class="map-marker-unrotate" style="
       display:flex;flex-direction:column;align-items:center;
       pointer-events:none;
     ">

@@ -136,6 +136,13 @@ function applyMapRotation(map: L.Map, angle: number) {
   } else {
     mapPane.style.transform = baseTransform;
   }
+
+  // Counter-rotate marker icons & building labels so text ALWAYS remains upright!
+  const unrotateEls = container.querySelectorAll(".map-marker-unrotate") as NodeListOf<HTMLElement>;
+  unrotateEls.forEach((el) => {
+    el.style.transformOrigin = "center center";
+    el.style.transform = angle !== 0 ? `rotate(${-angle}deg)` : "";
+  });
 }
 
 // ── MapRotationController — real two-finger touch map rotation controller ──────

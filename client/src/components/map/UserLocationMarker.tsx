@@ -3,7 +3,7 @@ import L from "leaflet";
 
 function makeUserLocationIcon(): L.DivIcon {
   const html = `
-    <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+    <div class="map-marker-unrotate" style="position:relative;display:flex;align-items:center;justify-content:center;">
       <div style="
         position:absolute;
         width:36px;height:36px;
