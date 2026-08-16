@@ -48,19 +48,49 @@ function MapResizer() {
   return null;
 }
 
-// ── Floating Map Controls (GPS Pin + Satellite toggle) ───────────────────────
+// ── Floating Map Controls (GPS Pin + Satellite toggle + Compass Reset) ────────
 interface MapControlsProps {
   onCenterLocation: () => void;
   tileMode: TileMode;
   onToggleTile: () => void;
+  rotationAngle?: number;
+  onResetRotation?: () => void;
 }
 
-function MapControls({ onCenterLocation, tileMode, onToggleTile }: MapControlsProps) {
+function MapControls({
+  onCenterLocation,
+  tileMode,
+  onToggleTile,
+  rotationAngle = 0,
+  onResetRotation,
+}: MapControlsProps) {
+  const isRotated = Math.round(rotationAngle) !== 0;
+
   return (
     <div
       className="absolute bottom-24 right-3 sm:right-4 z-[1000] flex flex-col gap-2"
       style={{ zIndex: 1000 }}
     >
+      {/* Compass Reset Rotation Button */}
+      {isRotated && (
+        <button
+          onClick={onResetRotation}
+          className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B132B]/95 text-amber-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95"
+          title={`Reset Map Rotation (${Math.round(rotationAngle)}°) to North`}
+        >
+          <span
+            style={{
+              display: "inline-block",
+              transform: `rotate(${-rotationAngle}deg)`,
+              transition: "transform 0.2s ease-out",
+              fontSize: 16,
+            }}
+          >
+            🧭
+          </span>
+        </button>
+      )}
+
       {/* Satellite / Street toggle */}
       <button
         onClick={onToggleTile}
@@ -88,6 +118,156 @@ function MapControls({ onCenterLocation, tileMode, onToggleTile }: MapControlsPr
       </button>
     </div>
   );
+}
+
+// ── MapRotationController — real two-finger touch map rotation controller ──────
+function MapRotationController({
+  rotationAngle,
+  setRotationAngle,
+}: {
+  rotationAngle: number;
+  setRotationAngle: React.Dispatch<React.SetStateAction<number>>;
+}) {
+  const map = useMap();
+  const rotationRef = useRef(rotationAngle);
+  rotationRef.current = rotationAngle;
+
+  // 1. Keep map instance updated with current rotation angle
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (map as any)._mapRotationAngle = rotationAngle;
+  }, [map, rotationAngle]);
+
+  // 2. Patch Leaflet's L.DomUtil.setPosition & L.Map.prototype.mouseEventToContainerPoint
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const domUtilAny = L.DomUtil as any;
+    if (!domUtilAny._origSetPosition) {
+      domUtilAny._origSetPosition = L.DomUtil.setPosition;
+      L.DomUtil.setPosition = function (el: HTMLElement, point: L.Point) {
+        domUtilAny._origSetPosition.call(this, el, point);
+        if (el && el.classList && el.classList.contains("leaflet-map-pane")) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const mapObj = (el as any)._leaflet_map || map;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const angle = (mapObj as any)?._mapRotationAngle || 0;
+          if (angle) {
+            el.style.transformOrigin = "50% 50%";
+            const base = el.style.transform.replace(/rotate\([^)]*\)/g, "").trim();
+            el.style.transform = `${base} rotate(${angle}deg)`;
+          }
+        }
+      };
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mapProtoAny = L.Map.prototype as any;
+    if (!mapProtoAny._origMouseEventToContainerPoint) {
+      mapProtoAny._origMouseEventToContainerPoint = L.Map.prototype.mouseEventToContainerPoint;
+      L.Map.prototype.mouseEventToContainerPoint = function (e: MouseEvent | Touch): L.Point {
+        const point = mapProtoAny._origMouseEventToContainerPoint.call(this, e);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const angle = (this as any)?._mapRotationAngle || 0;
+        if (!angle) return point;
+
+        const size = this.getSize();
+        const cx = size.x / 2;
+        const cy = size.y / 2;
+        const rad = (-angle * Math.PI) / 180;
+        const dx = point.x - cx;
+        const dy = point.y - cy;
+
+        return L.point(
+          cx + dx * Math.cos(rad) - dy * Math.sin(rad),
+          cy + dx * Math.sin(rad) + dy * Math.cos(rad)
+        );
+      };
+    }
+  }, [map]);
+
+  // 3. Attach _leaflet_map property to .leaflet-map-pane DOM element
+  useEffect(() => {
+    const container = map.getContainer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mapPane = container.querySelector(".leaflet-map-pane") as any;
+    if (mapPane) {
+      mapPane._leaflet_map = map;
+    }
+  }, [map]);
+
+  // 4. Two-finger rotation touch gesture handler
+  useEffect(() => {
+    const container = map.getContainer();
+    let initialTouchAngle = 0;
+    let initialMapRotation = 0;
+    let isRotating = false;
+
+    function getAngle(t1: Touch, t2: Touch): number {
+      const dx = t2.clientX - t1.clientX;
+      const dy = t2.clientY - t1.clientY;
+      return (Math.atan2(dy, dx) * 180) / Math.PI;
+    }
+
+    function handleTouchStart(e: TouchEvent) {
+      if (e.touches.length === 2) {
+        isRotating = true;
+        initialTouchAngle = getAngle(e.touches[0], e.touches[1]);
+        initialMapRotation = rotationRef.current;
+      }
+    }
+
+    function handleTouchMove(e: TouchEvent) {
+      if (isRotating && e.touches.length === 2) {
+        const currentTouchAngle = getAngle(e.touches[0], e.touches[1]);
+        const delta = currentTouchAngle - initialTouchAngle;
+        const newAngle = Math.round((initialMapRotation + delta + 360) % 360);
+        if (Math.abs(newAngle - rotationRef.current) >= 1) {
+          rotationRef.current = newAngle;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (map as any)._mapRotationAngle = newAngle;
+          setRotationAngle(newAngle);
+
+          const mapPane = container.querySelector(".leaflet-map-pane") as HTMLElement | null;
+          if (mapPane) {
+            mapPane.style.transformOrigin = "50% 50%";
+            const base = mapPane.style.transform.replace(/rotate\([^)]*\)/g, "").trim();
+            mapPane.style.transform = `${base} rotate(${newAngle}deg)`;
+          }
+        }
+      }
+    }
+
+    function handleTouchEnd(e: TouchEvent) {
+      if (e.touches.length < 2) {
+        isRotating = false;
+      }
+    }
+
+    container.addEventListener("touchstart", handleTouchStart, { passive: true });
+    container.addEventListener("touchmove", handleTouchMove, { passive: true });
+    container.addEventListener("touchend", handleTouchEnd, { passive: true });
+    container.addEventListener("touchcancel", handleTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener("touchstart", handleTouchStart);
+      container.removeEventListener("touchmove", handleTouchMove);
+      container.removeEventListener("touchend", handleTouchEnd);
+      container.removeEventListener("touchcancel", handleTouchEnd);
+    };
+  }, [map, setRotationAngle]);
+
+  // 5. Apply CSS rotation transform whenever rotationAngle state updates
+  useEffect(() => {
+    const container = map.getContainer();
+    const mapPane = container.querySelector(".leaflet-map-pane") as HTMLElement | null;
+    if (mapPane) {
+      mapPane.style.transformOrigin = "50% 50%";
+      const base = mapPane.style.transform.replace(/rotate\([^)]*\)/g, "").trim();
+      mapPane.style.transform = `${base} rotate(${rotationAngle}deg)`;
+    }
+  }, [map, rotationAngle]);
+
+  return null;
 }
 
 // Helper to interact with Leaflet map instance
@@ -245,6 +425,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
 
   const [tileMode, setTileMode] = useState<TileMode>("street");
   const [shouldCenterLocation, setShouldCenterLocation] = useState<boolean>(false);
+  const [mapRotation, setMapRotation] = useState<number>(0);
 
   // Listen for AI Chatbot Action Triggers
   useEffect(() => {
@@ -348,6 +529,10 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         style={{ height: "100%", width: "100%", minHeight: "350px" }}
       >
         <MapResizer />
+        <MapRotationController
+          rotationAngle={mapRotation}
+          setRotationAngle={setMapRotation}
+        />
         <MapViewController
           userLocation={userLocation}
           shouldCenter={shouldCenterLocation}
@@ -399,10 +584,12 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         })}
       </MapContainer>
 
-      {/* Floating controls: Satellite + GPS pin */}
+      {/* Floating controls: Satellite + GPS pin + Compass Reset */}
       <MapControls
         tileMode={tileMode}
         onToggleTile={() => setTileMode((m) => m === "street" ? "satellite" : "street")}
+        rotationAngle={mapRotation}
+        onResetRotation={() => setMapRotation(0)}
         onCenterLocation={() => {
           if ("geolocation" in navigator) {
             navigator.geolocation.getCurrentPosition(
