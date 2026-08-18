@@ -146,8 +146,6 @@ interface MapViewControllerProps {
   isFollowingUser: boolean;
   setIsFollowingUser: (val: boolean) => void;
   fusedHeading: number;
-  onComputedTransformUpdate?: (transform: string) => void;
-  onDomReport?: (report: string) => void;
 }
 
 function MapViewController({
@@ -158,82 +156,12 @@ function MapViewController({
   isFollowingUser,
   setIsFollowingUser,
   fusedHeading,
-  onComputedTransformUpdate,
-  onDomReport,
 }: MapViewControllerProps) {
   const map = useMap();
   const { destinationTarget } = useAppStore();
   const hasFitRouteRef = useRef(false);
   const lastPanPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastPanTimeRef = useRef<number>(0);
-
-  // ── DOM FORENSIC: Direct Leaflet container transform + ancestor chain audit ──
-  useEffect(() => {
-    if (navStep !== "OUTDOOR_NAV") return;
-
-    // Directly apply rotate(45deg) to the Leaflet container itself
-    const container = map.getContainer();
-    const containerCS = window.getComputedStyle(container);
-    const containerRect = container.getBoundingClientRect();
-
-    console.log("[FORENSIC] Leaflet container before direct transform:", {
-      transform: containerCS.transform,
-      width: containerRect.width,
-      height: containerRect.height,
-    });
-
-    // Apply directly to Leaflet container
-    container.style.transform = "rotate(45deg)";
-    container.style.transformOrigin = "50% 50%";
-
-    const afterCS = window.getComputedStyle(container);
-    console.log("[FORENSIC] Leaflet container AFTER direct rotate(45deg):", {
-      computedTransform: afterCS.transform,
-    });
-
-    // Walk up the ancestor chain and log overflow + size
-    let el: HTMLElement | null = container;
-    const chain: string[] = [];
-    let depth = 0;
-    while (el && depth < 12) {
-      const cs = window.getComputedStyle(el);
-      const rect = el.getBoundingClientRect();
-      chain.push(
-        `[${depth}] ${el.tagName}#${el.id || "-"}.${el.className.toString().slice(0,20)} | ` +
-        `overflow:${cs.overflow}/${cs.overflowX}/${cs.overflowY} | ` +
-        `size:${rect.width.toFixed(0)}x${rect.height.toFixed(0)} | ` +
-        `transform:${cs.transform.slice(0, 24)}`
-      );
-      el = el.parentElement;
-      depth++;
-    }
-    console.log("[FORENSIC] DOM ancestry chain:\n" + chain.join("\n"));
-    if (onDomReport) onDomReport(chain.slice(0, 4).join(" | "));
-
-    return () => {
-      // Clean up direct transform on unmount/nav exit
-      container.style.transform = "";
-      container.style.transformOrigin = "";
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navStep, map]);
-
-  // Read Leaflet computed transform for the debug HUD
-  useEffect(() => {
-    if (!onComputedTransformUpdate) return;
-    const interval = setInterval(() => {
-      try {
-        const pane = map.getPane("mapPane");
-        if (pane) {
-          const t = window.getComputedStyle(pane).transform;
-          onComputedTransformUpdate(t);
-        }
-      } catch (e) {
-        // ignore
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [map, onComputedTransformUpdate]);
 
   // Pause camera auto-follow ONLY on real user drag/pan gestures
   useEffect(() => {
@@ -367,7 +295,6 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
   // Heading fusion (Device compass + GPS course with circular EMA smoothing and float precision)
   const {
     heading: fusedHeading,
-    source: headingSource,
     requestPermission: requestCompassPermission,
   } = useHeadingFusion({
     gpsHeading: userPosition?.heading,
@@ -387,47 +314,10 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
   const [tileMode, setTileMode] = useState<TileMode>("street");
   const [shouldCenterLocation, setShouldCenterLocation] = useState<boolean>(false);
   const [isFollowingUser, setIsFollowingUser] = useState<boolean>(true);
-  const [computedPaneTransform, setComputedPaneTransform] = useState<string>("none");
-  const [wrapperDebug, setWrapperDebug] = useState<string>("–");
-  const [domReport, setDomReport] = useState<string>("waiting...");
 
-  // Visual Rotation angle applied to the hardware-accelerated map wrapper
+  // Dynamic rotation angle applied to the hardware-accelerated map wrapper
   const isNavigatingCourseUp = navStep === "OUTDOOR_NAV" && isFollowingUser;
-  // ⚠️ FORENSIC TEST: hard-coded 45° to isolate whether the wrapper actually rotates on device.
-  // If the map DOES visibly tilt at 45°, replace with: -fusedHeading
-  const currentRotationAngle = isNavigatingCourseUp ? 45 : 0;
-
-  // Ref to the actual rotation wrapper element for DOM inspection
-  const rotationWrapperRef = useRef<HTMLDivElement>(null);
-
-  // Runtime Navigation Debug Logging + DOM Forensic Inspection
-  useEffect(() => {
-    if (navStep === "OUTDOOR_NAV") {
-      console.log("[NAV DEBUG]", {
-        navStep,
-        fusedHeading,
-        headingSource,
-        gpsHeading: userPosition?.heading,
-        speed: userPosition?.speed,
-        rotationAngle: currentRotationAngle,
-        isFollowingUser,
-      });
-
-      // DOM Forensic: inspect the actual wrapper element
-      const wrapper = rotationWrapperRef.current;
-      if (wrapper) {
-        const cs = window.getComputedStyle(wrapper);
-        const rect = wrapper.getBoundingClientRect();
-        const debugStr = `CS:${cs.transform.slice(0, 40)} W:${rect.width.toFixed(0)} H:${rect.height.toFixed(0)}`;
-        setWrapperDebug(debugStr);
-        console.log("[NAV DEBUG][DOM FORENSIC] rotation wrapper", {
-          element: wrapper,
-          computedTransform: cs.transform,
-          rect,
-        });
-      }
-    }
-  }, [navStep, fusedHeading, headingSource, userPosition, currentRotationAngle, isFollowingUser]);
+  const currentRotationAngle = isNavigatingCourseUp ? -fusedHeading : 0;
 
   // Await iOS compass permission before navigation starts
   const handleStartNavWithPermission = useCallback(
@@ -538,52 +428,22 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
 
   return (
     <div
-      className={className ?? "relative h-full w-full bg-slate-950 select-none"}
-      style={{
-        height: "100%",
-        width: "100%",
-        minHeight: "350px",
-        // ⚠️ FORENSIC: overflow NOT hidden so clipping doesn't prevent rotation from being visible
-        overflow: isNavigatingCourseUp ? "visible" : "hidden",
-        position: "relative",
-      }}
+      className={className ?? "relative h-full w-full overflow-hidden bg-slate-950 select-none"}
+      style={{ height: "100%", width: "100%", minHeight: "350px", overflow: "hidden" }}
     >
-      {/* ── GPU-Accelerated Map Rotation Wrapper (142% size to prevent corner clipping) ── */}
-      {/* ⚠️ FORENSIC TEST: hard-coded 45° rotation active. Replace currentRotationAngle with -fusedHeading once confirmed. */}
+      {/* ── GPU-Accelerated Map Rotation Wrapper ── */}
       <div
-        ref={rotationWrapperRef}
         id="map-rotation-wrapper"
-        className="origin-center"
+        className="h-full w-full origin-center transition-transform duration-200 ease-out"
         style={{
-          position: "absolute",
-          top: isNavigatingCourseUp ? "-21%" : "0",
-          left: isNavigatingCourseUp ? "-21%" : "0",
           width: isNavigatingCourseUp ? "142%" : "100%",
           height: isNavigatingCourseUp ? "142%" : "100%",
-          transform: `rotate(${currentRotationAngle}deg)`,
+          margin: isNavigatingCourseUp ? "-21%" : "0",
+          transform: isNavigatingCourseUp ? `rotate(${currentRotationAngle}deg)` : "rotate(0deg)",
           transformOrigin: "50% 50%",
-          willChange: "transform",
-          transition: "transform 0.2s ease-out",
+          willChange: isNavigatingCourseUp ? "transform" : "auto",
         }}
       >
-        {/* ⚠️ FORENSIC TEST 1: Red overlay to verify the wrapper itself rotates.
-            If this red semi-transparent box is visibly tilted → wrapper CSS works.
-            If it's axis-aligned → transform is not being applied to this wrapper. */}
-        {isNavigatingCourseUp && (
-          <div
-            style={{
-              position: "absolute",
-              top: "35%",
-              left: "35%",
-              width: "30%",
-              height: "30%",
-              background: "rgba(255,0,0,0.35)",
-              border: "4px solid red",
-              zIndex: 9998,
-              pointerEvents: "none",
-            }}
-          />
-        )}
         <MapContainer
           center={AASTU_CENTER}
           zoom={DEFAULT_ZOOM}
@@ -608,8 +468,6 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
             isFollowingUser={isFollowingUser}
             setIsFollowingUser={setIsFollowingUser}
             fusedHeading={fusedHeading}
-            onComputedTransformUpdate={setComputedPaneTransform}
-            onDomReport={setDomReport}
           />
 
           {/* Base Map Tiles */}
@@ -662,26 +520,6 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           })}
         </MapContainer>
       </div>
-
-      {/* On-Screen Navigation Debug HUD */}
-      {navStep === "OUTDOOR_NAV" && (
-        <div className="fixed top-2 left-2 z-[9999] pointer-events-none rounded-xl bg-black/90 px-3 py-2 font-mono text-[10.5px] text-emerald-400 border border-emerald-500/50 shadow-2xl backdrop-blur-md space-y-0.5 select-none max-w-xs">
-          <div className="font-bold text-white flex items-center justify-between gap-3 border-b border-slate-700/60 pb-1">
-            <span>NAV DEBUG HUD</span>
-            <span className={isFollowingUser ? "text-emerald-400" : "text-amber-400 font-bold"}>
-              FOLLOW: {isFollowingUser ? "ON" : "OFF"}
-            </span>
-          </div>
-          <div className="text-yellow-300 font-bold">⚠️ FORENSIC: rotate(45deg) test</div>
-          <div className="text-yellow-200 text-[9px]">Red box visible &amp; tilted? YES/NO</div>
-          <div>HEADING: <span className="font-bold text-white">{fusedHeading.toFixed(1)}°</span> ({headingSource.toUpperCase()})</div>
-          <div>SPEED: <span className="font-bold text-white">{userPosition?.speed != null ? `${userPosition.speed.toFixed(2)} m/s` : "0.00 m/s"}</span></div>
-          <div>ROTATION: <span className="font-bold text-white">{currentRotationAngle.toFixed(1)}°</span></div>
-          <div className="text-[9px] text-slate-400 truncate">PANE: {computedPaneTransform}</div>
-          <div className="text-[9px] text-cyan-400 truncate">WRAP: {wrapperDebug}</div>
-          <div className="text-[9px] text-orange-300 truncate">DOM: {domReport}</div>
-        </div>
-      )}
 
       {/* Floating Recenter Pill (shown when user manually panned during active navigation) */}
       {navStep === "OUTDOOR_NAV" && !isFollowingUser && (
