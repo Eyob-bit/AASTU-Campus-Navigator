@@ -7,16 +7,16 @@ export interface UseHeadingFusionOptions {
 }
 
 export interface UseHeadingFusionResult {
-  heading: number; // Smoothed 0-360 degrees clockwise from North
+  heading: number; // Smoothed 0-360 degrees clockwise from North (float precision)
   source: "gps" | "compass" | "none";
   isCalibrated: boolean;
   requestPermission: () => Promise<boolean>;
 }
 
 // Minimum angular change in degrees to trigger re-render (deadband)
-const DEADBAND_DEGREES = 1.0;
+const DEADBAND_DEGREES = 0.5;
 // Smoothing factor for circular exponential moving average (0 < alpha <= 1)
-const SMOOTHING_ALPHA = 0.22;
+const SMOOTHING_ALPHA = 0.25;
 // Speed thresholds in m/s for GPS course vs compass hysteresis
 const GPS_SPEED_ENTER_THRESHOLD_MPS = 1.2; // switch to GPS course when >= 1.2 m/s (~4.3 km/h)
 const GPS_SPEED_EXIT_THRESHOLD_MPS = 0.8;  // drop back to compass when < 0.8 m/s (~2.9 km/h)
@@ -72,8 +72,10 @@ export function useHeadingFusion({
         // iOS provides true compass heading directly (0° = North, clockwise)
         compassAngle = eAny.webkitCompassHeading;
       } else if (e.alpha !== null && !isNaN(e.alpha)) {
-        // Android / standard: alpha is rotation around z-axis (0-360 counter-clockwise)
-        compassAngle = (360 - e.alpha) % 360;
+        // Android / standard: compensate for screen orientation if device is tilted/rotated
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const screenAngle = Number((window.screen?.orientation as any)?.angle || (window as any).orientation || 0);
+        compassAngle = (360 - e.alpha + screenAngle) % 360;
       }
 
       if (compassAngle !== null) {
@@ -82,7 +84,6 @@ export function useHeadingFusion({
       }
     }
 
-    // Use absolute orientation if supported on modern Chrome/Android, fallback to regular
     const hasAbsolute = typeof window !== "undefined" && "ondeviceorientationabsolute" in window;
     const eventName = hasAbsolute ? "deviceorientationabsolute" : "deviceorientation";
 
@@ -92,20 +93,12 @@ export function useHeadingFusion({
       true
     );
 
-    // Fallback: also listen to standard deviceorientation if absolute is distinct
-    if (hasAbsolute && "DeviceOrientationEvent" in window) {
-      window.addEventListener("deviceorientation", handleOrientation, true);
-    }
-
     return () => {
       (window as unknown as EventTarget).removeEventListener(
         eventName,
         handleOrientation as EventListener,
         true
       );
-      if (hasAbsolute && "DeviceOrientationEvent" in window) {
-        window.removeEventListener("deviceorientation", handleOrientation, true);
-      }
     };
   }, [enabled]);
 
@@ -156,7 +149,8 @@ export function useHeadingFusion({
         if (Math.abs(delta) >= DEADBAND_DEGREES) {
           const smoothed = (current + SMOOTHING_ALPHA * delta + 360) % 360;
           currentHeadingRef.current = smoothed;
-          setHeading(Math.round(smoothed * 10) / 10);
+          // Preserve 2 decimal places precision for silky smooth rotation
+          setHeading(Math.round(smoothed * 100) / 100);
           setSource(activeSource);
         }
       }
