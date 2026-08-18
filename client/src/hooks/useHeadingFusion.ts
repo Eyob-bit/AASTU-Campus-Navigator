@@ -17,8 +17,9 @@ export interface UseHeadingFusionResult {
 const DEADBAND_DEGREES = 1.2;
 // Smoothing factor for circular exponential moving average (0 < alpha <= 1)
 const SMOOTHING_ALPHA = 0.18;
-// Speed threshold in m/s (~3.6 km/h) above which GPS course is favored over compass
-const GPS_SPEED_THRESHOLD_MPS = 1.0;
+// Speed thresholds in m/s for GPS course vs compass hysteresis
+const GPS_SPEED_ENTER_THRESHOLD_MPS = 1.2; // switch to GPS course when >= 1.2 m/s (~4.3 km/h)
+const GPS_SPEED_EXIT_THRESHOLD_MPS = 0.8;  // drop back to compass when < 0.8 m/s (~2.9 km/h)
 
 /**
  * Calculates the shortest angular delta between two angles (in degrees, range [-180, +180]).
@@ -39,6 +40,7 @@ export function useHeadingFusion({
   const currentHeadingRef = useRef<number>(0);
   const rawCompassRef = useRef<number | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
+  const isGpsPreferredRef = useRef<boolean>(false);
 
   // Request DeviceOrientation permission for iOS 13+
   const requestPermission = useCallback(async (): Promise<boolean> => {
@@ -114,15 +116,26 @@ export function useHeadingFusion({
       let targetHeading: number | null = null;
       let activeSource: "gps" | "compass" | "none" = "none";
 
-      // 1. If walking fast enough with valid GPS heading, prioritize GPS course
-      if (speed >= GPS_SPEED_THRESHOLD_MPS && gps !== null && !isNaN(gps) && gps >= 0) {
+      const hasValidGps = gps !== null && !isNaN(gps) && gps >= 0;
+
+      // Hysteresis: enter GPS mode at >= 1.2 m/s, exit when falling below 0.8 m/s
+      if (isGpsPreferredRef.current) {
+        if (!hasValidGps || speed < GPS_SPEED_EXIT_THRESHOLD_MPS) {
+          isGpsPreferredRef.current = false;
+        }
+      } else {
+        if (hasValidGps && speed >= GPS_SPEED_ENTER_THRESHOLD_MPS) {
+          isGpsPreferredRef.current = true;
+        }
+      }
+
+      if (isGpsPreferredRef.current && hasValidGps) {
         targetHeading = gps;
         activeSource = "gps";
       } else if (compass !== null && !isNaN(compass)) {
-        // 2. Otherwise, use device compass
         targetHeading = compass;
         activeSource = "compass";
-      } else if (gps !== null && !isNaN(gps) && gps >= 0) {
+      } else if (hasValidGps) {
         targetHeading = gps;
         activeSource = "gps";
       }
