@@ -14,9 +14,9 @@ export interface UseHeadingFusionResult {
 }
 
 // Minimum angular change in degrees to trigger re-render (deadband)
-const DEADBAND_DEGREES = 1.2;
+const DEADBAND_DEGREES = 1.0;
 // Smoothing factor for circular exponential moving average (0 < alpha <= 1)
-const SMOOTHING_ALPHA = 0.18;
+const SMOOTHING_ALPHA = 0.22;
 // Speed thresholds in m/s for GPS course vs compass hysteresis
 const GPS_SPEED_ENTER_THRESHOLD_MPS = 1.2; // switch to GPS course when >= 1.2 m/s (~4.3 km/h)
 const GPS_SPEED_EXIT_THRESHOLD_MPS = 0.8;  // drop back to compass when < 0.8 m/s (~2.9 km/h)
@@ -49,9 +49,10 @@ export function useHeadingFusion({
     if (DeviceOrientation && typeof DeviceOrientation.requestPermission === "function") {
       try {
         const res = await DeviceOrientation.requestPermission();
+        console.log("[NAV DEBUG] iOS orientation permission result:", res);
         return res === "granted";
       } catch (err) {
-        console.warn("[useHeadingFusion] iOS orientation permission error:", err);
+        console.warn("[NAV DEBUG] iOS orientation permission error:", err);
         return false;
       }
     }
@@ -91,12 +92,20 @@ export function useHeadingFusion({
       true
     );
 
+    // Fallback: also listen to standard deviceorientation if absolute is distinct
+    if (hasAbsolute && "DeviceOrientationEvent" in window) {
+      window.addEventListener("deviceorientation", handleOrientation, true);
+    }
+
     return () => {
       (window as unknown as EventTarget).removeEventListener(
         eventName,
         handleOrientation as EventListener,
         true
       );
+      if (hasAbsolute && "DeviceOrientationEvent" in window) {
+        window.removeEventListener("deviceorientation", handleOrientation, true);
+      }
     };
   }, [enabled]);
 

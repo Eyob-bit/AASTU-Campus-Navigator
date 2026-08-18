@@ -141,6 +141,8 @@ function MapControls({
 function applyMapRotation(map: L.Map, angle: number) {
   const container = map.getContainer();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (map as any)._mapRotationAngle = angle;
+
   const mapPane = ((map as any)._mapPane || container.querySelector(".leaflet-map-pane")) as HTMLElement | null;
   if (!mapPane) return;
 
@@ -324,33 +326,16 @@ function MapViewController({
   const lastPanPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastPanTimeRef = useRef<number>(0);
 
-  // Pause camera auto-follow when user manually drags/pans/zooms the map
+  // Pause camera auto-follow ONLY on real user drag/pan gestures
   useEffect(() => {
-    function handleUserInteraction() {
+    function handleManualDrag() {
       setIsFollowingUser(false);
     }
 
-    map.on("dragstart", handleUserInteraction);
-    map.on("zoomstart", handleUserInteraction);
-    map.on("movestart", (e) => {
-      if ((e as L.LeafletEvent & { originalEvent?: unknown }).originalEvent) {
-        setIsFollowingUser(false);
-      }
-    });
-
-    const container = map.getContainer();
-    const handleTouch = () => {
-      setIsFollowingUser(false);
-    };
-
-    container.addEventListener("touchstart", handleTouch, { passive: true });
-    container.addEventListener("wheel", handleUserInteraction, { passive: true });
+    map.on("dragstart", handleManualDrag);
 
     return () => {
-      map.off("dragstart", handleUserInteraction);
-      map.off("zoomstart", handleUserInteraction);
-      container.removeEventListener("touchstart", handleTouch);
-      container.removeEventListener("wheel", handleUserInteraction);
+      map.off("dragstart", handleManualDrag);
     };
   }, [map, setIsFollowingUser]);
 
@@ -479,6 +464,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
   // Heading fusion (Device compass + GPS course with circular EMA smoothing)
   const {
     heading: fusedHeading,
+    source: headingSource,
     requestPermission: requestCompassPermission,
   } = useHeadingFusion({
     gpsHeading: userPosition?.heading,
@@ -499,6 +485,21 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
   const [shouldCenterLocation, setShouldCenterLocation] = useState<boolean>(false);
   const [mapRotation, setMapRotation] = useState<number>(0);
   const [isFollowingUser, setIsFollowingUser] = useState<boolean>(true);
+
+  // Runtime Navigation Debug Logging
+  useEffect(() => {
+    if (navStep === "OUTDOOR_NAV") {
+      console.log("[NAV DEBUG]", {
+        navStep,
+        fusedHeading,
+        headingSource,
+        gpsHeading: userPosition?.heading,
+        speed: userPosition?.speed,
+        mapRotation,
+        isFollowingUser,
+      });
+    }
+  }, [navStep, fusedHeading, headingSource, userPosition, mapRotation, isFollowingUser]);
 
   // Request compass permissions on navigation initiation (iOS requirement)
   const handleStartNavWithPermission = useCallback(
@@ -692,6 +693,21 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           );
         })}
       </MapContainer>
+
+      {/* On-Screen Navigation Debug HUD */}
+      {navStep === "OUTDOOR_NAV" && (
+        <div className="fixed top-2 left-2 z-[9999] pointer-events-none rounded-xl bg-black/90 px-3 py-2 font-mono text-[11px] text-emerald-400 border border-emerald-500/50 shadow-2xl backdrop-blur-md space-y-0.5 select-none">
+          <div className="font-bold text-white flex items-center justify-between gap-3">
+            <span>NAV HUD</span>
+            <span className={isFollowingUser ? "text-emerald-400" : "text-amber-400 font-bold"}>
+              FOLLOW: {isFollowingUser ? "ON" : "OFF"}
+            </span>
+          </div>
+          <div>HEADING: <span className="font-bold text-white">{fusedHeading}°</span> ({headingSource.toUpperCase()})</div>
+          <div>SPEED: <span className="font-bold text-white">{userPosition?.speed != null ? `${userPosition.speed.toFixed(2)} m/s` : "0 m/s"}</span></div>
+          <div>ROTATION: <span className="font-bold text-white">{mapRotation}°</span></div>
+        </div>
+      )}
 
       {/* Floating Recenter Pill (shown when user manually panned during active navigation) */}
       {navStep === "OUTDOOR_NAV" && !isFollowingUser && (
