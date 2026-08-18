@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/store";
-import { calculateDistanceInMeters } from "@/utils/geo";
+import { RouteProgressTracker } from "@/utils";
 import type { RouteInstruction } from "@/api/roadNetwork.api";
 
 export interface UseTurnByTurnNavigationResult {
@@ -15,7 +15,7 @@ export interface UseTurnByTurnNavigationResult {
   isArrived: boolean;
 }
 
-const STEP_ADVANCE_RADIUS_METERS = 15;
+const STEP_ADVANCE_RADIUS_METERS = 12;
 
 export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
   const {
@@ -30,6 +30,58 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
   const instructions = activeRoute?.instructions ?? [];
   const totalSteps = instructions.length;
 
+  const trackerRef = useRef<RouteProgressTracker | null>(null);
+
+  // Initialize or update tracker when route coordinates change
+  useEffect(() => {
+    if (activeRoute && activeRoute.coordinates.length >= 2) {
+      trackerRef.current = new RouteProgressTracker(
+        activeRoute.coordinates,
+        userLocation || undefined
+      );
+    } else {
+      trackerRef.current = null;
+    }
+  }, [activeRoute]);
+
+  // Update tracker on user location changes
+  const routeProgress = useMemo(() => {
+    if (!trackerRef.current || !userLocation || navStep !== "OUTDOOR_NAV") {
+      return null;
+    }
+    return trackerRef.current.update(userLocation.lat, userLocation.lng);
+  }, [userLocation, navStep, activeRoute]);
+
+  // Pre-calculate target distance along the route for each instruction
+  const instructionTargetDistances = useMemo(() => {
+    if (!activeRoute || !trackerRef.current || instructions.length === 0) {
+      return [];
+    }
+
+    const tracker = trackerRef.current;
+    let accumulatedDist = 0;
+
+    return instructions.map((inst, idx) => {
+      // 1. Target node along polyline
+      if (inst.targetNodeId && activeRoute.pathNodes) {
+        const dist = tracker.getDistanceAlongRouteForNodeId(inst.targetNodeId, activeRoute.pathNodes);
+        if (dist !== null) {
+          accumulatedDist = dist;
+          return dist;
+        }
+      }
+
+      // 2. Destination node for ARRIVE instruction
+      if (inst.type === "ARRIVE" || idx === instructions.length - 1) {
+        return tracker.getTotalDistance();
+      }
+
+      // 3. Fallback: cumulative instruction distance
+      accumulatedDist += inst.distance;
+      return accumulatedDist;
+    });
+  }, [activeRoute, instructions]);
+
   const currentInstruction =
     instructions.length > 0 && currentInstructionIndex < instructions.length
       ? instructions[currentInstructionIndex]
@@ -40,46 +92,24 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
       ? instructions[currentInstructionIndex + 1]
       : null;
 
-  // Compute live remaining distance to the target node of the CURRENT instruction
+  // Live remaining walking distance along the route for the CURRENT instruction
   const remainingInstructionDistance = useMemo(() => {
     if (!userLocation || !currentInstruction || navStep !== "OUTDOOR_NAV") {
       return null;
     }
 
-    // 1. Try finding target node by targetNodeId
-    if (currentInstruction.targetNodeId && activeRoute?.pathNodes) {
-      const node = activeRoute.pathNodes.find(
-        (n) => n.id === currentInstruction.targetNodeId
-      );
-      if (node) {
-        return Math.round(
-          calculateDistanceInMeters(
-            userLocation.lat,
-            userLocation.lng,
-            node.latitude,
-            node.longitude
-          )
-        );
-      }
+    const userDistAlongRoute = routeProgress?.distanceAlongRoute ?? 0;
+    const targetDist = instructionTargetDistances[currentInstructionIndex];
+
+    if (targetDist != null) {
+      const remaining = targetDist - userDistAlongRoute;
+      return Math.max(0, Math.round(remaining));
     }
 
-    // 2. Fallback to destination node for ARRIVE instruction
-    if (currentInstruction.type === "ARRIVE" && activeRoute?.destNode) {
-      return Math.round(
-        calculateDistanceInMeters(
-          userLocation.lat,
-          userLocation.lng,
-          activeRoute.destNode.latitude,
-          activeRoute.destNode.longitude
-        )
-      );
-    }
-
-    // 3. Fallback to instruction distance
     return currentInstruction.distance;
-  }, [userLocation, currentInstruction, activeRoute, navStep]);
+  }, [userLocation, currentInstruction, navStep, routeProgress, instructionTargetDistances, currentInstructionIndex]);
 
-  // Auto-advance step when user gets within STEP_ADVANCE_RADIUS_METERS of current step's node
+  // Auto-advance step when user reaches / passes target distance along the route
   useEffect(() => {
     if (
       navStep !== "OUTDOOR_NAV" ||
@@ -104,29 +134,29 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
     setCurrentInstructionIndex,
   ]);
 
-  // Calculate live total remaining distance to destination
+  // Live total remaining distance along the route
   const totalRemainingDistance = useMemo(() => {
-    if (!isFinite(remainingInstructionDistance as number) || remainingInstructionDistance === null) {
-      return activeRoute?.totalDistanceMeters ?? 0;
-    }
-
-    let dist = remainingInstructionDistance;
-    for (let i = currentInstructionIndex + 1; i < instructions.length; i++) {
-      dist += instructions[i].distance;
-    }
-    return Math.round(dist);
-  }, [remainingInstructionDistance, currentInstructionIndex, instructions, activeRoute]);
+    if (!activeRoute || !trackerRef.current) return 0;
+    const totalDist = trackerRef.current.getTotalDistance() || activeRoute.totalDistanceMeters || 0;
+    const userDist = routeProgress?.distanceAlongRoute ?? 0;
+    return Math.max(0, Math.round(totalDist - userDist));
+  }, [activeRoute, routeProgress]);
 
   const totalRemainingMinutes = Math.max(1, Math.ceil(totalRemainingDistance / 78));
 
-  const progressPercent =
-    totalSteps > 0
-      ? Math.min(100, Math.round(((currentInstructionIndex + 1) / totalSteps) * 100))
-      : 0;
+  // Continuous percentage based on meters travelled along the path
+  const progressPercent = useMemo(() => {
+    if (!trackerRef.current) return 0;
+    const total = trackerRef.current.getTotalDistance();
+    if (total <= 0) return 0;
+    const current = routeProgress?.distanceAlongRoute ?? 0;
+    return Math.min(100, Math.max(0, Math.round((current / total) * 100)));
+  }, [routeProgress]);
 
   const isArrived =
-    currentInstruction?.type === "ARRIVE" ||
-    (remainingInstructionDistance !== null && remainingInstructionDistance <= STEP_ADVANCE_RADIUS_METERS && currentInstructionIndex === totalSteps - 1);
+    currentInstruction?.type === "ARRIVE" &&
+    remainingInstructionDistance !== null &&
+    remainingInstructionDistance <= STEP_ADVANCE_RADIUS_METERS;
 
   // Trigger arrival bottom sheet when arrived during OUTDOOR_NAV
   useEffect(() => {

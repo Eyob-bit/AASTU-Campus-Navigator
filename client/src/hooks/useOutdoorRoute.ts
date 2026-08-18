@@ -1,93 +1,17 @@
 import { useEffect, useRef, useCallback } from "react";
 import { roadNetworkApi } from "@/api/roadNetwork.api";
 import { useAppStore } from "@/store";
-import { calculateDistanceInMeters } from "@/utils/geo";
+import { RouteProgressTracker } from "@/utils";
 
-// Cross-track distance threshold (meters) from active route polyline that triggers reroute
-const OFF_ROUTE_THRESHOLD_METERS = 15;
 // Minimum milliseconds between consecutive route fetches (debounce)
 const REROUTE_DEBOUNCE_MS = 3000;
-
-function distanceToSegment(
-  pLat: number, pLng: number,
-  aLat: number, aLng: number,
-  bLat: number, bLng: number
-): number {
-  const dLat = bLat - aLat;
-  const dLng = bLng - aLng;
-  if (dLat === 0 && dLng === 0) {
-    return calculateDistanceInMeters(pLat, pLng, aLat, aLng);
-  }
-  let t = ((pLat - aLat) * dLat + (pLng - aLng) * dLng) / (dLat * dLat + dLng * dLng);
-  t = Math.max(0, Math.min(1, t));
-  const projLat = aLat + t * dLat;
-  const projLng = aLng + t * dLng;
-  return calculateDistanceInMeters(pLat, pLng, projLat, projLng);
-}
-
-/**
-  * Fast off-route check:
-  * First tests segments near the user's current progress index (window of ~5 segments).
-  * Only performs a full polyline scan if local window distance > threshold.
-  */
-function isUserOffRoute(
-  lat: number,
-  lng: number,
-  polyline: [number, number][],
-  lastSegIdxRef: React.MutableRefObject<number>
-): boolean {
-  if (polyline.length < 2) return false;
-
-  const startIdx = Math.max(0, lastSegIdxRef.current - 1);
-  const endIdx = Math.min(polyline.length - 1, lastSegIdxRef.current + 4);
-
-  let minWindowDist = Infinity;
-  let bestSegIdx = lastSegIdxRef.current;
-
-  for (let i = startIdx; i < endIdx; i++) {
-    const d = distanceToSegment(
-      lat, lng,
-      polyline[i][0], polyline[i][1],
-      polyline[i + 1][0], polyline[i + 1][1]
-    );
-    if (d < minWindowDist) {
-      minWindowDist = d;
-      bestSegIdx = i;
-    }
-  }
-
-  if (minWindowDist <= OFF_ROUTE_THRESHOLD_METERS) {
-    lastSegIdxRef.current = bestSegIdx;
-    return false;
-  }
-
-  // Fallback: full polyline search only when window check exceeds threshold
-  let minFullDist = Infinity;
-  let fullBestIdx = 0;
-  for (let i = 0; i < polyline.length - 1; i++) {
-    const d = distanceToSegment(
-      lat, lng,
-      polyline[i][0], polyline[i][1],
-      polyline[i + 1][0], polyline[i + 1][1]
-    );
-    if (d < minFullDist) {
-      minFullDist = d;
-      fullBestIdx = i;
-    }
-  }
-
-  if (minFullDist <= OFF_ROUTE_THRESHOLD_METERS) {
-    lastSegIdxRef.current = fullBestIdx;
-    return false;
-  }
-
-  return true; // User has genuinely moved off-route
-}
+// Number of consecutive off-route GPS fixes required to trigger A* reroute
+const REQUIRED_CONSECUTIVE_OFF_ROUTE_COUNT = 3;
 
 /**
  * Fetches the outdoor A* route from the server when outdoor navigation is active.
- * Only re-fetches (reroutes) when the user moves off-route or target changes.
- * Avoids recalculating A* for every GPS step while walking correctly on route.
+ * Only re-fetches (reroutes) when the user sustains off-route movement or target changes.
+ * Tracks monotonic progress along the route and prevents GPS jitter from jumping backward.
  */
 export function useOutdoorRoute() {
   const {
@@ -96,6 +20,7 @@ export function useOutdoorRoute() {
     destinationTarget,
     activeRoute,
     setActiveRoute,
+    setCurrentInstructionIndex,
   } = useAppStore();
 
   const lastFetchPosRef = useRef<{ lat: number; lng: number } | null>(null);
@@ -103,7 +28,8 @@ export function useOutdoorRoute() {
   const isFetchingRef = useRef<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
   const requestIdRef = useRef<number>(0);
-  const lastSegIdxRef = useRef<number>(0);
+  const trackerRef = useRef<RouteProgressTracker | null>(null);
+  const consecutiveOffRouteCountRef = useRef<number>(0);
 
   // Keep a ref to activeRoute to avoid activeRoute in effect dependency array
   const activeRouteRef = useRef(activeRoute);
@@ -117,6 +43,19 @@ export function useOutdoorRoute() {
       isMountedRef.current = false;
     };
   }, []);
+
+  // Update or initialize tracker when activeRoute changes
+  useEffect(() => {
+    if (activeRoute && activeRoute.coordinates.length >= 2) {
+      trackerRef.current = new RouteProgressTracker(
+        activeRoute.coordinates,
+        userLocation || undefined
+      );
+      consecutiveOffRouteCountRef.current = 0;
+    } else {
+      trackerRef.current = null;
+    }
+  }, [activeRoute]);
 
   const fetchRoute = useCallback(
     async (fromLat: number, fromLng: number) => {
@@ -140,10 +79,18 @@ export function useOutdoorRoute() {
 
         // Stale response guard: only update if this is still the latest request
         if (isMountedRef.current && currentRequestId === requestIdRef.current) {
+          // Reset navigation state atomically for the new route
           setActiveRoute(route);
+          setCurrentInstructionIndex(0);
           lastFetchPosRef.current = { lat: fromLat, lng: fromLng };
           lastFetchTimeRef.current = Date.now();
-          lastSegIdxRef.current = 0;
+          consecutiveOffRouteCountRef.current = 0;
+
+          // Initialize tracker anchored at the current GPS position
+          trackerRef.current = new RouteProgressTracker(route.coordinates, {
+            lat: fromLat,
+            lng: fromLng,
+          });
         }
       } catch (err) {
         console.warn("[useOutdoorRoute] Route fetch failed:", err);
@@ -153,7 +100,7 @@ export function useOutdoorRoute() {
         }
       }
     },
-    [destinationTarget, setActiveRoute]
+    [destinationTarget, setActiveRoute, setCurrentInstructionIndex]
   );
 
   useEffect(() => {
@@ -167,14 +114,28 @@ export function useOutdoorRoute() {
     const neverFetched = lastPos === null;
     const debouncePassed = now - lastFetchTimeRef.current > REROUTE_DEBOUNCE_MS;
 
-    // Check off-route status using fast segment-window search
-    const currentCoords = activeRouteRef.current?.coordinates ?? [];
-    const offRoute =
-      currentCoords.length >= 2 &&
-      isUserOffRoute(lat, lng, currentCoords, lastSegIdxRef);
-
-    if (neverFetched || (debouncePassed && offRoute)) {
+    if (neverFetched) {
       fetchRoute(lat, lng);
+      return;
+    }
+
+    // Check off-route using RouteProgressTracker
+    if (trackerRef.current) {
+      const progress = trackerRef.current.update(lat, lng);
+
+      if (progress.isOffRoute) {
+        consecutiveOffRouteCountRef.current += 1;
+      } else {
+        consecutiveOffRouteCountRef.current = 0;
+      }
+
+      // Reroute if user sustained off-route position for multiple consecutive readings
+      if (
+        debouncePassed &&
+        consecutiveOffRouteCountRef.current >= REQUIRED_CONSECUTIVE_OFF_ROUTE_COUNT
+      ) {
+        fetchRoute(lat, lng);
+      }
     }
   }, [navStep, userLocation, destinationTarget, fetchRoute]);
 
@@ -183,9 +144,8 @@ export function useOutdoorRoute() {
     if (navStep === "IDLE") {
       lastFetchPosRef.current = null;
       lastFetchTimeRef.current = 0;
-      lastSegIdxRef.current = 0;
+      consecutiveOffRouteCountRef.current = 0;
+      trackerRef.current = null;
     }
   }, [navStep]);
 }
-
-
