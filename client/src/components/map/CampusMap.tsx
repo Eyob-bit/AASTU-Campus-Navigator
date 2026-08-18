@@ -335,12 +335,18 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
   const [shouldCenterLocation, setShouldCenterLocation] = useState<boolean>(false);
   const [isFollowingUser, setIsFollowingUser] = useState<boolean>(true);
   const [computedPaneTransform, setComputedPaneTransform] = useState<string>("none");
+  const [wrapperDebug, setWrapperDebug] = useState<string>("–");
 
   // Visual Rotation angle applied to the hardware-accelerated map wrapper
   const isNavigatingCourseUp = navStep === "OUTDOOR_NAV" && isFollowingUser;
-  const currentRotationAngle = isNavigatingCourseUp ? -fusedHeading : 0;
+  // ⚠️ FORENSIC TEST: hard-coded 45° to isolate whether the wrapper actually rotates on device.
+  // If the map DOES visibly tilt at 45°, replace with: -fusedHeading
+  const currentRotationAngle = isNavigatingCourseUp ? 45 : 0;
 
-  // Runtime Navigation Debug Logging
+  // Ref to the actual rotation wrapper element for DOM inspection
+  const rotationWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Runtime Navigation Debug Logging + DOM Forensic Inspection
   useEffect(() => {
     if (navStep === "OUTDOOR_NAV") {
       console.log("[NAV DEBUG]", {
@@ -352,6 +358,20 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         rotationAngle: currentRotationAngle,
         isFollowingUser,
       });
+
+      // DOM Forensic: inspect the actual wrapper element
+      const wrapper = rotationWrapperRef.current;
+      if (wrapper) {
+        const cs = window.getComputedStyle(wrapper);
+        const rect = wrapper.getBoundingClientRect();
+        const debugStr = `CS:${cs.transform.slice(0, 40)} W:${rect.width.toFixed(0)} H:${rect.height.toFixed(0)}`;
+        setWrapperDebug(debugStr);
+        console.log("[NAV DEBUG][DOM FORENSIC] rotation wrapper", {
+          element: wrapper,
+          computedTransform: cs.transform,
+          rect,
+        });
+      }
     }
   }, [navStep, fusedHeading, headingSource, userPosition, currentRotationAngle, isFollowingUser]);
 
@@ -468,15 +488,21 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
       style={{ height: "100%", width: "100%", minHeight: "350px", overflow: "hidden" }}
     >
       {/* ── GPU-Accelerated Map Rotation Wrapper (142% size to prevent corner clipping) ── */}
+      {/* ⚠️ FORENSIC TEST: hard-coded 45° rotation active. Replace currentRotationAngle with -fusedHeading once confirmed. */}
       <div
-        className="h-full w-full origin-center transition-transform duration-200 ease-out"
+        ref={rotationWrapperRef}
+        id="map-rotation-wrapper"
+        className="origin-center"
         style={{
+          position: "absolute",
+          top: isNavigatingCourseUp ? "-21%" : "0",
+          left: isNavigatingCourseUp ? "-21%" : "0",
           width: isNavigatingCourseUp ? "142%" : "100%",
           height: isNavigatingCourseUp ? "142%" : "100%",
-          margin: isNavigatingCourseUp ? "-21%" : "0",
-          transform: isNavigatingCourseUp ? `rotate(${currentRotationAngle}deg)` : "rotate(0deg)",
+          transform: `rotate(${currentRotationAngle}deg)`,
           transformOrigin: "50% 50%",
-          willChange: isNavigatingCourseUp ? "transform" : "auto",
+          willChange: "transform",
+          transition: "transform 0.2s ease-out",
         }}
       >
         <MapContainer
@@ -566,10 +592,12 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
               FOLLOW: {isFollowingUser ? "ON" : "OFF"}
             </span>
           </div>
+          <div className="text-yellow-300 font-bold">⚠️ FORENSIC: rotate(45deg) test</div>
           <div>HEADING: <span className="font-bold text-white">{fusedHeading.toFixed(1)}°</span> ({headingSource.toUpperCase()})</div>
           <div>SPEED: <span className="font-bold text-white">{userPosition?.speed != null ? `${userPosition.speed.toFixed(2)} m/s` : "0.00 m/s"}</span></div>
           <div>ROTATION: <span className="font-bold text-white">{currentRotationAngle.toFixed(1)}°</span></div>
           <div className="text-[9px] text-slate-400 truncate">PANE: {computedPaneTransform}</div>
+          <div className="text-[9px] text-cyan-400 truncate">WRAP: {wrapperDebug}</div>
         </div>
       )}
 
