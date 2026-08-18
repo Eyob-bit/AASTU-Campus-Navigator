@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   Home,
-  Map,
   Info,
   Users,
   Bot,
@@ -17,11 +16,11 @@ import { cn } from "@/utils";
 import { useAppStore } from "@/store";
 
 const NAV_ITEMS = [
-  { to: "/",           label: "Home",         icon: Home },
-  { to: "/navigation", label: "Campus Map",   icon: Map },
-  { to: "/info",       label: "Information",  icon: Info },
-  { to: "/about",      label: "About",        icon: Users },
-  { to: "/chatbot",    label: "AI Assistant", icon: Bot },
+  { to: "/",        label: "Home",         icon: Home },
+  { to: "/search",  label: "Search",       icon: Search },
+  { to: "/info",    label: "Information",  icon: Info },
+  { to: "/about",   label: "About",        icon: Users },
+  { to: "/chatbot", label: "AI Assistant", icon: Bot },
 ] as const;
 
 export function AppHeader() {
