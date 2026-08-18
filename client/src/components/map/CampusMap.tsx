@@ -1,6 +1,7 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
+import { Navigation2 } from "lucide-react";
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -9,7 +10,7 @@ import { calculateDistanceInMeters } from "@/utils/geo";
 import { useBuildings } from "@/hooks/useBuildings";
 import { useLandmarks } from "@/hooks/useLandmarks";
 import { useAppStore } from "@/store";
-import { useOutdoorRoute, useLiveNavigation } from "@/hooks";
+import { useOutdoorRoute, useLiveNavigation, useHeadingFusion } from "@/hooks";
 import { OutdoorNavOverlay, ArrivalBottomSheet, BuildingTransitionOverlay, IndoorGuidanceCard } from "@/components/navigation";
 
 import { BuildingMarker } from "./BuildingMarker";
@@ -30,6 +31,22 @@ import {
 } from "./mapConfig";
 
 export { TILE_LAYERS, type TileMode };
+
+/**
+ * Calculates a point shifted forward along a travel heading vector
+ * to keep the user marker anchored at ~65-70% down the screen in course-up view.
+ */
+function getForwardOffsetCoord(
+  lat: number,
+  lng: number,
+  headingDeg: number,
+  offsetMeters: number
+): [number, number] {
+  const headingRad = (headingDeg * Math.PI) / 180;
+  const latOffset = (offsetMeters * Math.cos(headingRad)) / 111320;
+  const lngOffset = (offsetMeters * Math.sin(headingRad)) / (111320 * Math.cos((lat * Math.PI) / 180));
+  return [lat + latOffset, lng + lngOffset];
+}
 
 // ── MapResizer — forces tile redraw on mount / resize ─────────────────────────
 function MapResizer() {
@@ -68,7 +85,7 @@ function MapControls({
 
   return (
     <div
-      className="absolute bottom-24 right-3 sm:right-4 z-[1000] flex flex-col gap-2"
+      className="absolute bottom-24 right-3 sm:right-4 z-[1000] flex flex-col gap-2 pointer-events-auto"
       style={{ zIndex: 1000 }}
     >
       {/* Compass Reset Rotation Button */}
@@ -145,7 +162,7 @@ function applyMapRotation(map: L.Map, angle: number) {
   });
 }
 
-// ── MapRotationController — real two-finger touch map rotation controller ──────
+// ── MapRotationController — touch & programmatic map rotation controller ──────
 function MapRotationController({
   rotationAngle,
   setRotationAngle,
@@ -199,44 +216,35 @@ function MapRotationController({
         const dx = point.x - cx;
         const dy = point.y - cy;
 
-        return L.point(
-          cx + dx * Math.cos(rad) - dy * Math.sin(rad),
-          cy + dx * Math.sin(rad) + dy * Math.cos(rad)
-        );
+        const unrotatedX = cx + (dx * Math.cos(rad) - dy * Math.sin(rad));
+        const unrotatedY = cy + (dx * Math.sin(rad) + dy * Math.cos(rad));
+
+        return L.point(unrotatedX, unrotatedY);
       };
     }
-  }, [map]);
 
-  // 3. Re-enforce rotation on all Leaflet map view & movement events
-  useEffect(() => {
-    function enforceRotation() {
+    const onTileLoad = () => {
       applyMapRotation(map, rotationRef.current);
-    }
+    };
+    map.on("tileload", onTileLoad);
+    map.on("zoomend", onTileLoad);
+    map.on("moveend", onTileLoad);
 
-    map.on("move moveend drag dragend zoom zoomend viewreset zoomanim resize", enforceRotation);
     return () => {
-      map.off("move moveend drag dragend zoom zoomend viewreset zoomanim resize", enforceRotation);
+      map.off("tileload", onTileLoad);
+      map.off("zoomend", onTileLoad);
+      map.off("moveend", onTileLoad);
     };
   }, [map]);
 
-  // 4. Attach _leaflet_map property to .leaflet-map-pane DOM element
+  // 3. Two-finger touch rotation gestures
   useEffect(() => {
     const container = map.getContainer();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const mapPane = container.querySelector(".leaflet-map-pane") as any;
-    if (mapPane) {
-      mapPane._leaflet_map = map;
-    }
-  }, [map]);
-
-  // 5. Two-finger rotation touch gesture handler
-  useEffect(() => {
-    const container = map.getContainer();
+    let isRotating = false;
     let initialTouchAngle = 0;
     let initialMapRotation = 0;
-    let isRotating = false;
 
-    function getAngle(t1: Touch, t2: Touch): number {
+    function getTouchAngle(t1: Touch, t2: Touch): number {
       const dx = t2.clientX - t1.clientX;
       const dy = t2.clientY - t1.clientY;
       return (Math.atan2(dy, dx) * 180) / Math.PI;
@@ -245,16 +253,17 @@ function MapRotationController({
     function handleTouchStart(e: TouchEvent) {
       if (e.touches.length === 2) {
         isRotating = true;
-        initialTouchAngle = getAngle(e.touches[0], e.touches[1]);
+        initialTouchAngle = getTouchAngle(e.touches[0], e.touches[1]);
         initialMapRotation = rotationRef.current;
       }
     }
 
     function handleTouchMove(e: TouchEvent) {
       if (isRotating && e.touches.length === 2) {
-        const currentTouchAngle = getAngle(e.touches[0], e.touches[1]);
+        const currentTouchAngle = getTouchAngle(e.touches[0], e.touches[1]);
         const delta = currentTouchAngle - initialTouchAngle;
         const newAngle = Math.round((initialMapRotation + delta + 360) % 360);
+
         if (Math.abs(newAngle - rotationRef.current) >= 1) {
           rotationRef.current = newAngle;
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -287,24 +296,35 @@ function MapRotationController({
   return null;
 }
 
-// Helper to interact with Leaflet map instance
+// ── MapViewController — Camera following and orientation orchestration ────────
+interface MapViewControllerProps {
+  userLocation: { lat: number; lng: number } | null;
+  shouldCenter: boolean;
+  setShouldCenter: (val: boolean) => void;
+  navStep: string;
+  isFollowingUser: boolean;
+  setIsFollowingUser: (val: boolean) => void;
+  fusedHeading: number;
+  setMapRotation: React.Dispatch<React.SetStateAction<number>>;
+}
+
 function MapViewController({
   userLocation,
   shouldCenter,
   setShouldCenter,
   navStep,
-}: {
-  userLocation: { lat: number; lng: number } | null;
-  shouldCenter: boolean;
-  setShouldCenter: (val: boolean) => void;
-  navStep: string;
-}) {
+  isFollowingUser,
+  setIsFollowingUser,
+  fusedHeading,
+  setMapRotation,
+}: MapViewControllerProps) {
   const map = useMap();
   const { destinationTarget } = useAppStore();
-  const [isFollowingUser, setIsFollowingUser] = useState(true);
   const hasFitRouteRef = useRef(false);
+  const lastPanPosRef = useRef<{ lat: number; lng: number } | null>(null);
+  const lastPanTimeRef = useRef<number>(0);
 
-  // Pause camera auto-follow when user manually interacts with the map (drag, zoom, touch, wheel)
+  // Pause camera auto-follow when user manually drags/pans/zooms the map
   useEffect(() => {
     function handleUserInteraction() {
       setIsFollowingUser(false);
@@ -332,9 +352,9 @@ function MapViewController({
       container.removeEventListener("touchstart", handleTouch);
       container.removeEventListener("wheel", handleUserInteraction);
     };
-  }, [map]);
+  }, [map, setIsFollowingUser]);
 
-  // Auto fit bounds to show both user pin and destination when navigation starts
+  // Initial fit bounds when outdoor navigation begins
   useEffect(() => {
     if (navStep === "OUTDOOR_NAV" && destinationTarget && userLocation && !hasFitRouteRef.current) {
       const bounds = L.latLngBounds(
@@ -347,20 +367,36 @@ function MapViewController({
     if (navStep !== "OUTDOOR_NAV") {
       hasFitRouteRef.current = false;
       setIsFollowingUser(true);
+      setMapRotation(0); // Restore North-up on exit
     }
-  }, [navStep, destinationTarget, userLocation, map]);
+  }, [navStep, destinationTarget, userLocation, map, setIsFollowingUser, setMapRotation]);
 
-  // Manual center button click: re-enable auto-follow and fly to position while preserving preferred zoom
+  // Handle manual recenter / center button
   useEffect(() => {
     if (shouldCenter && userLocation) {
       setIsFollowingUser(true);
-      const targetZoom = Math.max(map.getZoom(), 17);
-      map.flyTo([userLocation.lat, userLocation.lng], targetZoom, { animate: true, duration: 1 });
+      const targetZoom = Math.max(map.getZoom(), 18);
+
+      if (navStep === "OUTDOOR_NAV") {
+        // Position camera with forward offset
+        const forwardOffset = targetZoom >= 19 ? 18 : targetZoom >= 18 ? 24 : 32;
+        const [targetLat, targetLng] = getForwardOffsetCoord(
+          userLocation.lat,
+          userLocation.lng,
+          fusedHeading,
+          forwardOffset
+        );
+        map.flyTo([targetLat, targetLng], targetZoom, { animate: true, duration: 0.8 });
+        setMapRotation(Math.round(-fusedHeading));
+      } else {
+        map.flyTo([userLocation.lat, userLocation.lng], targetZoom, { animate: true, duration: 0.8 });
+      }
+
       setShouldCenter(false);
     }
-  }, [shouldCenter, userLocation, map, setShouldCenter]);
+  }, [shouldCenter, userLocation, map, setShouldCenter, setIsFollowingUser, navStep, fusedHeading, setMapRotation]);
 
-  // Listen for AI chatbot "Show on Map" center events
+  // Listen for AI chatbot "Show on Map" events
   useEffect(() => {
     function handleCenterBuilding(e: Event) {
       const customEvent = e as CustomEvent<{ lat: number; lng: number; zoom?: number }>;
@@ -374,12 +410,9 @@ function MapViewController({
     }
     window.addEventListener("aastu_center_building", handleCenterBuilding);
     return () => window.removeEventListener("aastu_center_building", handleCenterBuilding);
-  }, [map]);
+  }, [map, setIsFollowingUser]);
 
-  const lastPanPosRef = useRef<{ lat: number; lng: number } | null>(null);
-  const lastPanTimeRef = useRef<number>(0);
-
-  // Camera following during active outdoor navigation ONLY if user is not manually dragging
+  // Live Course-Up Navigation: Pan camera ahead and rotate map to match fused heading
   useEffect(() => {
     if (navStep === "OUTDOOR_NAV" && userLocation && isFollowingUser) {
       const now = Date.now();
@@ -390,24 +423,36 @@ function MapViewController({
         ? calculateDistanceInMeters(userLocation.lat, userLocation.lng, lastPos.lat, lastPos.lng)
         : Infinity;
 
-      // Smooth camera follow: trigger pan if moved >= 2.5m and at least 400ms elapsed since last pan
-      if (lastPos === null || (dist >= 2.5 && elapsed >= 400)) {
+      // Update map rotation course-up
+      setMapRotation(Math.round(-fusedHeading));
+
+      // Smooth camera follow with forward perspective offset (~20-30m)
+      if (lastPos === null || dist >= 2.0 || elapsed >= 350) {
         lastPanPosRef.current = userLocation;
         lastPanTimeRef.current = now;
-        map.panTo([userLocation.lat, userLocation.lng], {
+
+        const currentZoom = map.getZoom();
+        const forwardOffset = currentZoom >= 19 ? 18 : currentZoom >= 18 ? 24 : 32;
+        const [targetLat, targetLng] = getForwardOffsetCoord(
+          userLocation.lat,
+          userLocation.lng,
+          fusedHeading,
+          forwardOffset
+        );
+
+        map.panTo([targetLat, targetLng], {
           animate: true,
-          duration: 0.4,
+          duration: 0.35,
           easeLinearity: 0.4,
         });
       }
     } else if (navStep !== "OUTDOOR_NAV") {
       lastPanPosRef.current = null;
     }
-  }, [navStep, userLocation, isFollowingUser, map]);
+  }, [navStep, userLocation, isFollowingUser, fusedHeading, map, setMapRotation]);
 
   return null;
 }
-
 
 // ── Component ─────────────────────────────────────────────────────────────────
 interface CampusMapProps {
@@ -431,18 +476,39 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
   // Continuous high-accuracy live GPS tracking
   const { userPosition } = useLiveNavigation({ enabled: true });
 
+  // Heading fusion (Device compass + GPS course with circular EMA smoothing)
+  const {
+    heading: fusedHeading,
+    requestPermission: requestCompassPermission,
+  } = useHeadingFusion({
+    gpsHeading: userPosition?.heading,
+    gpsSpeed: userPosition?.speed,
+    enabled: true,
+  });
+
   useEffect(() => {
     if (userPosition) {
       setUserLocation({ lat: userPosition.latitude, lng: userPosition.longitude });
     }
   }, [userPosition, setUserLocation]);
 
-  // Fetch A* route from server; handles auto-rerouting on position change
+  // Fetch A* route from server; handles auto-rerouting on sustained position departure
   useOutdoorRoute();
 
   const [tileMode, setTileMode] = useState<TileMode>("street");
   const [shouldCenterLocation, setShouldCenterLocation] = useState<boolean>(false);
   const [mapRotation, setMapRotation] = useState<number>(0);
+  const [isFollowingUser, setIsFollowingUser] = useState<boolean>(true);
+
+  // Request compass permissions on navigation initiation (iOS requirement)
+  const handleStartNavWithPermission = useCallback(
+    (params: Parameters<typeof startOutdoorNavigation>[0]) => {
+      requestCompassPermission();
+      setIsFollowingUser(true);
+      startOutdoorNavigation(params);
+    },
+    [requestCompassPermission, startOutdoorNavigation]
+  );
 
   // Listen for AI Chatbot Action Triggers
   useEffect(() => {
@@ -466,7 +532,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
       if (d && d.latitude && d.longitude) {
         const isStaff = Boolean(d.staffId);
         const isOffice = Boolean(d.officeId) && !isStaff;
-        startOutdoorNavigation({
+        handleStartNavWithPermission({
           id: d.staffId || d.officeId || d.buildingId || "custom-target",
           type: isStaff ? "STAFF" : isOffice ? "OFFICE" : "BUILDING",
           name: d.name || "Destination",
@@ -499,7 +565,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
       window.removeEventListener("aastu_start_navigation", handleStartNav);
       window.removeEventListener("aastu_open_panorama", handleOpenPanorama);
     };
-  }, [startOutdoorNavigation]);
+  }, [handleStartNavWithPermission]);
 
   useEffect(() => {
     delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
@@ -512,7 +578,6 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     fetchBuildings();
     fetchLandmarks(visibleOnly);
   }, [fetchBuildings, fetchLandmarks, visibleOnly]);
-
 
   const isLoading = buildingsLoading || landmarksLoading;
   const tile = TILE_LAYERS[tileMode];
@@ -558,10 +623,9 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         scrollWheelZoom
         dragging
         doubleClickZoom
-        touchZoom
         zoomControl={false}
-        className="h-full w-full z-0"
-        style={{ height: "100%", width: "100%", minHeight: "350px" }}
+        className="h-full w-full"
+        style={{ height: "100%", width: "100%" }}
       >
         <MapResizer />
         <MapRotationController
@@ -573,8 +637,13 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           shouldCenter={shouldCenterLocation}
           setShouldCenter={setShouldCenterLocation}
           navStep={navStep}
+          isFollowingUser={isFollowingUser}
+          setIsFollowingUser={setIsFollowingUser}
+          fusedHeading={fusedHeading}
+          setMapRotation={setMapRotation}
         />
 
+        {/* Base Map Tiles */}
         <TileLayer
           key={tileMode}
           attribution={tile.attribution}
@@ -583,13 +652,18 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           maxZoom={MAX_ZOOM}
         />
 
-
-        {/* AASTU Yellow Campus Boundary Polygon */}
+        {/* AASTU Campus Boundary Polygon */}
         <CampusBoundaryPolygon />
 
-        {/* User GPS location marker */}
+        {/* User GPS location marker (renders forward-facing arrow in Course-Up mode) */}
         {userLocation && (
-          <UserLocationMarker lat={userLocation.lat} lng={userLocation.lng} />
+          <UserLocationMarker
+            lat={userLocation.lat}
+            lng={userLocation.lng}
+            isNavigating={navStep === "OUTDOOR_NAV"}
+            heading={fusedHeading}
+            isCourseUp={navStep === "OUTDOOR_NAV" && isFollowingUser}
+          />
         )}
 
         {/* Outdoor walking route polyline — coordinates from A* API */}
@@ -602,7 +676,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           <BuildingMarker key={building.id} building={building} />
         ))}
 
-        {/* Landmark markers (merged with building code under name) */}
+        {/* Landmark markers */}
         {landmarks.map((landmark) => {
           const matchedBuilding =
             (landmark.buildingId ? buildingById.get(landmark.buildingId) : null) ||
@@ -618,6 +692,22 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           );
         })}
       </MapContainer>
+
+      {/* Floating Recenter Pill (shown when user manually panned during active navigation) */}
+      {navStep === "OUTDOOR_NAV" && !isFollowingUser && (
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto">
+          <button
+            onClick={() => {
+              setShouldCenterLocation(true);
+              requestCompassPermission();
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500 text-slate-950 font-bold text-xs shadow-2xl shadow-cyan-500/40 border border-cyan-300 hover:bg-cyan-400 active:scale-95 transition-all cursor-pointer"
+          >
+            <Navigation2 className="h-3.5 w-3.5 fill-current" />
+            <span>Recenter Navigation</span>
+          </button>
+        </div>
+      )}
 
       {/* Floating controls: Satellite + GPS pin + Compass Reset */}
       <MapControls

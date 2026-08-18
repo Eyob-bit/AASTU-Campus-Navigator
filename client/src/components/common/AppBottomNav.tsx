@@ -18,7 +18,7 @@ export function AppBottomNav() {
   };
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-50 pb-safe">
+    <div className="fixed bottom-0 inset-x-0 z-[2000] pointer-events-auto pb-safe">
       <nav
         className="mx-auto max-w-lg border-t border-slate-200 dark:border-slate-800/80 bg-white/95 dark:bg-[#0B132B]/95 px-4 py-2 backdrop-blur-xl shadow-lg dark:shadow-2xl dark:shadow-black/80 transition-colors"
         aria-label="Bottom Navigation"
