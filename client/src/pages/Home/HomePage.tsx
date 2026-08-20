@@ -199,9 +199,9 @@ export function HomePage() {
   const hasResults = officeResults.length > 0 || landmarkResults.length > 0;
 
   return (
-    <div className="relative h-[calc(100dvh-4rem)] lg:h-screen w-full overflow-hidden bg-slate-100 dark:bg-slate-950 transition-colors">
-      {/* Interactive Satellite/Campus Map View */}
-      <div className="absolute inset-0 z-0">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-slate-100 dark:bg-slate-950 transition-colors">
+      {/* Interactive Satellite/Campus Map View — stops at bottom-16 so the bottom nav bar can receive touch events */}
+      <div className="absolute inset-0 bottom-16 z-0">
         <CampusMap className="h-full w-full rounded-none border-none" />
       </div>
 
