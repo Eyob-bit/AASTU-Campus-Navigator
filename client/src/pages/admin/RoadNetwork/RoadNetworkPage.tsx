@@ -1,52 +1,269 @@
-import { useState, useEffect, useMemo } from "react";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents } from "react-leaflet";
-import L from "leaflet";
+import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
+import { Popup, Marker, type GeoJSONSource, type MapMouseEvent } from "maplibre-gl";
 import {
-  MapPin, Trash2, Link as LinkIcon, RefreshCw, Compass, ArrowRight,
+  MapPin, Trash2, RefreshCw, Compass,
 } from "lucide-react";
 import {
   Card, ConfirmDialog, ToastContainer, Button, ErrorBanner,
 } from "@/components/ui";
 import { roadNetworkApi, type RoadNode, type RoadEdge } from "@/api/roadNetwork.api";
 import { useToast } from "@/hooks/useToast";
-import { AASTU_CENTER, DEFAULT_ZOOM, TILE_LAYERS, type TileMode } from "@/components/map/mapConfig";
-import { CampusBoundaryPolygon } from "@/components/map/CampusBoundaryPolygon";
+import {
+  MapLibreContainer,
+  useMapInstance,
+  CampusBoundaryPolygon,
+  AASTU_CENTER_LNG_LAT,
+  DEFAULT_ZOOM,
+  type TileMode,
+} from "@/components/map";
 import { calculateDistanceInMeters } from "@/utils/geo";
 
-// Custom Leaflet DivIcon for Road Nodes
-function createNodeIcon(isSelected: boolean, isConnectSource: boolean, isDraggable = false): L.DivIcon {
-  const color = isConnectSource ? "#f59e0b" : isSelected ? "#06b6d4" : isDraggable ? "#a78bfa" : "#3b82f6";
-  const size = isSelected || isConnectSource ? 22 : 16;
-
-  return L.divIcon({
-    className: "road-node-div-icon",
-    html: `
-      <div style="
-        width: ${size}px;
-        height: ${size}px;
-        background-color: ${color};
-        border: 2px solid white;
-        border-radius: 50%;
-        box-shadow: 0 0 8px ${color}88;
-        cursor: ${isDraggable ? 'move' : 'pointer'};
-        transition: all 0.2s ease;
-      "></div>
-    `,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
-  });
+// ── High-Visibility MapLibre Road Network Edges Layer ─────────────────────────
+interface RoadEdgesLayerProps {
+  edges: RoadEdge[];
+  nodeMap: Map<string, RoadNode>;
 }
 
-// Click listener component for Leaflet Map
-function MapClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
-  useMapEvents({
-    click(e) {
-      onMapClick(e.latlng.lat, e.latlng.lng);
-    },
-  });
+function RoadEdgesLayer({ edges, nodeMap }: RoadEdgesLayerProps) {
+  const map = useMapInstance();
+
+  const geojson = useMemo<GeoJSON.FeatureCollection<GeoJSON.LineString>>(() => {
+    const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+    edges.forEach((edge) => {
+      const u = edge.fromNode ?? nodeMap.get(edge.fromNodeId);
+      const v = edge.toNode ?? nodeMap.get(edge.toNodeId);
+      if (!u || !v) return;
+      const uLng = Number(u.longitude), uLat = Number(u.latitude);
+      const vLng = Number(v.longitude), vLat = Number(v.latitude);
+      if (isNaN(uLng) || isNaN(uLat) || isNaN(vLng) || isNaN(vLat)) return;
+      if (uLat === 0 && uLng === 0) return;
+      features.push({
+        type: "Feature",
+        properties: { id: edge.id, isBidirectional: edge.isBidirectional, distance: edge.distance },
+        geometry: { type: "LineString", coordinates: [[uLng, uLat], [vLng, vLat]] },
+      });
+    });
+    return { type: "FeatureCollection", features };
+  }, [edges, nodeMap]);
+
+  useEffect(() => {
+    if (!map) return;
+
+    const SOURCE_ID = "road-edges-source";
+    const LAYER_CASING = "road-edges-casing";
+    const LAYER_GLOW = "road-edges-glow";
+    const LAYER_LINE = "road-edges-line";
+
+    function applyData() {
+      if (!map) return;
+
+      try {
+        const existingSource = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
+        if (existingSource) {
+          existingSource.setData(geojson);
+        } else {
+          map.addSource(SOURCE_ID, {
+            type: "geojson",
+            data: geojson,
+          });
+
+          if (!map.getLayer(LAYER_CASING)) {
+            map.addLayer({
+              id: LAYER_CASING,
+              type: "line",
+              source: SOURCE_ID,
+              layout: { "line-cap": "round", "line-join": "round" },
+              paint: { "line-color": "#020617", "line-width": 8, "line-opacity": 0.85 },
+            });
+          }
+
+          if (!map.getLayer(LAYER_GLOW)) {
+            map.addLayer({
+              id: LAYER_GLOW,
+              type: "line",
+              source: SOURCE_ID,
+              layout: { "line-cap": "round", "line-join": "round" },
+              paint: { "line-color": "#06b6d4", "line-width": 6, "line-opacity": 0.6, "line-blur": 2 },
+            });
+          }
+
+          if (!map.getLayer(LAYER_LINE)) {
+            map.addLayer({
+              id: LAYER_LINE,
+              type: "line",
+              source: SOURCE_ID,
+              layout: { "line-cap": "round", "line-join": "round" },
+              paint: { "line-color": "#22d3ee", "line-width": 3.5, "line-opacity": 1.0 },
+            });
+          }
+        }
+      } catch (err) {
+        // If style is still loading during transition, style.load will fire and call applyData
+      }
+    }
+
+    applyData();
+    map.on("style.load", applyData);
+    map.on("styledata", applyData);
+
+    return () => {
+      map.off("style.load", applyData);
+      map.off("styledata", applyData);
+    };
+  }, [map, geojson]);
+
   return null;
 }
 
+
+// ── MapLibre Road Node Marker ──────────────────────────────────────────────────
+interface RoadNodeMarkerProps {
+  node: RoadNode;
+  isSelected: boolean;
+  isConnectSource: boolean;
+  isDraggable: boolean;
+  onNodeClick: (node: RoadNode) => void;
+  onDragEnd: (node: RoadNode, lat: number, lng: number) => void;
+  onSetConnectSource: (node: RoadNode) => void;
+  onDeleteNode: (node: RoadNode) => void;
+}
+
+const RoadNodeMarker = memo(function RoadNodeMarker({
+  node,
+  isSelected,
+  isConnectSource,
+  isDraggable,
+  onNodeClick,
+  onDragEnd,
+  onSetConnectSource,
+  onDeleteNode,
+}: RoadNodeMarkerProps) {
+  const map = useMapInstance();
+  const markerRef = useRef<Marker | null>(null);
+  const elementRef = useRef<HTMLDivElement | null>(null);
+
+  const onNodeClickRef = useRef(onNodeClick);
+  const onDragEndRef = useRef(onDragEnd);
+  const onSetConnectSourceRef = useRef(onSetConnectSource);
+  const onDeleteNodeRef = useRef(onDeleteNode);
+
+  useEffect(() => { onNodeClickRef.current = onNodeClick; }, [onNodeClick]);
+  useEffect(() => { onDragEndRef.current = onDragEnd; }, [onDragEnd]);
+  useEffect(() => { onSetConnectSourceRef.current = onSetConnectSource; }, [onSetConnectSource]);
+  useEffect(() => { onDeleteNodeRef.current = onDeleteNode; }, [onDeleteNode]);
+
+  const color = isConnectSource ? "#f59e0b" : isSelected ? "#06b6d4" : isDraggable ? "#a78bfa" : "#3b82f6";
+  const size = isConnectSource ? 22 : isSelected ? 20 : 16;
+
+  // Initialize marker once per node ID
+  useEffect(() => {
+    if (!map) return;
+
+    const el = document.createElement("div");
+    elementRef.current = el;
+    el.style.width = `${size}px`;
+    el.style.height = `${size}px`;
+    el.style.backgroundColor = color;
+    el.style.border = isConnectSource ? "3px solid #ffffff" : "2px solid white";
+    el.style.borderRadius = "50%";
+    el.style.boxShadow = isConnectSource
+      ? "0 0 14px 4px rgba(245, 158, 11, 0.95)"
+      : `0 0 8px ${color}88`;
+    el.style.cursor = isDraggable ? "move" : "pointer";
+    el.style.transition = "all 0.2s ease";
+
+    const popupContainer = document.createElement("div");
+    popupContainer.className = "p-2 space-y-2 text-xs";
+    popupContainer.innerHTML = `
+      <div>
+        <p style="font-weight:700;color:#0f172a;font-size:13px;margin:0;">${node.name ?? "Road Node"}</p>
+        <p style="font-size:10px;font-family:monospace;color:#64748b;margin:2px 0 0 0;">
+          ${node.latitude.toFixed(5)}°N, ${node.longitude.toFixed(5)}°E
+        </p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;padding-top:4px;border-top:1px solid #e2e8f0;">
+        <button id="btn-connect-${node.id}" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;background:#fef3c7;color:#b45309;font-weight:600;border:none;cursor:pointer;">
+          🔗 Connect to another node
+        </button>
+        <button id="btn-delete-${node.id}" style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:4px;background:#fef2f2;color:#b91c1c;font-weight:600;border:none;cursor:pointer;">
+          🗑 Delete node
+        </button>
+      </div>
+    `;
+
+    const popup = new Popup({
+      offset: [0, -12],
+      closeButton: true,
+      closeOnClick: false,
+    }).setDOMContent(popupContainer);
+
+    const marker = new Marker({
+      element: el,
+      draggable: isDraggable,
+    })
+      .setLngLat([node.longitude, node.latitude])
+      .setPopup(popup)
+      .addTo(map);
+
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      onNodeClickRef.current?.(node);
+    });
+
+    marker.on("dragend", () => {
+      const pos = marker.getLngLat();
+      onDragEndRef.current?.(node, pos.lat, pos.lng);
+    });
+
+    popup.on("open", () => {
+      const connectBtn = document.getElementById(`btn-connect-${node.id}`);
+      const deleteBtn = document.getElementById(`btn-delete-${node.id}`);
+      if (connectBtn) {
+        connectBtn.onclick = () => {
+          popup.remove();
+          onSetConnectSourceRef.current?.(node);
+        };
+      }
+      if (deleteBtn) {
+        deleteBtn.onclick = () => {
+          popup.remove();
+          onDeleteNodeRef.current?.(node);
+        };
+      }
+    });
+
+    markerRef.current = marker;
+
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+    };
+  }, [map, node.id]);
+
+  // Update styles & position dynamically without remounting DOM elements
+  useEffect(() => {
+    if (markerRef.current) {
+      markerRef.current.setLngLat([node.longitude, node.latitude]);
+      markerRef.current.setDraggable(isDraggable);
+    }
+    if (elementRef.current) {
+      elementRef.current.style.width = `${size}px`;
+      elementRef.current.style.height = `${size}px`;
+      elementRef.current.style.backgroundColor = color;
+      elementRef.current.style.border = isConnectSource ? "3px solid #ffffff" : "2px solid white";
+      elementRef.current.style.boxShadow = isConnectSource
+        ? "0 0 14px 4px rgba(245, 158, 11, 0.95)"
+        : `0 0 8px ${color}88`;
+      elementRef.current.style.cursor = isDraggable ? "move" : "pointer";
+    }
+  }, [node.latitude, node.longitude, color, size, isDraggable, isConnectSource]);
+
+  return null;
+});
+
+// ── Main RoadNetworkPage Component ───────────────────────────────────────────
 export function RoadNetworkPage() {
   const { toasts, addToast, removeToast } = useToast();
 
@@ -61,6 +278,7 @@ export function RoadNetworkPage() {
   // Selection state
   const [selectedNode, setSelectedNode] = useState<RoadNode | null>(null);
   const [connectSourceNode, setConnectSourceNode] = useState<RoadNode | null>(null);
+  const [connectModeActive, setConnectModeActive] = useState<boolean>(false);
   const [isModifierPressed, setIsModifierPressed] = useState<boolean>(false);
   const [dragModeActive, setDragModeActive] = useState<boolean>(false);
 
@@ -95,7 +313,7 @@ export function RoadNetworkPage() {
     };
   }, []);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
@@ -110,23 +328,23 @@ export function RoadNetworkPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
+  const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
-  const handleMapClick = (lat: number, lng: number) => {
+  const handleMapClick = useCallback((e: MapMouseEvent) => {
     if (connectSourceNode) {
-      // Cancel connect mode on map background click
       setConnectSourceNode(null);
       return;
     }
-    setNewLatLng({ lat, lng });
+    setNewLatLng({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     setNodeName(`Waypoint ${nodes.length + 1}`);
     setNodeModalOpen(true);
-  };
+  }, [connectSourceNode, nodes.length]);
 
   const handleCreateNode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -151,13 +369,29 @@ export function RoadNetworkPage() {
     }
   };
 
-  const handleNodeClick = async (node: RoadNode) => {
+  const handleNodeClick = useCallback(async (node: RoadNode) => {
     if (connectSourceNode) {
       if (connectSourceNode.id === node.id) {
         setConnectSourceNode(null);
         return;
       }
-      // Connect source node to clicked target node
+
+      // Check if connection already exists between these two nodes
+      const alreadyExists = edges.some(
+        (e) =>
+          (e.fromNodeId === connectSourceNode.id && e.toNodeId === node.id) ||
+          (e.fromNodeId === node.id && e.toNodeId === connectSourceNode.id)
+      );
+
+      if (alreadyExists) {
+        addToast({
+          type: "info",
+          message: `⚠️ Connection already exists between "${connectSourceNode.name ?? "Node"}" and "${node.name ?? "Node"}".`,
+        });
+        setConnectSourceNode(null);
+        return;
+      }
+
       try {
         const dist = calculateDistanceInMeters(
           connectSourceNode.latitude,
@@ -166,7 +400,6 @@ export function RoadNetworkPage() {
           node.longitude
         );
 
-
         const newEdge = await roadNetworkApi.createEdge({
           fromNodeId: connectSourceNode.id,
           toNodeId: node.id,
@@ -174,33 +407,44 @@ export function RoadNetworkPage() {
           isBidirectional: true,
         });
 
-        setEdges((prev) => [...prev, newEdge]);
+        // Ensure full node objects are attached for immediate GeoJSON line rendering
+        const fullEdge: RoadEdge = {
+          ...newEdge,
+          fromNode: connectSourceNode,
+          toNode: node,
+          fromNodeId: connectSourceNode.id,
+          toNodeId: node.id,
+          distance: dist,
+          isBidirectional: true,
+          isWalkable: true,
+        };
+
+        setEdges((prev) => [...prev, fullEdge]);
         addToast({
           type: "success",
-          message: `Connected "${connectSourceNode.name}" ↔ "${node.name}" (${Math.round(dist)}m).`,
+          message: `Connected "${connectSourceNode.name ?? "Node"}" ↔ "${node.name ?? "Node"}" (${Math.round(dist)}m).`,
         });
       } catch (err: unknown) {
         addToast({ type: "error", message: err instanceof Error ? err.message : "Failed to create connection." });
       } finally {
         setConnectSourceNode(null);
       }
+    } else if (connectModeActive) {
+      setConnectSourceNode(node);
+      addToast({
+        type: "info",
+        message: `Selected "${node.name ?? "Node"}" as start. Click a second node to connect.`,
+      });
     } else {
       setSelectedNode(node);
     }
-  };
+  }, [connectSourceNode, connectModeActive, edges, addToast]);
 
-  const handleMarkerDragEnd = async (node: RoadNode, e: L.DragEndEvent) => {
-    const targetMarker = e.target;
-    const newLatLng = targetMarker.getLatLng();
-    const newLat = newLatLng.lat;
-    const newLng = newLatLng.lng;
-
-    // Update node position locally
+  const handleMarkerDragEnd = useCallback(async (node: RoadNode, newLat: number, newLng: number) => {
     setNodes((prevNodes) =>
       prevNodes.map((n) => (n.id === node.id ? { ...n, latitude: newLat, longitude: newLng } : n))
     );
 
-    // Recalculate connected edge distances locally & persist
     setEdges((prevEdges) =>
       prevEdges.map((edge) => {
         if (edge.fromNodeId === node.id || edge.toNodeId === node.id) {
@@ -208,7 +452,7 @@ export function RoadNetworkPage() {
           const vNode = edge.toNodeId === node.id ? { latitude: newLat, longitude: newLng } : nodeMap.get(edge.toNodeId);
           if (uNode && vNode) {
             const newDist = calculateDistanceInMeters(uNode.latitude, uNode.longitude, vNode.latitude, vNode.longitude);
-            roadNetworkApi.updateEdge(edge.id, { distance: newDist }).catch(() => {});
+            roadNetworkApi.updateEdge(edge.id, { distance: newDist }).catch(() => { });
             return { ...edge, distance: newDist };
           }
         }
@@ -222,12 +466,19 @@ export function RoadNetworkPage() {
         type: "success",
         message: `Moved "${node.name}" to (${newLat.toFixed(5)}°, ${newLng.toFixed(5)}°).`,
       });
-    } catch (err: unknown) {
+    } catch {
       addToast({ type: "error", message: "Failed to update node position on server." });
       loadData();
     }
-  };
+  }, [nodeMap, addToast, loadData]);
 
+  const handleSetConnectSource = useCallback((n: RoadNode) => {
+    setConnectSourceNode(n);
+  }, []);
+
+  const handleDeleteNode = useCallback((n: RoadNode) => {
+    setDeleteTarget({ type: "node", id: n.id, name: n.name ?? "Unnamed Node" });
+  }, []);
 
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
@@ -252,9 +503,6 @@ export function RoadNetworkPage() {
     }
   };
 
-  // Node Map Lookup
-  const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
-
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200">
       {/* Header bar */}
@@ -274,25 +522,22 @@ export function RoadNetworkPage() {
           <div className="flex items-center bg-gray-100 dark:bg-slate-900 p-1 rounded-xl border border-gray-200 dark:border-slate-800">
             <button
               onClick={() => setViewMode("map")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                viewMode === "map" ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
-              }`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${viewMode === "map" ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
             >
               Interactive Map
             </button>
             <button
               onClick={() => setViewMode("nodes")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                viewMode === "nodes" ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
-              }`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${viewMode === "nodes" ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
             >
               Road Nodes ({nodes.length})
             </button>
             <button
               onClick={() => setViewMode("edges")}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                viewMode === "edges" ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
-              }`}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${viewMode === "edges" ? "bg-cyan-600 dark:bg-cyan-500 text-white shadow-md" : "text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
+                }`}
             >
               Connections ({edges.length})
             </button>
@@ -312,30 +557,46 @@ export function RoadNetworkPage() {
           {/* Instructions banner */}
           <div className="bg-slate-900/90 border-b border-slate-800/80 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 text-slate-300 backdrop-blur-md">
             <div className="flex items-center gap-2">
-              <span className={`w-2 h-2 rounded-full ${isModifierPressed || dragModeActive ? "bg-amber-400 animate-ping" : "bg-cyan-400 animate-pulse"}`} />
+              <span className={`w-2 h-2 rounded-full ${connectSourceNode || connectModeActive || isModifierPressed || dragModeActive ? "bg-amber-400 animate-ping" : "bg-cyan-400 animate-pulse"}`} />
               <span>
                 {connectSourceNode ? (
                   <strong className="text-amber-400 font-bold">
-                    Select a target node to connect with "{connectSourceNode.name}"
+                    🔗 Click a target node to connect with "{connectSourceNode.name ?? "Source Node"}"
+                  </strong>
+                ) : connectModeActive ? (
+                  <strong className="text-cyan-300 font-bold">
+                    🔗 CONNECT MODE ACTIVE — Click the start node, then click the destination node to connect them.
                   </strong>
                 ) : isModifierPressed || dragModeActive ? (
                   <strong className="text-amber-300 font-bold">
                     🎯 DRAG MODE ACTIVE — Click and drag any waypoint node to move its location.
                   </strong>
                 ) : (
-                  <>Click map to add node · Hold <kbd className="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-cyan-300">Shift</kbd> or <kbd className="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-cyan-300">Ctrl</kbd> to drag nodes.</>
+                  <>Click map to add node · Toggle <strong className="text-cyan-300">Connect Mode</strong> or click node popup to link waypoints · Hold <kbd className="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-cyan-300">Shift</kbd> / <kbd className="px-1 py-0.5 rounded bg-slate-800 border border-slate-700 font-mono text-[10px] text-cyan-300">Ctrl</kbd> to drag.</>
                 )}
               </span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
+                onClick={() => {
+                  setConnectModeActive((prev) => !prev);
+                  if (connectSourceNode) setConnectSourceNode(null);
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${connectModeActive
+                    ? "bg-cyan-500 text-slate-950 shadow-md font-bold"
+                    : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
+                  }`}
+              >
+                {connectModeActive ? "🔗 Connect Mode: ON" : "🔗 Connect Mode: OFF"}
+              </button>
+
+              <button
                 onClick={() => setDragModeActive((prev) => !prev)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                  dragModeActive
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${dragModeActive
                     ? "bg-amber-500 text-slate-950 shadow-md font-bold"
                     : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
-                }`}
+                  }`}
               >
                 {dragModeActive ? "🖐 Drag Mode: ON" : "✋ Drag Mode: OFF"}
               </button>
@@ -351,122 +612,34 @@ export function RoadNetworkPage() {
             </div>
           </div>
 
-          {/* Leaflet Map */}
+          {/* MapLibre Map */}
           <div className="flex-1 relative">
-            <MapContainer
-              center={AASTU_CENTER}
+            <MapLibreContainer
+              center={AASTU_CENTER_LNG_LAT}
               zoom={DEFAULT_ZOOM}
               minZoom={13}
               maxZoom={22}
-              zoomControl={false}
-              className="h-full w-full z-0 bg-slate-950"
+              tileMode={tileMode}
+              onClick={handleMapClick}
+              className="h-full w-full bg-slate-950"
             >
-              <TileLayer
-                attribution={TILE_LAYERS[tileMode].attribution}
-                url={TILE_LAYERS[tileMode].url}
-                maxZoom={22}
-                maxNativeZoom={TILE_LAYERS[tileMode].maxNativeZoom}
-              />
               <CampusBoundaryPolygon />
-              <MapClickHandler onMapClick={handleMapClick} />
+              <RoadEdgesLayer edges={edges} nodeMap={nodeMap} />
 
-              {/* Render Road Edges as Blue Polylines */}
-              {edges.map((edge) => {
-                const u = nodeMap.get(edge.fromNodeId);
-                const v = nodeMap.get(edge.toNodeId);
-                if (!u || !v) return null;
-
-                const positions: [number, number][] = [
-                  [u.latitude, u.longitude],
-                  [v.latitude, v.longitude],
-                ];
-
-                return (
-                  <Polyline
-                    key={edge.id}
-                    positions={positions}
-                    pathOptions={{
-                      color: "#06b6d4",
-                      weight: 4,
-                      opacity: 0.85,
-                      dashArray: edge.isBidirectional ? undefined : "6, 6",
-                    }}
-                  >
-                    <Popup className="road-network-popup">
-                      <div className="p-2 space-y-1 text-xs">
-                        <p className="font-bold text-slate-900 flex items-center gap-1">
-                          <span>{u.name}</span>
-                          <ArrowRight size={12} />
-                          <span>{v.name}</span>
-                        </p>
-                        <p className="text-slate-600 font-semibold">
-                          Distance: {Math.round(edge.distance)} m ({edge.isBidirectional ? "Two-way" : "One-way"})
-                        </p>
-                        <button
-                          onClick={() => setDeleteTarget({ type: "edge", id: edge.id, name: `${u.name} ↔ ${v.name}` })}
-                          className="mt-1 flex items-center gap-1 text-red-600 hover:text-red-700 font-semibold text-[11px]"
-                        >
-                          <Trash2 size={12} /> Delete Connection
-                        </button>
-                      </div>
-                    </Popup>
-                  </Polyline>
-                );
-              })}
-
-              {/* Render Road Nodes */}
-              {nodes.map((node) => {
-                const isSelected = selectedNode?.id === node.id;
-                const isSource = connectSourceNode?.id === node.id;
-                const isDraggable = isModifierPressed || dragModeActive;
-
-                return (
-                  <Marker
-                    key={node.id}
-                    position={[node.latitude, node.longitude]}
-                    draggable={isDraggable}
-                    icon={createNodeIcon(isSelected, isSource, isDraggable)}
-                    eventHandlers={{
-                      click: (e) => {
-                        e.originalEvent.stopPropagation();
-                        handleNodeClick(node);
-                      },
-                      dragend: (e) => {
-                        handleMarkerDragEnd(node, e);
-                      },
-                    }}
-                  >
-
-                    <Popup className="road-network-popup">
-                      <div className="p-2 space-y-2 text-xs">
-                        <div>
-                          <p className="font-bold text-slate-900 text-sm">{node.name}</p>
-                          <p className="text-[10px] font-mono text-slate-500">
-                            {node.latitude.toFixed(5)}°N, {node.longitude.toFixed(5)}°E
-                          </p>
-                        </div>
-
-                        <div className="flex flex-col gap-1 pt-1 border-t border-slate-200">
-                          <button
-                            onClick={() => setConnectSourceNode(node)}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 font-semibold"
-                          >
-                            <LinkIcon size={12} /> Connect to another node
-                          </button>
-
-                          <button
-                            onClick={() => setDeleteTarget({ type: "node", id: node.id, name: node.name ?? "Unnamed Node" })}
-                            className="flex items-center gap-1.5 px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 font-semibold"
-                          >
-                            <Trash2 size={12} /> Delete node
-                          </button>
-                        </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
-            </MapContainer>
+              {nodes.map((node) => (
+                <RoadNodeMarker
+                  key={node.id}
+                  node={node}
+                  isSelected={selectedNode?.id === node.id}
+                  isConnectSource={connectSourceNode?.id === node.id}
+                  isDraggable={isModifierPressed || dragModeActive}
+                  onNodeClick={handleNodeClick}
+                  onDragEnd={handleMarkerDragEnd}
+                  onSetConnectSource={handleSetConnectSource}
+                  onDeleteNode={handleDeleteNode}
+                />
+              ))}
+            </MapLibreContainer>
 
             {/* Satellite / Street Switch Button */}
             <div className="absolute top-4 right-4 z-20 flex gap-1 bg-[#0B132B]/90 p-1 rounded-xl border border-slate-700 shadow-xl">

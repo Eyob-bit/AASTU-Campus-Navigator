@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
-import { MapContainer, TileLayer } from "react-leaflet";
 import { MapPin } from "lucide-react";
 
 import { Modal, Input, Select, Button } from "@/components/ui";
-import { MapLocationPickerInner, CampusBoundaryPolygon, AASTU_CENTER } from "@/components/map";
-import { TILE_LAYERS } from "@/components/map/CampusMap";
-import type { TileMode } from "@/components/map/CampusMap";
+import { MapLibreContainer, MapLocationPickerInner, CampusBoundaryPolygon, AASTU_CENTER } from "@/components/map";
+import type { TileMode } from "@/components/map";
 import type { Building, CreateBuildingBody, UpdateBuildingBody } from "@/types";
 import { roadNetworkApi, type RoadNode } from "@/api/roadNetwork.api";
 
@@ -213,28 +211,21 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
           </div>
 
           <div className="rounded-xl overflow-hidden border border-gray-300 shadow-sm relative h-[240px] sm:h-[300px] w-full">
-            <MapContainer
-              center={[pickerLat, pickerLng]}
+            <MapLibreContainer
+              center={[pickerLng, pickerLat]}
               zoom={18}
               minZoom={14}
               maxZoom={21}
-              style={{ height: "100%", width: "100%" }}
-              scrollWheelZoom
+              tileMode={tileMode}
+              className="h-full w-full"
             >
-              <TileLayer
-                key={tileMode}
-                attribution={TILE_LAYERS[tileMode].attribution}
-                url={TILE_LAYERS[tileMode].url}
-                maxNativeZoom={TILE_LAYERS[tileMode].maxNativeZoom}
-                maxZoom={21}
-              />
               <CampusBoundaryPolygon />
               <MapLocationPickerInner
                 lat={pickerLat}
                 lng={pickerLng}
                 onChange={handleMapPick}
               />
-            </MapContainer>
+            </MapLibreContainer>
             {/* Satellite toggle overlay */}
             <button
               type="button"

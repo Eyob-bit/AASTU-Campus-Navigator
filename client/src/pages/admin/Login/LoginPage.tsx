@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { Navigation, Mail, Lock, Eye, EyeOff, AlertCircle, Building2, Image, Users } from "lucide-react";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 
@@ -7,31 +7,21 @@ export function LoginPage() {
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState("");
 
-  const { isAuthenticated, login } = useAdminAuth();
-  const navigate  = useNavigate();
+  const { isAuthenticated, login, isLoading, error } = useAdminAuth();
+  const navigate = useNavigate();
 
   // If already logged in, redirect straight to dashboard
   if (isAuthenticated) {
-    navigate("/dashboard", { replace: true });
-    return null;
+    return <Navigate to="/dashboard" replace />;
   }
 
-  function handleSubmit() {
-    setError("");
-    if (!email.trim() || !password.trim()) {
-      setError("Please enter both email address and password.");
-      return;
-    }
-    setLoading(true);
-
-    setTimeout(() => {
-      setLoading(false);
-      login();
+  async function handleSubmit() {
+    if (!email.trim() || !password.trim()) return;
+    const ok = await login(email.trim(), password);
+    if (ok) {
       navigate("/dashboard", { replace: true });
-    }, 800);
+    }
   }
 
   return (
@@ -98,6 +88,9 @@ export function LoginPage() {
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
+          {(!email.trim() || !password.trim()) && (
+            <p className="text-xs text-gray-400 -mt-1 mb-1">Fill in both fields to sign in.</p>
+          )}
 
           <div className="flex flex-col gap-4">
             {/* Email */}
@@ -145,10 +138,10 @@ export function LoginPage() {
 
             <button
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={isLoading}
               className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all duration-150 flex items-center justify-center gap-2 shadow-sm disabled:opacity-70 cursor-pointer"
             >
-              {loading ? (
+              {isLoading ? (
                 <>
                   <svg className="animate-spin w-4 h-4 text-white" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />

@@ -52,7 +52,7 @@ export class RoadEdgeRepository {
       where: {
         OR: [
           { fromNodeId, toNodeId },
-          { fromNodeId: toNodeId, toNodeId: fromNodeId, isBidirectional: true },
+          { fromNodeId: toNodeId, toNodeId: fromNodeId },
         ],
       },
     });

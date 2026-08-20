@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { AdminProfileRepository } from "../repositories/adminProfile.repository.js";
 import { ApiError } from "../utils/ApiError.js";
 
@@ -20,13 +21,23 @@ export class AdminProfileService {
     async changePassword(currentPassword: string, newPassword: string) {
         const profile = await repo.getOrCreate();
 
-        if (profile.passwordHash !== currentPassword) {
-            throw new ApiError(400, "Current password is incorrect.");
-        }
-        if (!newPassword || newPassword.length < 4) {
-            throw new ApiError(400, "New password must be at least 4 characters.");
+        // Support both bcrypt hashes and legacy plain-text
+        const isHash = profile.passwordHash.startsWith("$2");
+        let currentValid = false;
+        if (isHash) {
+            currentValid = await bcrypt.compare(currentPassword, profile.passwordHash);
+        } else {
+            currentValid = profile.passwordHash === currentPassword;
         }
 
-        return repo.update({ passwordHash: newPassword });
+        if (!currentValid) {
+            throw new ApiError(400, "Current password is incorrect.");
+        }
+        if (!newPassword || newPassword.length < 6) {
+            throw new ApiError(400, "New password must be at least 6 characters.");
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 12);
+        return repo.update({ passwordHash: hashed });
     }
 }

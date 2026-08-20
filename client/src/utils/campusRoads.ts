@@ -122,12 +122,88 @@ export const AASTU_ROAD_EDGES: [string, string][] = [
   ["east_road_n",   "science_jct"],
 ];
 
+// ─── Priority Queue (Binary Min-Heap) ─────────────────────────────────────────
+
+class PriorityQueue<T> {
+  private heap: Array<{ item: T; priority: number }> = [];
+
+  get isEmpty(): boolean {
+    return this.heap.length === 0;
+  }
+
+  push(item: T, priority: number): void {
+    this.heap.push({ item, priority });
+    this.bubbleUp(this.heap.length - 1);
+  }
+
+  pop(): T | undefined {
+    if (this.heap.length === 0) return undefined;
+    const min = this.heap[0].item;
+    const last = this.heap.pop()!;
+    if (this.heap.length > 0) {
+      this.heap[0] = last;
+      this.bubbleDown(0);
+    }
+    return min;
+  }
+
+  private bubbleUp(index: number): void {
+    while (index > 0) {
+      const parentIdx = (index - 1) >> 1;
+      if (this.heap[index].priority >= this.heap[parentIdx].priority) break;
+      this.swap(index, parentIdx);
+      index = parentIdx;
+    }
+  }
+
+  private bubbleDown(index: number): void {
+    const length = this.heap.length;
+    const elementPriority = this.heap[index].priority;
+
+    while (true) {
+      const leftChildIdx = (index << 1) + 1;
+      const rightChildIdx = leftChildIdx + 1;
+      let swapIdx: number | null = null;
+      let minPriority = elementPriority;
+
+      if (leftChildIdx < length) {
+        const leftPriority = this.heap[leftChildIdx].priority;
+        if (leftPriority < minPriority) {
+          minPriority = leftPriority;
+          swapIdx = leftChildIdx;
+        }
+      }
+
+      if (rightChildIdx < length) {
+        const rightPriority = this.heap[rightChildIdx].priority;
+        if (rightPriority < minPriority) {
+          swapIdx = rightChildIdx;
+        }
+      }
+
+      if (swapIdx === null) break;
+      this.swap(index, swapIdx);
+      index = swapIdx;
+    }
+  }
+
+  private swap(i: number, j: number): void {
+    const temp = this.heap[i];
+    this.heap[i] = this.heap[j];
+    this.heap[j] = temp;
+  }
+}
+
 // ─── Utility functions ────────────────────────────────────────────────────────
 
 function distanceSq(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const dlat = lat1 - lat2;
-  const dlng = (lng1 - lng2) * Math.cos((lat1 * Math.PI) / 180); // rough aspect-ratio correction
+  const dlng = (lng1 - lng2) * Math.cos((lat1 * Math.PI) / 180); // aspect-ratio correction
   return dlat * dlat + dlng * dlng;
+}
+
+function euclideanDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  return Math.sqrt(distanceSq(lat1, lng1, lat2, lng2));
 }
 
 /** Returns the nearest road node to the given coordinate. */
@@ -145,9 +221,11 @@ export function findNearestRoadNode(lat: number, lng: number): RoadNode {
 }
 
 /**
- * Calculates the shortest walking path along campus roads using Dijkstra's
- * algorithm. Returns an ordered array of [lat, lng] tuples that can be passed
- * directly to a Leaflet <Polyline positions={...} />.
+ * Calculates the shortest walking path along campus roads using the A* Search Algorithm
+ * with an admissible Euclidean heuristic and Binary Min-Heap Priority Queue.
+ * Time Complexity: O((V + E) log V)
+ *
+ * Returns an ordered array of [lat, lng] tuples suitable for polylines and turn-by-turn routing.
  */
 export function getCampusRoadPath(
   startLat: number,
@@ -166,38 +244,45 @@ export function getCampusRoadPath(
   for (const [u, v] of AASTU_ROAD_EDGES) {
     const nu = nodesById.get(u)!;
     const nv = nodesById.get(v)!;
-    const w  = Math.sqrt(distanceSq(nu.lat, nu.lng, nv.lat, nv.lng));
+    const w = euclideanDistance(nu.lat, nu.lng, nv.lat, nv.lng);
     adj.get(u)!.push({ id: v, weight: w });
     adj.get(v)!.push({ id: u, weight: w });
   }
 
-  // Dijkstra
-  const distances = new Map<string, number>();
-  const parent    = new Map<string, string>();
-  const visited   = new Set<string>();
+  // A* Pathfinding
+  const pq = new PriorityQueue<string>();
+  const gScore = new Map<string, number>();
+  const parent = new Map<string, string>();
+  const closedSet = new Set<string>();
 
-  for (const node of AASTU_ROAD_NODES) distances.set(node.id, Infinity);
-  distances.set(startNode.id, 0);
+  for (const node of AASTU_ROAD_NODES) gScore.set(node.id, Infinity);
+  gScore.set(startNode.id, 0);
 
-  while (visited.size < AASTU_ROAD_NODES.length) {
-    // Find unvisited node with smallest distance
-    let u: string | null = null;
-    let minD = Infinity;
-    for (const [nodeId, dist] of distances.entries()) {
-      if (!visited.has(nodeId) && dist < minD) {
-        minD = dist;
-        u = nodeId;
-      }
-    }
-    if (!u || u === destNode.id) break;
-    visited.add(u);
+  const initialH = euclideanDistance(startNode.lat, startNode.lng, destNode.lat, destNode.lng);
+  pq.push(startNode.id, initialH);
 
-    for (const neighbor of adj.get(u) ?? []) {
-      if (visited.has(neighbor.id)) continue;
-      const alt = distances.get(u)! + neighbor.weight;
-      if (alt < distances.get(neighbor.id)!) {
-        distances.set(neighbor.id, alt);
-        parent.set(neighbor.id, u);
+  while (!pq.isEmpty) {
+    const currentId = pq.pop()!;
+    if (currentId === destNode.id) break;
+
+    if (closedSet.has(currentId)) continue;
+    closedSet.add(currentId);
+
+    const currentG = gScore.get(currentId) ?? Infinity;
+
+    for (const neighbor of adj.get(currentId) ?? []) {
+      if (closedSet.has(neighbor.id)) continue;
+
+      const tentativeG = currentG + neighbor.weight;
+      if (tentativeG < (gScore.get(neighbor.id) ?? Infinity)) {
+        parent.set(neighbor.id, currentId);
+        gScore.set(neighbor.id, tentativeG);
+
+        const neighborNode = nodesById.get(neighbor.id)!;
+        const h = euclideanDistance(neighborNode.lat, neighborNode.lng, destNode.lat, destNode.lng);
+        const f = tentativeG + h;
+
+        pq.push(neighbor.id, f);
       }
     }
   }

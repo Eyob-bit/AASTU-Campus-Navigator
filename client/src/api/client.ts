@@ -6,12 +6,38 @@ const API_BASE_URL = rawBaseUrl.endsWith("/api")
   ? rawBaseUrl
   : `${rawBaseUrl.replace(/\/$/, "")}/api`;
 
+export const JWT_STORAGE_KEY = "admin_jwt";
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     Accept: "application/json",
   },
 });
+
+// Attach JWT token to every request
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem(JWT_STORAGE_KEY);
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// On 401 responses, clear auth state and redirect to login
+apiClient.interceptors.response.use(
+  (res) => res,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem(JWT_STORAGE_KEY);
+      if (window.location.pathname.startsWith("/dashboard")) {
+        window.location.href = "/login";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 
 export function handleApiError(error: unknown): never {
   if (axios.isAxiosError(error)) {

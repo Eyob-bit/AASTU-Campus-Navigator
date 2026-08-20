@@ -1,6 +1,7 @@
 import { RoadNodeRepository } from "../repositories/roadNode.repository.js";
 import { RoadEdgeRepository } from "../repositories/roadEdge.repository.js";
 import { calculateHaversineDistance } from "../utils/haversine.js";
+import { PriorityQueue } from "../utils/priorityQueue.js";
 import {
   generateRouteInstructions,
   type RouteInstruction,
@@ -38,10 +39,69 @@ export interface RouteResponse {
 const roadNodeRepo = new RoadNodeRepository();
 const roadEdgeRepo = new RoadEdgeRepository();
 
+// In-memory graph cache to prevent DB queries on every GPS tick / reroute request
+interface CachedGraph {
+  nodes: Awaited<ReturnType<typeof roadNodeRepo.findAll>>;
+  nodeMap: Map<string, Awaited<ReturnType<typeof roadNodeRepo.findAll>>[0]>;
+  adj: Map<string, Array<{ toId: string; distance: number }>>;
+  cachedAt: number;
+}
+
+let graphCache: CachedGraph | null = null;
+const CACHE_TTL_MS = 60_000; // 1 minute TTL, invalidated on admin edits
+
 export class RoadNavigationService {
   /**
-   * Calculates shortest path along AASTU road graph using A* pathfinding with Haversine heuristic.
-   * Only walkable edges are included.
+   * Invalidate cached road network graph (called when nodes/edges are added, edited, or deleted).
+   */
+  static invalidateGraphCache(): void {
+    graphCache = null;
+  }
+
+  /**
+   * Loads or returns cached graph representation.
+   */
+  private async getGraph(): Promise<CachedGraph> {
+    const now = Date.now();
+    if (graphCache && now - graphCache.cachedAt < CACHE_TTL_MS) {
+      return graphCache;
+    }
+
+    const allNodes = await roadNodeRepo.findAll();
+    const allEdges = await roadEdgeRepo.findAll();
+    const walkableEdges = allEdges.filter((e) => e.isWalkable !== false);
+
+    const nodeMap = new Map(allNodes.map((n) => [n.id, n]));
+    const adj = new Map<string, Array<{ toId: string; distance: number }>>();
+
+    for (const node of allNodes) {
+      adj.set(node.id, []);
+    }
+
+    for (const edge of walkableEdges) {
+      if (!adj.has(edge.fromNodeId)) adj.set(edge.fromNodeId, []);
+      adj.get(edge.fromNodeId)!.push({ toId: edge.toNodeId, distance: edge.distance });
+
+      if (edge.isBidirectional) {
+        if (!adj.has(edge.toNodeId)) adj.set(edge.toNodeId, []);
+        adj.get(edge.toNodeId)!.push({ toId: edge.fromNodeId, distance: edge.distance });
+      }
+    }
+
+    graphCache = {
+      nodes: allNodes,
+      nodeMap,
+      adj,
+      cachedAt: now,
+    };
+
+    return graphCache;
+  }
+
+  /**
+   * Calculates shortest path along AASTU road graph using optimized A* pathfinding
+   * with a Binary Min-Heap Priority Queue and Haversine heuristic.
+   * Time Complexity: O((V + E) log V)
    */
   async calculateRoute(req: RouteRequest): Promise<RouteResponse> {
     const { startLat, startLng, destLat, destLng, destNodeId } = req;
@@ -50,7 +110,7 @@ export class RoadNavigationService {
       throw new Error("startLat and startLng coordinates are required.");
     }
 
-    const allNodes = await roadNodeRepo.findAll();
+    const { nodes: allNodes, nodeMap, adj } = await this.getGraph();
     if (allNodes.length === 0) {
       throw new Error("No road nodes available in database.");
     }
@@ -69,7 +129,7 @@ export class RoadNavigationService {
     // 2. Find nearest dest node (or by destNodeId)
     let destNode = allNodes[0];
     if (destNodeId) {
-      const found = allNodes.find((n) => n.id === destNodeId);
+      const found = nodeMap.get(destNodeId);
       if (found) destNode = found;
     } else if (destLat != null && destLng != null) {
       let minDestDist = Infinity;
@@ -84,37 +144,14 @@ export class RoadNavigationService {
       throw new Error("Either destLat/destLng or destNodeId must be provided.");
     }
 
-    // 3. Build Adjacency Graph from database edges (filter for isWalkable)
-    const allEdges = await roadEdgeRepo.findAll();
-    const walkableEdges = allEdges.filter((e) => e.isWalkable !== false);
-    const adj = new Map<string, Array<{ toId: string; distance: number }>>();
-
-    for (const node of allNodes) {
-      adj.set(node.id, []);
-    }
-
-    for (const edge of walkableEdges) {
-      if (!adj.has(edge.fromNodeId)) adj.set(edge.fromNodeId, []);
-      adj.get(edge.fromNodeId)!.push({ toId: edge.toNodeId, distance: edge.distance });
-
-      if (edge.isBidirectional) {
-        if (!adj.has(edge.toNodeId)) adj.set(edge.toNodeId, []);
-        adj.get(edge.toNodeId)!.push({ toId: edge.fromNodeId, distance: edge.distance });
-      }
-    }
-
-    const nodeMap = new Map(allNodes.map((n) => [n.id, n]));
-
-    // 4. A* Search Algorithm
-    const openSet = new Set<string>([startNode.id]);
+    // 3. Optimized A* Search Algorithm using Binary Min-Heap Priority Queue
+    const pq = new PriorityQueue<string>();
     const cameFrom = new Map<string, string>();
-
     const gScore = new Map<string, number>();
-    const fScore = new Map<string, number>();
+    const closedSet = new Set<string>();
 
     for (const node of allNodes) {
       gScore.set(node.id, Infinity);
-      fScore.set(node.id, Infinity);
     }
 
     gScore.set(startNode.id, 0);
@@ -124,51 +161,44 @@ export class RoadNavigationService {
       destNode.latitude,
       destNode.longitude
     );
-    fScore.set(startNode.id, initialH);
 
-    while (openSet.size > 0) {
-      let currentId: string | null = null;
-      let minF = Infinity;
+    pq.push(startNode.id, initialH);
 
-      for (const id of openSet) {
-        const f = fScore.get(id) ?? Infinity;
-        if (f < minF) {
-          minF = f;
-          currentId = id;
-        }
-      }
-
-      if (!currentId) break;
+    while (!pq.isEmpty()) {
+      const currentId = pq.pop()!;
 
       if (currentId === destNode.id) {
         break;
       }
 
-      openSet.delete(currentId);
-      const currentNode = nodeMap.get(currentId)!;
+      if (closedSet.has(currentId)) continue;
+      closedSet.add(currentId);
+
+      const currentG = gScore.get(currentId) ?? Infinity;
       const neighbors = adj.get(currentId) ?? [];
 
       for (const neighbor of neighbors) {
+        if (closedSet.has(neighbor.toId)) continue;
+
         const neighborNode = nodeMap.get(neighbor.toId);
         if (!neighborNode) continue;
 
-        const tentativeG = (gScore.get(currentId) ?? Infinity) + neighbor.distance;
+        const tentativeG = currentG + neighbor.distance;
 
         if (tentativeG < (gScore.get(neighbor.toId) ?? Infinity)) {
           cameFrom.set(neighbor.toId, currentId);
           gScore.set(neighbor.toId, tentativeG);
 
+          // Admissible & Consistent Haversine Heuristic h(n)
           const h = calculateHaversineDistance(
             neighborNode.latitude,
             neighborNode.longitude,
             destNode.latitude,
             destNode.longitude
           );
-          fScore.set(neighbor.toId, tentativeG + h);
+          const f = tentativeG + h;
 
-          if (!openSet.has(neighbor.toId)) {
-            openSet.add(neighbor.toId);
-          }
+          pq.push(neighbor.toId, f);
         }
       }
     }

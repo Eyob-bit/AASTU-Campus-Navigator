@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useMapEvents } from "react-leaflet";
-import L from "leaflet";
-import type { Map as LeafletMap } from "leaflet";
+import { Marker, type MapMouseEvent } from "maplibre-gl";
+import { useMapInstance } from "./MapLibreContainer";
 
 interface MapLocationPickerProps {
   lat: number;
@@ -10,58 +9,62 @@ interface MapLocationPickerProps {
 }
 
 /**
- * Reusable marker-picker: click anywhere on the map or drag the marker
- * to update coordinates. Must be rendered inside a <MapContainer>.
+ * Reusable marker-picker: click anywhere on the MapLibre map or drag the marker
+ * to update coordinates. Must be rendered inside <MapLibreContainer>.
  */
 export function MapLocationPickerInner({ lat, lng, onChange }: MapLocationPickerProps) {
-  const markerRef = useRef<L.Marker | null>(null);
-
-  useMapEvents({
-    click(e) {
-      onChange(e.latlng.lat, e.latlng.lng);
-    },
-  });
-
-  const map = useMapEvents({}) as unknown as LeafletMap;
+  const map = useMapInstance();
+  const markerRef = useRef<Marker | null>(null);
+  const onChangeRef = useRef(onChange);
 
   useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+
+  // Click on map to set pin
+  useEffect(() => {
     if (!map) return;
-    const timer = setTimeout(() => {
-      map.invalidateSize();
-    }, 150);
 
-    // Remove previous marker
-    if (markerRef.current) {
-      markerRef.current.remove();
-    }
+    const handleMapClick = (e: MapMouseEvent) => {
+      onChangeRef.current(e.lngLat.lat, e.lngLat.lng);
+    };
 
-    if (lat === 0 && lng === 0) return;
-
-    const marker = L.marker([lat, lng], {
-      draggable: true,
-      icon: L.icon({
-        iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-        iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
-      }),
-    }).addTo(map);
-
-    marker.on("dragend", (e) => {
-      const pos = (e.target as L.Marker).getLatLng();
-      onChange(pos.lat, pos.lng);
-    });
-
-    markerRef.current = marker;
+    map.on("click", handleMapClick);
 
     return () => {
-      clearTimeout(timer);
-      marker.remove();
+      map.off("click", handleMapClick);
     };
-  }, [lat, lng, map, onChange]);
+  }, [map]);
+
+  // Sync marker pin position and drag events
+  useEffect(() => {
+    if (!map || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
+
+    if (!markerRef.current) {
+      const marker = new Marker({
+        draggable: true,
+        color: "#06b6d4",
+      })
+        .setLngLat([lng, lat])
+        .addTo(map);
+
+      marker.on("dragend", () => {
+        const pos = marker.getLngLat();
+        onChangeRef.current(pos.lat, pos.lng);
+      });
+
+      markerRef.current = marker;
+    } else {
+      markerRef.current.setLngLat([lng, lat]);
+    }
+
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.remove();
+        markerRef.current = null;
+      }
+    };
+  }, [map, lat, lng]);
 
   return null;
 }

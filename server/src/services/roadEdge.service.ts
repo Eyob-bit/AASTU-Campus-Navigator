@@ -5,6 +5,7 @@ import {
 } from "../repositories/roadEdge.repository.js";
 import { RoadNodeRepository } from "../repositories/roadNode.repository.js";
 import { calculateHaversineDistance } from "../utils/haversine.js";
+import { RoadNavigationService } from "./roadNavigation.service.js";
 
 const roadEdgeRepo = new RoadEdgeRepository();
 const roadNodeRepo = new RoadNodeRepository();
@@ -31,6 +32,11 @@ export class RoadEdgeService {
       throw new Error("Cannot connect a road node to itself.");
     }
 
+    const existing = await roadEdgeRepo.findByNodes(data.fromNodeId, data.toNodeId);
+    if (existing) {
+      throw new Error("A connection between these two road nodes already exists.");
+    }
+
     const fromNode = await roadNodeRepo.findById(data.fromNodeId);
     const toNode = await roadNodeRepo.findById(data.toNodeId);
 
@@ -49,21 +55,27 @@ export class RoadEdgeService {
       );
     }
 
-    return roadEdgeRepo.create({
+    const created = await roadEdgeRepo.create({
       fromNodeId: data.fromNodeId,
       toNodeId: data.toNodeId,
       distance: Math.round(distance * 100) / 100, // Round to 2 decimal places
       isBidirectional: data.isBidirectional ?? true,
     });
+    RoadNavigationService.invalidateGraphCache();
+    return created;
   }
 
   async updateEdge(id: string, data: UpdateRoadEdgeData) {
     await this.getEdgeById(id);
-    return roadEdgeRepo.update(id, data);
+    const updated = await roadEdgeRepo.update(id, data);
+    RoadNavigationService.invalidateGraphCache();
+    return updated;
   }
 
   async deleteEdge(id: string) {
     await this.getEdgeById(id);
-    return roadEdgeRepo.delete(id);
+    const deleted = await roadEdgeRepo.delete(id);
+    RoadNavigationService.invalidateGraphCache();
+    return deleted;
   }
 }

@@ -1,9 +1,11 @@
-import L from "leaflet";
+import type { StyleSpecification } from "maplibre-gl";
 
-// ── Tile layer config ─────────────────────────────────────────────────────────
+// ── Tile mode type ────────────────────────────────────────────────────────────
+export type TileMode = "street" | "satellite";
+
 export const TILE_LAYERS = {
   street: {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxNativeZoom: 19,
   },
@@ -14,17 +16,15 @@ export const TILE_LAYERS = {
   },
 } as const;
 
-export type TileMode = keyof typeof TILE_LAYERS;
-
 // ── AASTU Campus Constants ───────────────────────────────────────────────────
-export const AASTU_CENTER: [number, number] = [8.8885, 38.809];
+export const AASTU_CENTER: [number, number] = [8.8885, 38.809]; // [lat, lng] legacy format
+export const AASTU_CENTER_LNG_LAT: [number, number] = [38.809, 8.8885]; // MapLibre [lng, lat]
 export const DEFAULT_ZOOM = 16;
 export const MIN_ZOOM = 11;
-export const MAX_ZOOM = 22;
+export const MAX_ZOOM = 24;
 
 /**
- * AASTU Campus Boundary Polygon coordinates.
- * High-accuracy boundary loop defining the campus perimeter as outlined in yellow.
+ * AASTU Campus Boundary Polygon coordinates as [lat, lng].
  */
 export const AASTU_CAMPUS_BOUNDARY: [number, number][] = [
   [8.880353, 38.791507],
@@ -76,7 +76,60 @@ export const AASTU_CAMPUS_BOUNDARY: [number, number][] = [
   [8.881085, 38.792549],
 ];
 
-export const CAMPUS_BOUNDS = L.latLngBounds(
-  L.latLng(8.855, 38.770), // SW corner (wider comfort buffer)
-  L.latLng(8.920, 38.840)  // NE corner
-);
+/**
+ * GeoJSON Feature representation of AASTU Campus Boundary Polygon [lng, lat].
+ */
+export const AASTU_CAMPUS_BOUNDARY_GEOJSON: {
+  type: "Feature";
+  geometry: { type: "Polygon"; coordinates: [number, number][][] };
+  properties: Record<string, unknown>;
+} = {
+  type: "Feature",
+  properties: {},
+  geometry: {
+    type: "Polygon",
+    coordinates: [AASTU_CAMPUS_BOUNDARY.map(([lat, lng]) => [lng, lat])],
+  },
+};
+
+/**
+ * MapLibre max bounds as [[minLng, minLat], [maxLng, maxLat]]
+ */
+export const CAMPUS_BOUNDS_LNG_LAT: [[number, number], [number, number]] = [
+  [38.77, 8.855], // SW corner
+  [38.84, 8.92],  // NE corner
+];
+
+/**
+ * Creates MapLibre GL style object for raster street or satellite tiles.
+ */
+export function getMapStyle(tileMode: TileMode): StyleSpecification {
+  const isSatellite = tileMode === "satellite";
+  const tileUrl = isSatellite
+    ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+
+  return {
+    version: 8,
+    sources: {
+      "raster-tiles": {
+        type: "raster",
+        tiles: [tileUrl],
+        tileSize: 256,
+        attribution: isSatellite
+          ? "&copy; Esri &mdash; Source: Esri, Maxar, GeoEye, Earthstar Geographics"
+          : '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxzoom: isSatellite ? 17 : 18,
+      },
+    },
+    layers: [
+      {
+        id: "raster-tiles-layer",
+        type: "raster",
+        source: "raster-tiles",
+        minzoom: 0,
+        maxzoom: 24,
+      },
+    ],
+  };
+}
