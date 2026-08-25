@@ -23,7 +23,7 @@ export function ArrivalBottomSheet() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400">
             <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
-            <span>You have arrived</span>
+            <span>You are here</span>
           </div>
           <button
             onClick={finishNavigation}
@@ -103,7 +103,7 @@ export function ArrivalBottomSheet() {
               className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-5 py-3 text-xs font-bold text-white shadow-lg shadow-cyan-500/30 hover:from-cyan-400 hover:to-blue-500 transition-all cursor-pointer active:scale-95"
             >
               <span>
-                {floorNum !== undefined ? `Enter Building → Floor ${floorNum}` : "Enter Building"}
+                {floorNum !== undefined ? `Show Inside (Floor ${floorNum})` : "Show Inside"}
               </span>
               <ArrowRight className="h-4 w-4" />
             </button>

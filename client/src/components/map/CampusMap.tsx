@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { Navigation2 } from "lucide-react";
 
 import { useBuildings } from "@/hooks/useBuildings";
@@ -6,6 +6,7 @@ import { useLandmarks } from "@/hooks/useLandmarks";
 import { useAppStore } from "@/store";
 import { useOutdoorRoute, useLiveNavigation, useHeadingFusion } from "@/hooks";
 import { OutdoorNavOverlay, ArrivalBottomSheet, BuildingTransitionOverlay, IndoorGuidanceCard } from "@/components/navigation";
+import { RouteProgressTracker } from "@/utils";
 
 import { MapLibreContainer, useMapInstance } from "./MapLibreContainer";
 import { NavigationCamera } from "./NavigationCamera";
@@ -261,6 +262,26 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     (b) => b.isActive !== false && !coveredBuildingIds.has(b.id)
   );
 
+  // Dynamic active route polyline starting from userLocation and slicing off passed segments
+  const activePolyline = useMemo(() => {
+    if (!activeRoute || activeRoute.coordinates.length < 2 || !userLocation) {
+      return activeRoute?.coordinates ?? [];
+    }
+
+    const polyline = activeRoute.coordinates;
+    const tracker = new RouteProgressTracker(polyline, userLocation);
+    const progress = tracker.update(userLocation.lat, userLocation.lng);
+
+    if (progress.isOffRoute) {
+      return [[userLocation.lat, userLocation.lng], ...polyline] as [number, number][];
+    }
+
+    const { segmentIndex } = progress;
+    const remainingNodes = polyline.slice(segmentIndex + 1);
+
+    return [[userLocation.lat, userLocation.lng], ...remainingNodes] as [number, number][];
+  }, [activeRoute, userLocation]);
+
   return (
     <div
       className={className ?? "relative h-full w-full overflow-hidden bg-slate-950 select-none"}
@@ -298,9 +319,9 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           />
         )}
 
-        {/* Outdoor walking route polyline — coordinates from A* API */}
-        {navStep === "OUTDOOR_NAV" && activeRoute && activeRoute.coordinates.length > 1 && (
-          <WalkingRoutePolyline positions={activeRoute.coordinates} />
+        {/* Outdoor walking route polyline — coordinates dynamically anchored & sliced */}
+        {navStep === "OUTDOOR_NAV" && activePolyline.length > 1 && (
+          <WalkingRoutePolyline positions={activePolyline} />
         )}
 
         {/* Standalone Building markers */}

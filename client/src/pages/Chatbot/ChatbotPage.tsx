@@ -34,7 +34,7 @@ export function ChatbotPage() {
   };
 
   return (
-    <div className="relative h-[calc(100dvh-10rem)] sm:h-[calc(100vh-10.5rem)] w-full max-w-4xl mx-auto my-2 sm:my-3 bg-slate-50 dark:bg-[#080E1E] text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800/80 shadow-2xl transition-colors">
+    <div className="relative flex flex-col min-h-[calc(100dvh-80px)] w-full max-w-4xl mx-auto bg-slate-50 dark:bg-[#080E1E] text-slate-900 dark:text-slate-100 overflow-hidden sm:rounded-3xl sm:border sm:border-slate-800/80 sm:shadow-2xl sm:my-3 sm:min-h-[calc(100dvh-100px)] transition-colors">
       {/* ── Top Header Bar ─────────────────────────────────────────────────── */}
 
       <div className="px-5 py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-indigo-900/90 dark:via-slate-900 dark:to-purple-950/90 border-b border-indigo-500/30 dark:border-slate-800 flex items-center justify-between flex-shrink-0 backdrop-blur-md">
@@ -66,7 +66,7 @@ export function ChatbotPage() {
       </div>
 
       {/* ── Main Chat Conversation Body ───────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-100/70 dark:bg-slate-950/60 scrollbar-thin">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-100/70 dark:bg-slate-950/60 scrollbar-thin">
         {messages.map((msg) => (
           <div
             key={msg.id}

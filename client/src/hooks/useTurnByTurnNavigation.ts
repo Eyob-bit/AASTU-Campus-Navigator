@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useAppStore } from "@/store";
 import { RouteProgressTracker } from "@/utils";
+import { calculateDistanceInMeters } from "@/utils/geo";
 import type { RouteInstruction } from "@/api/roadNetwork.api";
 
 export interface UseTurnByTurnNavigationResult {
@@ -16,11 +17,13 @@ export interface UseTurnByTurnNavigationResult {
 }
 
 const STEP_ADVANCE_RADIUS_METERS = 12;
+const ARRIVAL_RADIUS_METERS = 12;
 
 export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
   const {
     navStep,
     userLocation,
+    destinationTarget,
     activeRoute,
     currentInstructionIndex,
     setCurrentInstructionIndex,
@@ -153,10 +156,55 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
     return Math.min(100, Math.max(0, Math.round((current / total) * 100)));
   }, [routeProgress]);
 
-  const isArrived =
-    currentInstruction?.type === "ARRIVE" &&
-    remainingInstructionDistance !== null &&
-    remainingInstructionDistance <= STEP_ADVANCE_RADIUS_METERS;
+  // Direct Haversine distance between current user location and destination target
+  const directDistanceToDestination = useMemo(() => {
+    if (!userLocation || !destinationTarget) return null;
+    return calculateDistanceInMeters(
+      userLocation.lat,
+      userLocation.lng,
+      destinationTarget.latitude,
+      destinationTarget.longitude
+    );
+  }, [userLocation, destinationTarget]);
+
+  // Robust arrival detection (~10-12m radius to target, remaining route distance, or final step arrival)
+  const isArrived = useMemo(() => {
+    if (navStep !== "OUTDOOR_NAV" || !destinationTarget) return false;
+
+    // 1. Direct Haversine distance to destination target coordinates
+    if (
+      directDistanceToDestination !== null &&
+      directDistanceToDestination <= ARRIVAL_RADIUS_METERS
+    ) {
+      return true;
+    }
+
+    // 2. Remaining distance along route path
+    if (
+      totalRemainingDistance > 0 &&
+      totalRemainingDistance <= ARRIVAL_RADIUS_METERS
+    ) {
+      return true;
+    }
+
+    // 3. Final instruction step proximity
+    if (
+      currentInstruction?.type === "ARRIVE" &&
+      remainingInstructionDistance !== null &&
+      remainingInstructionDistance <= ARRIVAL_RADIUS_METERS
+    ) {
+      return true;
+    }
+
+    return false;
+  }, [
+    navStep,
+    destinationTarget,
+    directDistanceToDestination,
+    totalRemainingDistance,
+    currentInstruction,
+    remainingInstructionDistance,
+  ]);
 
   // Trigger arrival bottom sheet when arrived during OUTDOOR_NAV
   useEffect(() => {
@@ -177,3 +225,4 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
     isArrived,
   };
 }
+
