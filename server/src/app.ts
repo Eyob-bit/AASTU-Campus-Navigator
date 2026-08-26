@@ -11,20 +11,30 @@ const app = express();
 // Security
 app.use(helmet());
 
-// Enable CORS with configured origins
-const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
-  : ["http://localhost:5173", "http://localhost:3000"];
+// Enable CORS with configured origins and vercel preview support
+const defaultOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://aastu-campus-navigator.vercel.app",
+];
+
+const envOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim().replace(/\/$/, ""))
+  : [];
+
+const allowedOrigins = new Set([...defaultOrigins, ...envOrigins]);
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
+      if (!origin) return callback(null, true);
+      const cleanOrigin = origin.replace(/\/$/, "");
+      if (allowedOrigins.has(cleanOrigin) || cleanOrigin.endsWith(".vercel.app")) {
+        return callback(null, true);
       }
+      callback(new Error(`Not allowed by CORS: ${origin}`));
     },
+    credentials: true,
   })
 );
 
