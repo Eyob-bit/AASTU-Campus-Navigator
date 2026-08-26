@@ -133,7 +133,7 @@ export function AnalyticsPage() {
           <Button
             onClick={exportCSV}
             variant="outline"
-            className="text-xs flex items-center gap-1.5 px-3 py-2 rounded-xl border-gray-200 hover:bg-gray-50 cursor-pointer"
+            className="text-xs flex items-center gap-1.5 px-3 py-2 rounded-xl border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer"
           >
             <Download size={14} />
             Export CSV
@@ -142,7 +142,7 @@ export function AnalyticsPage() {
           <Button
             onClick={() => loadData()}
             variant="ghost"
-            className="p-2 rounded-xl text-gray-500 hover:text-gray-900 cursor-pointer"
+            className="p-2 rounded-xl text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
           >
             <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
           </Button>
@@ -151,9 +151,9 @@ export function AnalyticsPage() {
 
       <div className="p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-6 sm:space-y-8 flex-1">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-center justify-between">
+          <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm px-4 py-3 rounded-xl flex items-center justify-between">
             <span>{error}</span>
-            <Button onClick={() => loadData()} className="text-xs text-red-600 font-semibold hover:underline">
+            <Button onClick={() => loadData()} className="text-xs text-red-600 dark:text-red-400 font-semibold hover:underline">
               Retry
             </Button>
           </div>
@@ -163,50 +163,50 @@ export function AnalyticsPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <Card className="p-5 border-l-4 border-l-blue-500">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Total Searches</span>
+              <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Total Searches</span>
               <Search size={18} className="text-blue-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mt-2">
               {isLoading ? <Skeleton className="h-8 w-16" /> : overview?.totalSearches ?? 0}
             </p>
-            <p className="text-[11px] text-gray-400 mt-1">Queries logged across campus</p>
+            <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">Queries logged across campus</p>
           </Card>
 
           <Card className="p-5 border-l-4 border-l-emerald-500">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Search Accuracy</span>
+              <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Search Accuracy</span>
               <CheckCircle2 size={18} className="text-emerald-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 mt-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2">
               {isLoading ? <Skeleton className="h-8 w-16" /> : `${overview?.searchSuccessRate ?? 100}%`}
             </p>
-            <p className="text-[11px] text-gray-400 mt-1">Result match rate</p>
+            <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">Result match rate</p>
           </Card>
 
           <Card className="p-5 border-l-4 border-l-indigo-500">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Navigations</span>
+              <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Navigations</span>
               <Navigation size={18} className="text-indigo-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mt-2">
               {isLoading ? <Skeleton className="h-8 w-16" /> : overview?.totalNavigations ?? 0}
             </p>
-            <p className="text-[11px] text-gray-400 mt-1">Routes generated</p>
+            <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">Routes generated</p>
           </Card>
 
           <Card className="p-5 border-l-4 border-l-amber-500">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Active Entities</span>
+              <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">Active Entities</span>
               <Building2 size={18} className="text-amber-500" />
             </div>
-            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 mt-2">
+            <p className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mt-2">
               {isLoading ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
                 `${overview?.buildingCount ?? 0} Bldgs • ${overview?.officeCount ?? 0} Off`
               )}
             </p>
-            <p className="text-[11px] text-gray-400 mt-1">{overview?.aliasCount ?? 0} active search aliases</p>
+            <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">{overview?.aliasCount ?? 0} active search aliases</p>
           </Card>
         </div>
 
@@ -214,8 +214,8 @@ export function AnalyticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* Top Searches Bar Chart */}
           <Card className="p-6">
-            <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider flex items-center gap-2 mb-4 border-b border-gray-50 pb-3">
-              <TrendingUp size={16} className="text-blue-600" />
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wider flex items-center gap-2 mb-4 border-b border-gray-50 dark:border-slate-800 pb-3">
+              <TrendingUp size={16} className="text-blue-600 dark:text-blue-400" />
               Top Search Queries
             </h3>
 
@@ -226,18 +226,18 @@ export function AnalyticsPage() {
                 <Skeleton className="h-8 w-full" />
               </div>
             ) : topSearches.length === 0 ? (
-              <p className="text-xs text-gray-400 py-8 text-center">No search queries recorded for this timeframe yet.</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 py-8 text-center">No search queries recorded for this timeframe yet.</p>
             ) : (
               <div className="space-y-3.5">
                 {topSearches.map((item, idx) => {
                   const pct = Math.round((item.count / maxSearchCount) * 100);
                   return (
                     <div key={idx} className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-gray-700">
+                      <div className="flex justify-between text-xs font-semibold text-gray-700 dark:text-slate-200">
                         <span className="truncate max-w-[200px]">{item.query}</span>
-                        <span className="font-mono text-gray-500">{item.count} searches</span>
+                        <span className="font-mono text-gray-500 dark:text-slate-400">{item.count} searches</span>
                       </div>
-                      <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="w-full h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-500"
                           style={{ width: `${pct}%` }}
@@ -252,8 +252,8 @@ export function AnalyticsPage() {
 
           {/* Search Trend */}
           <Card className="p-6">
-            <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider flex items-center gap-2 mb-4 border-b border-gray-50 pb-3">
-              <Calendar size={16} className="text-indigo-600" />
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wider flex items-center gap-2 mb-4 border-b border-gray-50 dark:border-slate-800 pb-3">
+              <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
               Daily Activity Trend
             </h3>
 
@@ -263,10 +263,10 @@ export function AnalyticsPage() {
                 <Skeleton className="h-8 w-full" />
               </div>
             ) : trend.length === 0 ? (
-              <p className="text-xs text-gray-400 py-8 text-center">No trend activity logged yet.</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 py-8 text-center">No trend activity logged yet.</p>
             ) : (
               <div className="space-y-4">
-                <div className="h-40 flex items-end justify-between gap-1 sm:gap-2 pt-6 border-b border-gray-100">
+                <div className="h-40 flex items-end justify-between gap-1 sm:gap-2 pt-6 border-b border-gray-100 dark:border-slate-800">
                   {trend.map((t, i) => {
                     const heightPct = Math.round((t.total / maxTrendTotal) * 100);
                     return (
@@ -278,14 +278,14 @@ export function AnalyticsPage() {
                             title={`${t.date}: ${t.total} queries (${t.successful} success)`}
                           />
                         </div>
-                        <span className="text-[10px] text-gray-400 font-mono rotate-[-45px] sm:rotate-0 truncate">
+                        <span className="text-[10px] text-gray-400 dark:text-slate-500 font-mono rotate-[-45px] sm:rotate-0 truncate">
                           {t.date.slice(5)}
                         </span>
                       </div>
                     );
                   })}
                 </div>
-                <div className="flex justify-between items-center text-xs text-gray-500 pt-1">
+                <div className="flex justify-between items-center text-xs text-gray-500 dark:text-slate-400 pt-1">
                   <span className="flex items-center gap-1.5">
                     <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Query Volume
                   </span>
@@ -300,8 +300,8 @@ export function AnalyticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8">
           {/* Navigation Completion (Pie / Segment Breakdown) */}
           <Card className="p-6">
-            <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider flex items-center gap-2 mb-4 border-b border-gray-50 pb-3">
-              <Navigation size={16} className="text-emerald-600" />
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wider flex items-center gap-2 mb-4 border-b border-gray-50 dark:border-slate-800 pb-3">
+              <Navigation size={16} className="text-emerald-600 dark:text-emerald-400" />
               Navigation Completion Breakdown
             </h3>
 
@@ -310,35 +310,35 @@ export function AnalyticsPage() {
             ) : (
               <div className="flex flex-col sm:flex-row items-center justify-around gap-6 py-4">
                 {/* Visual donut ring representation */}
-                <div className="relative w-32 h-32 rounded-full border-8 border-emerald-500 flex items-center justify-center bg-emerald-50/30">
+                <div className="relative w-32 h-32 rounded-full border-8 border-emerald-500 flex items-center justify-center bg-emerald-50/30 dark:bg-emerald-950/30">
                   <div className="text-center">
-                    <span className="text-2xl font-extrabold text-gray-900">
+                    <span className="text-2xl font-extrabold text-gray-900 dark:text-white">
                       {navStats?.completionRate ?? 100}%
                     </span>
-                    <p className="text-[10px] text-gray-500 font-semibold uppercase">Success Rate</p>
+                    <p className="text-[10px] text-gray-500 dark:text-slate-400 font-semibold uppercase">Success Rate</p>
                   </div>
                 </div>
 
                 <div className="space-y-3 w-full sm:w-auto text-xs">
-                  <div className="flex items-center justify-between gap-4 p-2.5 bg-emerald-50/60 rounded-xl">
-                    <span className="flex items-center gap-2 text-emerald-800 font-medium">
-                      <CheckCircle2 size={15} className="text-emerald-600" /> Completed
+                  <div className="flex items-center justify-between gap-4 p-2.5 bg-emerald-50/60 dark:bg-emerald-950/30 rounded-xl">
+                    <span className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-medium">
+                      <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400" /> Completed
                     </span>
-                    <span className="font-mono font-bold text-emerald-900">{navStats?.completed ?? 0}</span>
+                    <span className="font-mono font-bold text-emerald-900 dark:text-emerald-200">{navStats?.completed ?? 0}</span>
                   </div>
 
-                  <div className="flex items-center justify-between gap-4 p-2.5 bg-amber-50/60 rounded-xl">
-                    <span className="flex items-center gap-2 text-amber-800 font-medium">
-                      <AlertTriangle size={15} className="text-amber-600" /> Cancelled / Left
+                  <div className="flex items-center justify-between gap-4 p-2.5 bg-amber-50/60 dark:bg-amber-950/30 rounded-xl">
+                    <span className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-medium">
+                      <AlertTriangle size={15} className="text-amber-600 dark:text-amber-400" /> Cancelled / Left
                     </span>
-                    <span className="font-mono font-bold text-amber-900">{navStats?.cancelled ?? 0}</span>
+                    <span className="font-mono font-bold text-amber-900 dark:text-amber-200">{navStats?.cancelled ?? 0}</span>
                   </div>
 
-                  <div className="flex items-center justify-between gap-4 p-2.5 bg-blue-50/60 rounded-xl">
-                    <span className="flex items-center gap-2 text-blue-800 font-medium">
-                      <Navigation size={15} className="text-blue-600" /> Total Route Sessions
+                  <div className="flex items-center justify-between gap-4 p-2.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl">
+                    <span className="flex items-center gap-2 text-blue-800 dark:text-blue-300 font-medium">
+                      <Navigation size={15} className="text-blue-600 dark:text-blue-400" /> Total Route Sessions
                     </span>
-                    <span className="font-mono font-bold text-blue-900">{navStats?.total ?? 0}</span>
+                    <span className="font-mono font-bold text-blue-900 dark:text-blue-200">{navStats?.total ?? 0}</span>
                   </div>
                 </div>
               </div>
@@ -347,8 +347,8 @@ export function AnalyticsPage() {
 
           {/* Popular Buildings */}
           <Card className="p-6">
-            <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider flex items-center gap-2 mb-4 border-b border-gray-50 pb-3">
-              <Building2 size={16} className="text-amber-600" />
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wider flex items-center gap-2 mb-4 border-b border-gray-50 dark:border-slate-800 pb-3">
+              <Building2 size={16} className="text-amber-600 dark:text-amber-400" />
               Most Navigated Destinations
             </h3>
 
@@ -358,18 +358,18 @@ export function AnalyticsPage() {
                 <Skeleton className="h-8 w-full" />
               </div>
             ) : popularBuildings.length === 0 ? (
-              <p className="text-xs text-gray-400 py-8 text-center">No destination visits logged yet.</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 py-8 text-center">No destination visits logged yet.</p>
             ) : (
               <div className="space-y-3">
                 {popularBuildings.map((b, idx) => {
                   const pct = Math.round((b.visits / maxBuildingVisits) * 100);
                   return (
                     <div key={idx} className="space-y-1">
-                      <div className="flex justify-between text-xs font-semibold text-gray-700">
+                      <div className="flex justify-between text-xs font-semibold text-gray-700 dark:text-slate-200">
                         <span className="truncate">{b.buildingName}</span>
-                        <span className="font-mono text-gray-500">{b.visits} visits</span>
+                        <span className="font-mono text-gray-500 dark:text-slate-400">{b.visits} visits</span>
                       </div>
-                      <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="w-full h-2.5 bg-gray-100 dark:bg-slate-800 rounded-full overflow-hidden">
                         <div
                           className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full transition-all duration-500"
                           style={{ width: `${pct}%` }}
@@ -385,13 +385,13 @@ export function AnalyticsPage() {
 
         {/* Section 6: Zero-Result Queries */}
         <Card className="p-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-gray-50 pb-3">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4 border-b border-gray-50 dark:border-slate-800 pb-3">
             <div>
-              <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider flex items-center gap-2">
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wider flex items-center gap-2">
                 <XCircle size={16} className="text-red-500" />
                 "No Result" Search Queries ⭐
               </h3>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                 Terms users searched for that didn't match any official office or staff name. Create an alias to fix them!
               </p>
             </div>
@@ -410,7 +410,7 @@ export function AnalyticsPage() {
               <Skeleton className="h-10 w-full" />
             </div>
           ) : noResults.length === 0 ? (
-            <div className="py-6 text-center text-xs text-emerald-600 font-semibold bg-emerald-50/50 rounded-xl">
+            <div className="py-6 text-center text-xs text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50/50 dark:bg-emerald-950/30 rounded-xl">
               ✓ Zero failed searches reported for this timeframe! All queries matched official destinations or aliases.
             </div>
           ) : (
@@ -418,16 +418,16 @@ export function AnalyticsPage() {
               {noResults.map((nr, idx) => (
                 <div
                   key={idx}
-                  className="p-3 bg-red-50/60 border border-red-100 rounded-xl flex items-center justify-between hover:bg-red-50 transition-colors"
+                  className="p-3 bg-red-50/60 dark:bg-red-950/30 border border-red-100 dark:border-red-800/60 rounded-xl flex items-center justify-between hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                 >
                   <div className="min-w-0">
-                    <p className="font-mono text-xs font-bold text-red-900 truncate">"{nr.query}"</p>
-                    <p className="text-[10px] text-red-600 font-semibold">{nr.count} failed searches</p>
+                    <p className="font-mono text-xs font-bold text-red-900 dark:text-red-300 truncate">"{nr.query}"</p>
+                    <p className="text-[10px] text-red-600 dark:text-red-400 font-semibold">{nr.count} failed searches</p>
                   </div>
                   <Button
                     onClick={() => navigate(`/dashboard/aliases`)}
                     size="sm"
-                    className="text-[10px] bg-white text-red-700 border border-red-200 hover:bg-red-100 px-2 py-1 rounded-lg flex-shrink-0 cursor-pointer font-bold"
+                    className="text-[10px] bg-white dark:bg-slate-800 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800 hover:bg-red-100 dark:hover:bg-red-900/40 px-2 py-1 rounded-lg flex-shrink-0 cursor-pointer font-bold"
                   >
                     + Alias
                   </Button>

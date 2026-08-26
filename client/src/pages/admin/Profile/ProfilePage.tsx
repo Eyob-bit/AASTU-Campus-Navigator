@@ -228,8 +228,8 @@ export function ProfilePage() {
             {/* Inputs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                  <User size={13} className="text-gray-400" /> Admin Full Name
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <User size={13} className="text-gray-400 dark:text-slate-500" /> Admin Full Name
                 </label>
                 <Input
                   type="text"
@@ -241,8 +241,8 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5 flex items-center gap-1.5">
-                  <Mail size={13} className="text-gray-400" /> Email Address
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                  <Mail size={13} className="text-gray-400 dark:text-slate-500" /> Email Address
                 </label>
                 <Input
                   type="email"
@@ -268,25 +268,25 @@ export function ProfilePage() {
 
         {/* Change Password Card */}
         <Card className="p-6 border-l-4 border-l-indigo-600 shadow-sm">
-          <div className="border-b border-gray-100 pb-4 mb-6">
-            <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider flex items-center gap-2">
-              <Key size={16} className="text-indigo-600" />
+          <div className="border-b border-gray-100 dark:border-slate-800 pb-4 mb-6">
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm uppercase tracking-wider flex items-center gap-2">
+              <Key size={16} className="text-indigo-600 dark:text-indigo-400" />
               Security & Password Credentials
             </h3>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
               Ensure your admin account stays secure by choosing a strong password.
             </p>
           </div>
 
           {passwordError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 text-xs p-3.5 rounded-xl mb-5 font-semibold">
+            <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-xs p-3.5 rounded-xl mb-5 font-semibold">
               {passwordError}
             </div>
           )}
 
           {passwordSuccess && (
-            <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs p-3.5 rounded-xl mb-5 font-semibold flex items-center gap-2">
-              <ShieldCheck size={18} className="text-emerald-600 flex-shrink-0" />
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs p-3.5 rounded-xl mb-5 font-semibold flex items-center gap-2">
+              <ShieldCheck size={18} className="text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
               Password updated successfully! Your new password is now active in the system database.
             </div>
           )}
@@ -294,7 +294,7 @@ export function ProfilePage() {
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Current Password</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">Current Password</label>
                 <Input
                   type="password"
                   placeholder="Enter current password"
@@ -306,7 +306,7 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">New Password</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">New Password</label>
                 <Input
                   type="password"
                   placeholder="Min 4 characters"
@@ -318,7 +318,7 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5">Confirm New Password</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1.5">Confirm New Password</label>
                 <Input
                   type="password"
                   placeholder="Repeat new password"

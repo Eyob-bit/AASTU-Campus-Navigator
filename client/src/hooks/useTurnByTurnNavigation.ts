@@ -53,7 +53,7 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
       return null;
     }
     return trackerRef.current.update(userLocation.lat, userLocation.lng);
-  }, [userLocation, navStep, activeRoute]);
+  }, [userLocation, navStep]);
 
   // Pre-calculate target distance along the route for each instruction
   const instructionTargetDistances = useMemo(() => {

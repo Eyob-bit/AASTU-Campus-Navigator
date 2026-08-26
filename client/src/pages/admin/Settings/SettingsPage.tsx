@@ -98,7 +98,7 @@ export function SettingsPage() {
           <Button
             onClick={() => handleResetSettings()}
             variant="outline"
-            className="w-full sm:w-auto text-xs px-4 py-2.5 rounded-xl border-gray-200 hover:bg-gray-100 cursor-pointer"
+            className="w-full sm:w-auto text-xs px-4 py-2.5 rounded-xl border-gray-200 dark:border-slate-700 hover:bg-gray-100 dark:hover:bg-slate-800 cursor-pointer"
           >
             <RefreshCw size={14} className="mr-1.5 inline" />
             Reset Defaults
@@ -115,8 +115,8 @@ export function SettingsPage() {
 
       <div className="p-4 sm:p-8 max-w-5xl w-full mx-auto space-y-6 sm:space-y-8 flex-1">
         {isSaved && (
-          <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm px-4 py-3 rounded-xl flex items-center gap-2 font-semibold">
-            <CheckCircle2 size={18} className="text-emerald-600" />
+          <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs sm:text-sm px-4 py-3 rounded-xl flex items-center gap-2 font-semibold">
+            <CheckCircle2 size={18} className="text-emerald-600 dark:text-emerald-400" />
             System configuration saved successfully! Active across all app modules.
           </div>
         )}
@@ -131,7 +131,7 @@ export function SettingsPage() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">University Name</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">University Name</label>
                 <Input
                   type="text"
                   value={settings.universityName}
@@ -140,7 +140,7 @@ export function SettingsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Campus Code</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Campus Code</label>
                 <Input
                   type="text"
                   value={settings.campusCode}
@@ -159,36 +159,36 @@ export function SettingsPage() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Walking Speed (m/s)</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Walking Speed (m/s)</label>
                 <Input
                   type="number"
                   value={String(settings.walkingSpeedMs)}
                   onChange={(val) => setSettings({ ...settings, walkingSpeedMs: parseFloat(val) || 1.4 })}
                   className="text-xs rounded-xl"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">Used for estimated walking time calculations</p>
+                <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">Used for estimated walking time calculations</p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Arrival Radius (meters)</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Arrival Radius (meters)</label>
                 <Input
                   type="number"
                   value={String(settings.arrivalRadiusM)}
                   onChange={(val) => setSettings({ ...settings, arrivalRadiusM: parseInt(val, 10) || 15 })}
                   className="text-xs rounded-xl"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">Distance trigger to prompt arrival state</p>
+                <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">Distance trigger to prompt arrival state</p>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Off-Route Reroute Radius (m)</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Off-Route Reroute Radius (m)</label>
                 <Input
                   type="number"
                   value={String(settings.rerouteThresholdM)}
                   onChange={(val) => setSettings({ ...settings, rerouteThresholdM: parseInt(val, 10) || 20 })}
                   className="text-xs rounded-xl"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">Perpendicular distance threshold before auto-reroute</p>
+                <p className="text-[10px] text-gray-400 dark:text-slate-500 mt-1">Perpendicular distance threshold before auto-reroute</p>
               </div>
             </div>
           </Card>
@@ -201,7 +201,7 @@ export function SettingsPage() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Max Search Results</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Max Search Results</label>
                 <Input
                   type="number"
                   value={String(settings.maxSearchResults)}
@@ -246,13 +246,13 @@ export function SettingsPage() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Primary Theme Color</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Primary Theme Color</label>
                 <div className="flex gap-2 items-center">
                   <input
                     type="color"
                     value={settings.themeColor}
                     onChange={(e) => setSettings({ ...settings, themeColor: e.target.value })}
-                    className="w-10 h-9 p-0.5 border border-gray-200 rounded-lg cursor-pointer"
+                    className="w-10 h-9 p-0.5 border border-gray-200 dark:border-slate-700 rounded-lg cursor-pointer"
                   />
                   <Input
                     type="text"
@@ -264,7 +264,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Campus Subtitle</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Campus Subtitle</label>
                 <Input
                   type="text"
                   value={settings.campusSubtitle}
@@ -283,7 +283,7 @@ export function SettingsPage() {
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Support Email</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Support Email</label>
                 <Input
                   type="email"
                   value={settings.supportEmail}
@@ -293,7 +293,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Emergency Phone</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Emergency Phone</label>
                 <Input
                   type="text"
                   value={settings.emergencyPhone}
@@ -303,7 +303,7 @@ export function SettingsPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Session Timeout (minutes)</label>
+                <label className="block text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1">Session Timeout (minutes)</label>
                 <Input
                   type="number"
                   value={String(settings.sessionTimeoutMin)}

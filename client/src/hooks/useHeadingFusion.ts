@@ -112,6 +112,11 @@ export function useHeadingFusion({
     };
   }, [enabled]);
 
+  useEffect(() => {
+    gpsHeadingRef.current = gpsHeading;
+    gpsSpeedRef.current = gpsSpeed;
+  }, [gpsHeading, gpsSpeed]);
+
   // Heading Fusion & Circular EMA Ticker
   useEffect(() => {
     if (!enabled) return;
@@ -159,9 +164,12 @@ export function useHeadingFusion({
         if (Math.abs(delta) >= DEADBAND_DEGREES) {
           const smoothed = (current + SMOOTHING_ALPHA * delta + 360) % 360;
           currentHeadingRef.current = smoothed;
-          // Preserve 2 decimal places precision for silky smooth rotation
-          setHeading(Math.round(smoothed * 100) / 100);
-          setSource(activeSource);
+          const now = performance.now();
+          if (now - lastHeadingUpdateRef.current >= HEADING_UPDATE_INTERVAL_MS) {
+            lastHeadingUpdateRef.current = now;
+            setHeading(Math.round(smoothed * 100) / 100);
+            setSource(activeSource);
+          }
         }
       }
 

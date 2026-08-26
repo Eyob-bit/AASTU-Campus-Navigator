@@ -254,16 +254,16 @@ export function PanoramaGalleryPage() {
 
           {/* Buildings */}
           <Card className="p-4">
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Building2 size={12} /> Buildings
-            </h2>
-            {isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-9 w-full" />
-              </div>
-            ) : buildings.length === 0 ? (
-              <p className="text-xs text-gray-400">No buildings found.</p>
+              <h2 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <Building2 size={12} /> Buildings
+              </h2>
+              {isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-9 w-full" />
+                  <Skeleton className="h-9 w-full" />
+                </div>
+              ) : buildings.length === 0 ? (
+                <p className="text-xs text-gray-400 dark:text-slate-500">No buildings found.</p>
             ) : (
               <div className="space-y-1">
                 {buildings.map((b) => {
@@ -300,11 +300,11 @@ export function PanoramaGalleryPage() {
           {/* Floors */}
           {selectedBuildingId && (
             <Card className="p-4">
-              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <h2 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <Layers size={12} /> Floors
               </h2>
               {buildingFloors.length === 0 ? (
-                <p className="text-xs text-gray-400">No floors in this building.</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">No floors in this building.</p>
               ) : (
                 <div className="space-y-1">
                   {buildingFloors.map((f) => {
@@ -373,9 +373,9 @@ export function PanoramaGalleryPage() {
           {selectedFloorId && !isLoading && floorScenes.length > 0 && (
             <>
               <div className="flex items-center justify-between mb-3 sm:mb-4">
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-gray-500 dark:text-slate-400">
                   {floorScenes.length} scene{floorScenes.length !== 1 ? "s" : ""} on{" "}
-                  <span className="font-medium text-gray-700">
+                  <span className="font-medium text-gray-700 dark:text-slate-200">
                     {formatFloorLabel(buildingFloors.find((f) => f.id === selectedFloorId)?.floorNumber ?? 0)}
                   </span>
                 </p>
@@ -436,10 +436,10 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
   const imageUrl = getPanoramaImageUrl(scene.imagePath);
 
   return (
-    <div className="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
+    <div className="group bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
 
       {/* Thumbnail */}
-      <div className="relative h-36 sm:h-40 bg-slate-100 overflow-hidden flex-shrink-0">
+      <div className="relative h-36 sm:h-40 bg-slate-100 dark:bg-slate-800 overflow-hidden flex-shrink-0">
         {imageUrl ? (
           <img
             src={imageUrl}
@@ -485,15 +485,15 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
       {/* Body */}
       <div className="p-3 sm:p-4 flex flex-col flex-1 gap-2 sm:gap-3">
         <div className="space-y-0.5 sm:space-y-1">
-          <h3 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-1">{scene.name}</h3>
-          <p className="text-[11px] text-gray-400 font-mono truncate">{scene.key}</p>
+          <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug line-clamp-1">{scene.name}</h3>
+          <p className="text-[11px] text-gray-400 dark:text-slate-500 font-mono truncate">{scene.key}</p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-[10px] bg-indigo-50 text-indigo-600 font-semibold px-2 py-0.5 rounded-full">
+          <span className="text-[10px] bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-semibold px-2 py-0.5 rounded-full">
             Order {scene.displayOrder}
           </span>
-          <span className="text-[10px] bg-gray-100 text-gray-500 font-semibold px-2 py-0.5 rounded-full">
+          <span className="text-[10px] bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 font-semibold px-2 py-0.5 rounded-full">
             {scene.elements?.length ?? 0} element{(scene.elements?.length ?? 0) !== 1 ? "s" : ""}
           </span>
         </div>
@@ -512,7 +512,7 @@ function SceneCard({ scene, onEdit, onDelete }: SceneCardProps) {
 
 function SceneCardSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800 shadow-sm overflow-hidden">
       <Skeleton className="h-36 sm:h-40 w-full rounded-none" />
       <div className="p-3 sm:p-4 space-y-2 sm:space-y-3">
         <Skeleton className="h-4 w-3/4" />
