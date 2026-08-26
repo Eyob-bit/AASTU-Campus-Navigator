@@ -10,6 +10,13 @@ export function HomePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setSelectedResult, startOutdoorNavigation } = useAppStore();
+
+  // Reset body scroll position on mount — prevents the home page from being
+  // offset downward when returning from a taller page (e.g. /chatbot) on mobile.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [officeResults, setOfficeResults] = useState<SearchResult[]>([]);
