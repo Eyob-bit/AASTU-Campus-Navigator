@@ -43,6 +43,9 @@ export function useHeadingFusion({
   const isGpsPreferredRef = useRef<boolean>(false);
   const gpsHeadingRef = useRef<number | null>(gpsHeading);
   const gpsSpeedRef = useRef<number | null>(gpsSpeed);
+  const lastHeadingUpdateRef = useRef<number>(0);
+
+  const HEADING_UPDATE_INTERVAL_MS = 100; // throttle setHeading to ~10fps
 
   // Sync props into refs so the rAF loop reads latest values without restarting
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { Navigation2 } from "lucide-react";
 
 import { useBuildings } from "@/hooks/useBuildings";
