@@ -142,27 +142,27 @@ export function LandmarksPage() {
     <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Landmarks</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Landmarks</h1>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-0.5">
             {isLoading ? "Loading…" : `${landmarks.length} landmark${landmarks.length !== 1 ? "s" : ""} on campus`}
           </p>
         </div>
 
         {/* View Mode Toggle */}
-        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl">
           <button
             onClick={() => setViewMode("table")}
             className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
               viewMode === "table"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-900"
+                ? "bg-white dark:bg-slate-900 text-gray-900 dark:text-white shadow-sm"
+                : "text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white"
             }`}
           >
             Table View
           </button>
           <button
             onClick={() => setViewMode("map")}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 text-gray-500 hover:text-gray-900 cursor-pointer"
+            className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-1.5 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white cursor-pointer"
           >
             <MapPin size={13} />
             Map View
@@ -188,18 +188,18 @@ export function LandmarksPage() {
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
+                <tr className="border-b border-gray-100 dark:border-slate-800">
                   {["Landmark", "Category", "Coordinates", "Visible", "Actions"].map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap"
                     >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-slate-800/60">
                 {paginated.map((l) => (
                   <LandmarkRow
                     key={l.id}
@@ -235,7 +235,7 @@ export function LandmarksPage() {
               action={!search ? <Button variant="primary" size="sm" onClick={openCreate}><Plus size={14} />Add Landmark</Button> : undefined}
             />
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-slate-800/60">
               {paginated.map((l) => (
                 <LandmarkCard
                   key={l.id}
@@ -250,8 +250,8 @@ export function LandmarksPage() {
         </div>
 
         {!isLoading && filtered.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-100 dark:border-slate-800">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               Showing {(page - 1) * ADMIN_TABLE_PAGE_SIZE + 1}–{Math.min(page * ADMIN_TABLE_PAGE_SIZE, filtered.length)} of {filtered.length} landmarks
             </p>
             <Pagination current={page} total={totalPages} onChange={setPage} />
@@ -306,21 +306,21 @@ function CategoryBadge({ landmark }: { landmark: Landmark }) {
 
 function LandmarkRow({ landmark, onEdit, onDelete, onToggleVisible }: RowProps) {
   return (
-    <tr className="hover:bg-gray-50/50 transition-colors group">
+    <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors group">
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0 text-base">
+          <div className="w-8 h-8 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg flex items-center justify-center flex-shrink-0 text-base">
             {landmark.icon || CATEGORY_CONFIG[landmark.category]?.emoji || "📍"}
           </div>
-          <span className="text-sm font-medium text-gray-900">{landmark.name}</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-white">{landmark.name}</span>
         </div>
       </td>
       <td className="px-4 py-3.5"><CategoryBadge landmark={landmark} /></td>
-      <td className="px-4 py-3.5 text-xs font-mono text-gray-500">
+      <td className="px-4 py-3.5 text-xs font-mono text-gray-500 dark:text-slate-400">
         {landmark.latitude.toFixed(4)}°N &nbsp;{landmark.longitude.toFixed(4)}°E
       </td>
       <td className="px-4 py-3.5">
-        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${landmark.isVisible ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+        <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${landmark.isVisible ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400" : "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400"}`}>
           {landmark.isVisible ? "Visible" : "Hidden"}
         </span>
       </td>
@@ -338,14 +338,14 @@ function LandmarkRow({ landmark, onEdit, onDelete, onToggleVisible }: RowProps) 
 function LandmarkCard({ landmark, onEdit, onDelete, onToggleVisible }: RowProps) {
   return (
     <div className="flex items-center gap-3 px-4 py-3.5">
-      <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0 text-base">
+      <div className="w-9 h-9 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg flex items-center justify-center flex-shrink-0 text-base">
         {landmark.icon || CATEGORY_CONFIG[landmark.category]?.emoji || "📍"}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{landmark.name}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{landmark.name}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <CategoryBadge landmark={landmark} />
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${landmark.isVisible ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${landmark.isVisible ? "bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-400" : "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400"}`}>
             {landmark.isVisible ? "Visible" : "Hidden"}
           </span>
         </div>

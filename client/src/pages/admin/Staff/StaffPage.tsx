@@ -73,8 +73,8 @@ export function StaffPage() {
     <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Staff</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Staff</h1>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-0.5">
             {isLoading
               ? "Loading…"
               : `${staff.length} staff member${staff.length !== 1 ? "s" : ""}`}
@@ -100,18 +100,18 @@ export function StaffPage() {
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
+                <tr className="border-b border-gray-100 dark:border-slate-800">
                   {TABLE_HEADERS.map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap"
                     >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-slate-800/60">
                 {paginated.map((s) => (
                   <StaffRow
                     key={s.id}
@@ -156,7 +156,7 @@ export function StaffPage() {
               action={!search ? <Button variant="primary" size="sm" onClick={openCreate}><Plus size={14} />Add Staff</Button> : undefined}
             />
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-slate-800/60">
               {paginated.map((s) => (
                 <StaffCard
                   key={s.id}
@@ -170,8 +170,8 @@ export function StaffPage() {
         </div>
 
         {!isLoading && filtered.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-100 dark:border-slate-800">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               Showing {(page - 1) * ADMIN_TABLE_PAGE_SIZE + 1}–{Math.min(page * ADMIN_TABLE_PAGE_SIZE, filtered.length)} of{" "}
               {filtered.length} staff members
             </p>
@@ -215,23 +215,23 @@ interface StaffRowProps {
 
 function StaffRow({ member, onEdit, onDelete }: StaffRowProps) {
   return (
-    <tr className="hover:bg-gray-50/50 transition-colors group">
+    <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors group">
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
             {initials(member.fullName)}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{member.fullName}</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{member.fullName}</p>
             {(member.email || member.phone) && (
               <div className="flex items-center gap-2 mt-0.5">
                 {member.email && (
-                  <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                  <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-slate-500">
                     <Mail size={10} />{member.email}
                   </span>
                 )}
                 {member.phone && (
-                  <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                  <span className="flex items-center gap-1 text-[10px] text-gray-400 dark:text-slate-500">
                     <Phone size={10} />{member.phone}
                   </span>
                 )}
@@ -241,20 +241,20 @@ function StaffRow({ member, onEdit, onDelete }: StaffRowProps) {
         </div>
       </td>
 
-      <td className="px-4 py-3.5 text-sm text-gray-600">{member.position}</td>
+      <td className="px-4 py-3.5 text-sm text-gray-600 dark:text-slate-300">{member.position}</td>
 
       <td className="px-4 py-3.5">
         <div>
-          <p className="text-sm text-gray-700">{member.officeName}</p>
-          <code className="text-[10px] font-mono text-gray-400">{member.roomNumber}</code>
+          <p className="text-sm text-gray-700 dark:text-slate-200">{member.officeName}</p>
+          <code className="text-[10px] font-mono text-gray-400 dark:text-slate-500">{member.roomNumber}</code>
         </div>
       </td>
 
-      <td className="px-4 py-3.5 text-sm text-gray-600">
+      <td className="px-4 py-3.5 text-sm text-gray-600 dark:text-slate-300">
         {formatFloorLabel(member.floorNumber)}
       </td>
 
-      <td className="px-4 py-3.5 text-sm text-gray-600">{member.buildingName}</td>
+      <td className="px-4 py-3.5 text-sm text-gray-600 dark:text-slate-300">{member.buildingName}</td>
 
       <td className="px-4 py-3.5">
         <StatusBadge status={member.isActive ? "active" : "inactive"} />
@@ -277,10 +277,10 @@ function StaffCard({ member, onEdit, onDelete }: StaffRowProps) {
         {initials(member.fullName)}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{member.fullName}</p>
-        <p className="text-xs text-gray-500 truncate mt-0.5">{member.position}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{member.fullName}</p>
+        <p className="text-xs text-gray-500 dark:text-slate-400 truncate mt-0.5">{member.position}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className="text-[10px] text-gray-400">{member.officeName} · {member.buildingName}</span>
+          <span className="text-[10px] text-gray-400 dark:text-slate-500">{member.officeName} · {member.buildingName}</span>
           <StatusBadge status={member.isActive ? "active" : "inactive"} />
         </div>
       </div>

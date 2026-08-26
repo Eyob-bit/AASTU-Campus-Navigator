@@ -72,8 +72,8 @@ export function OfficesPage() {
     <div className="p-3 sm:p-6 space-y-3 sm:space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg sm:text-xl font-bold text-gray-900">Offices</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+          <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">Offices</h1>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mt-0.5">
             {isLoading
               ? "Loading…"
               : `${offices.length} office${offices.length !== 1 ? "s" : ""} registered`}
@@ -99,18 +99,18 @@ export function OfficesPage() {
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100">
+                <tr className="border-b border-gray-100 dark:border-slate-800">
                   {TABLE_HEADERS.map((h) => (
                     <th
                       key={h}
-                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap"
+                      className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide whitespace-nowrap"
                     >
                       {h}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-slate-800/60">
                 {paginated.map((o) => (
                   <OfficeRow
                     key={o.id}
@@ -155,7 +155,7 @@ export function OfficesPage() {
               action={!search ? <Button variant="primary" size="sm" onClick={openCreate}><Plus size={14} />Add Office</Button> : undefined}
             />
           ) : (
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50 dark:divide-slate-800/60">
               {paginated.map((o) => (
                 <OfficeCard
                   key={o.id}
@@ -169,8 +169,8 @@ export function OfficesPage() {
         </div>
 
         {!isLoading && filtered.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-4 py-3 border-t border-gray-100 dark:border-slate-800">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               Showing {(page - 1) * ADMIN_TABLE_PAGE_SIZE + 1}–{Math.min(page * ADMIN_TABLE_PAGE_SIZE, filtered.length)} of {filtered.length} offices
             </p>
             <Pagination current={page} total={totalPages} onChange={setPage} />
@@ -212,27 +212,27 @@ interface OfficeRowProps {
 
 function OfficeRow({ office, onEdit, onDelete }: OfficeRowProps) {
   return (
-    <tr className="hover:bg-gray-50/50 transition-colors group">
+    <tr className="hover:bg-gray-50/50 dark:hover:bg-slate-800/50 transition-colors group">
       <td className="px-4 py-3.5">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-violet-50 rounded-lg flex items-center justify-center flex-shrink-0">
-            <DoorOpen size={15} className="text-violet-600" />
+          <div className="w-8 h-8 bg-violet-50 dark:bg-violet-950/60 rounded-lg flex items-center justify-center flex-shrink-0">
+            <DoorOpen size={15} className="text-violet-600 dark:text-violet-400" />
           </div>
-          <span className="text-sm font-medium text-gray-900">{office.name}</span>
+          <span className="text-sm font-medium text-gray-900 dark:text-white">{office.name}</span>
         </div>
       </td>
 
       <td className="px-4 py-3.5">
-        <code className="text-xs font-mono bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md">
+        <code className="text-xs font-mono bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
           {office.roomNumber}
         </code>
       </td>
 
-      <td className="px-4 py-3.5 text-sm text-gray-600">
+      <td className="px-4 py-3.5 text-sm text-gray-600 dark:text-slate-300">
         {formatFloorLabel(office.floorNumber)}
       </td>
 
-      <td className="px-4 py-3.5 text-sm text-gray-600">{office.buildingName}</td>
+      <td className="px-4 py-3.5 text-sm text-gray-600 dark:text-slate-300">{office.buildingName}</td>
 
       <td className="px-4 py-3.5">
         <StatusBadge status={office.isActive ? "active" : "inactive"} />
@@ -251,14 +251,14 @@ function OfficeRow({ office, onEdit, onDelete }: OfficeRowProps) {
 function OfficeCard({ office, onEdit, onDelete }: OfficeRowProps) {
   return (
     <div className="flex items-center gap-3 px-4 py-3.5">
-      <div className="w-9 h-9 bg-violet-50 rounded-lg flex items-center justify-center flex-shrink-0">
-        <DoorOpen size={16} className="text-violet-600" />
+      <div className="w-9 h-9 bg-violet-50 dark:bg-violet-950/60 rounded-lg flex items-center justify-center flex-shrink-0">
+        <DoorOpen size={16} className="text-violet-600 dark:text-violet-400" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-900 truncate">{office.name}</p>
+        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{office.name}</p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <code className="text-[10px] font-mono bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{office.roomNumber}</code>
-          <span className="text-[10px] text-gray-500">{office.buildingName} · {formatFloorLabel(office.floorNumber)}</span>
+          <code className="text-[10px] font-mono bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 px-1.5 py-0.5 rounded">{office.roomNumber}</code>
+          <span className="text-[10px] text-gray-500 dark:text-slate-400">{office.buildingName} · {formatFloorLabel(office.floorNumber)}</span>
           <StatusBadge status={office.isActive ? "active" : "inactive"} />
         </div>
       </div>
