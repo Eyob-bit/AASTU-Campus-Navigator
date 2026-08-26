@@ -35,7 +35,7 @@ export function ConfirmDialog({
           <Button
             variant={danger ? "danger" : "primary"}
             disabled={loading}
-            onClick={() => { onConfirm(); onClose(); }}
+            onClick={async () => { await onConfirm(); onClose(); }}
           >
             {danger ? "Delete" : "Confirm"}
           </Button>
