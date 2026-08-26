@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Navigation2 } from "lucide-react";
 
 import { useBuildings } from "@/hooks/useBuildings";
@@ -149,11 +149,18 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     enabled: true,
   });
 
+  const lastStoreUpdateRef = useRef<number>(0);
+  const STORE_UPDATE_INTERVAL_MS = 500;
+
   useEffect(() => {
     if (userPosition) {
-      setUserLocation({ lat: userPosition.latitude, lng: userPosition.longitude });
+      const now = Date.now();
+      if (now - lastStoreUpdateRef.current >= STORE_UPDATE_INTERVAL_MS || !userLocation) {
+        lastStoreUpdateRef.current = now;
+        setUserLocation({ lat: userPosition.latitude, lng: userPosition.longitude });
+      }
     }
-  }, [userPosition, setUserLocation]);
+  }, [userPosition, setUserLocation, userLocation]);
 
   // Fetch A* route from server; handles auto-rerouting on position departure
   useOutdoorRoute();

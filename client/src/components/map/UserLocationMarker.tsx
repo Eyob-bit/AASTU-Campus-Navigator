@@ -20,6 +20,7 @@ export function UserLocationMarker({
   const map = useMapInstance();
   const markerRef = useRef<Marker | null>(null);
   const elementRef = useRef<HTMLDivElement | null>(null);
+  const prevVisualStateRef = useRef<string>("");
 
   // Helper to build marker HTML content
   const renderMarkerHtml = () => {
@@ -90,6 +91,9 @@ export function UserLocationMarker({
   useEffect(() => {
     if (!map || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
 
+    const headingBucket = Math.round(heading / 5) * 5;
+    const visualKey = `${isNavigating}-${isCourseUp}-${headingBucket}`;
+
     if (!markerRef.current) {
       const el = document.createElement("div");
       el.className = "user-location-marker";
@@ -106,11 +110,13 @@ export function UserLocationMarker({
         .addTo(map);
 
       markerRef.current = marker;
+      prevVisualStateRef.current = visualKey;
     } else {
-      if (elementRef.current) {
-        elementRef.current.innerHTML = renderMarkerHtml();
-      }
       markerRef.current.setLngLat([lng, lat]);
+      if (visualKey !== prevVisualStateRef.current && elementRef.current) {
+        elementRef.current.innerHTML = renderMarkerHtml();
+        prevVisualStateRef.current = visualKey;
+      }
     }
 
     return () => {
@@ -119,7 +125,6 @@ export function UserLocationMarker({
         markerRef.current = null;
       }
     };
-  // Update marker position & appearance on location/nav state change
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map, lat, lng, isNavigating, heading, isCourseUp]);
 

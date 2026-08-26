@@ -41,6 +41,10 @@ export function useHeadingFusion({
   const rawCompassRef = useRef<number | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
   const isGpsPreferredRef = useRef<boolean>(false);
+  const gpsHeadingRef = useRef<number | null>(null);
+  const gpsSpeedRef = useRef<number | null>(null);
+  const lastHeadingUpdateRef = useRef<number>(0);
+  const HEADING_UPDATE_INTERVAL_MS = 100;
 
   // Request DeviceOrientation permission for iOS 13+
   const requestPermission = useCallback(async (): Promise<boolean> => {
@@ -102,6 +106,11 @@ export function useHeadingFusion({
     };
   }, [enabled]);
 
+  useEffect(() => {
+    gpsHeadingRef.current = gpsHeading;
+    gpsSpeedRef.current = gpsSpeed;
+  }, [gpsHeading, gpsSpeed]);
+
   // Heading Fusion & Circular EMA Ticker
   useEffect(() => {
     if (!enabled) return;
@@ -112,8 +121,8 @@ export function useHeadingFusion({
       if (!isRunning) return;
 
       const compass = rawCompassRef.current;
-      const speed = gpsSpeed ?? 0;
-      const gps = gpsHeading;
+      const speed = gpsSpeedRef.current ?? 0;
+      const gps = gpsHeadingRef.current;
 
       let targetHeading: number | null = null;
       let activeSource: "gps" | "compass" | "none" = "none";
@@ -149,9 +158,12 @@ export function useHeadingFusion({
         if (Math.abs(delta) >= DEADBAND_DEGREES) {
           const smoothed = (current + SMOOTHING_ALPHA * delta + 360) % 360;
           currentHeadingRef.current = smoothed;
-          // Preserve 2 decimal places precision for silky smooth rotation
-          setHeading(Math.round(smoothed * 100) / 100);
-          setSource(activeSource);
+          const now = performance.now();
+          if (now - lastHeadingUpdateRef.current >= HEADING_UPDATE_INTERVAL_MS) {
+            lastHeadingUpdateRef.current = now;
+            setHeading(Math.round(smoothed * 100) / 100);
+            setSource(activeSource);
+          }
         }
       }
 
@@ -166,7 +178,7 @@ export function useHeadingFusion({
         cancelAnimationFrame(animFrameIdRef.current);
       }
     };
-  }, [enabled, gpsHeading, gpsSpeed]);
+  }, [enabled]);
 
   return {
     heading,

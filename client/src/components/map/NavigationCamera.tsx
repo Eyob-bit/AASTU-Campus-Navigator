@@ -124,15 +124,13 @@ export function NavigationCamera({
   useEffect(() => {
     if (!map || !isNavigating || !isFollowingUser || !userLocation) return;
 
-    // Smooth camera easeTo with native MapLibre padding offset (user at ~65-70% down screen)
-    map.easeTo({
+    // Instant position snap (no lag) + smooth bearing/pitch ease
+    map.jumpTo({
       center: [userLocation.lng, userLocation.lat],
       bearing: fusedHeading,
       pitch: 50,
       zoom: 19,
       padding: { top: 60, bottom: Math.round(window.innerHeight * 0.32), left: 0, right: 0 },
-      duration: 350,
-      easing: (t) => t,
     });
   }, [map, isNavigating, isFollowingUser, userLocation, fusedHeading]);
 
