@@ -66,36 +66,36 @@ function RoadEdgesLayer({ edges, nodeMap }: RoadEdgesLayerProps) {
             type: "geojson",
             data: geojson,
           });
+        }
 
-          if (!map.getLayer(LAYER_CASING)) {
-            map.addLayer({
-              id: LAYER_CASING,
-              type: "line",
-              source: SOURCE_ID,
-              layout: { "line-cap": "round", "line-join": "round" },
-              paint: { "line-color": "#020617", "line-width": 8, "line-opacity": 0.85 },
-            });
-          }
+        if (!map.getLayer(LAYER_CASING)) {
+          map.addLayer({
+            id: LAYER_CASING,
+            type: "line",
+            source: SOURCE_ID,
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#020617", "line-width": 8, "line-opacity": 0.85 },
+          });
+        }
 
-          if (!map.getLayer(LAYER_GLOW)) {
-            map.addLayer({
-              id: LAYER_GLOW,
-              type: "line",
-              source: SOURCE_ID,
-              layout: { "line-cap": "round", "line-join": "round" },
-              paint: { "line-color": "#06b6d4", "line-width": 6, "line-opacity": 0.6, "line-blur": 2 },
-            });
-          }
+        if (!map.getLayer(LAYER_GLOW)) {
+          map.addLayer({
+            id: LAYER_GLOW,
+            type: "line",
+            source: SOURCE_ID,
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#06b6d4", "line-width": 6, "line-opacity": 0.6, "line-blur": 2 },
+          });
+        }
 
-          if (!map.getLayer(LAYER_LINE)) {
-            map.addLayer({
-              id: LAYER_LINE,
-              type: "line",
-              source: SOURCE_ID,
-              layout: { "line-cap": "round", "line-join": "round" },
-              paint: { "line-color": "#22d3ee", "line-width": 3.5, "line-opacity": 1.0 },
-            });
-          }
+        if (!map.getLayer(LAYER_LINE)) {
+          map.addLayer({
+            id: LAYER_LINE,
+            type: "line",
+            source: SOURCE_ID,
+            layout: { "line-cap": "round", "line-join": "round" },
+            paint: { "line-color": "#22d3ee", "line-width": 3.5, "line-opacity": 1.0 },
+          });
         }
       } catch (err) {
         // If style is still loading during transition, style.load will fire and call applyData

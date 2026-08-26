@@ -87,8 +87,23 @@ export class RoadNodeRepository {
   }
 
   async delete(id: string) {
-    return prisma.roadNode.delete({
-      where: { id },
+    return prisma.$transaction(async (tx) => {
+      await tx.roadEdge.deleteMany({
+        where: {
+          OR: [{ fromNodeId: id }, { toNodeId: id }],
+        },
+      });
+      await tx.landmark.updateMany({
+        where: { roadNodeId: id },
+        data: { roadNodeId: null },
+      });
+      await tx.building.updateMany({
+        where: { entranceRoadNodeId: id },
+        data: { entranceRoadNodeId: null },
+      });
+      return tx.roadNode.delete({
+        where: { id },
+      });
     });
   }
 
