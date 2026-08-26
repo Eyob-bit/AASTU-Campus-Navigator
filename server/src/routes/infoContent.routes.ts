@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { infoContentController } from "../controllers/infoContent.controller.js";
+import { requireAdminAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
@@ -7,23 +8,23 @@ const router = Router();
 // Public: active only
 router.get("/channels", infoContentController.getActiveChannels);
 // Admin: all (including inactive)
-router.get("/channels/all", infoContentController.getAllChannels);
-router.post("/channels", infoContentController.createChannel);
-router.patch("/channels/:id", infoContentController.updateChannel);
-router.delete("/channels/:id", infoContentController.deleteChannel);
+router.get("/channels/all", requireAdminAuth, infoContentController.getAllChannels);
+router.post("/channels", requireAdminAuth, infoContentController.createChannel);
+router.patch("/channels/:id", requireAdminAuth, infoContentController.updateChannel);
+router.delete("/channels/:id", requireAdminAuth, infoContentController.deleteChannel);
 
 // ── Contacts ─────────────────────────────────────────────────────────────────
 router.get("/contacts", infoContentController.getActiveContacts);
-router.get("/contacts/all", infoContentController.getAllContacts);
-router.post("/contacts", infoContentController.createContact);
-router.patch("/contacts/:id", infoContentController.updateContact);
-router.delete("/contacts/:id", infoContentController.deleteContact);
+router.get("/contacts/all", requireAdminAuth, infoContentController.getAllContacts);
+router.post("/contacts", requireAdminAuth, infoContentController.createContact);
+router.patch("/contacts/:id", requireAdminAuth, infoContentController.updateContact);
+router.delete("/contacts/:id", requireAdminAuth, infoContentController.deleteContact);
 
 // ── Links ─────────────────────────────────────────────────────────────────────
 router.get("/links", infoContentController.getActiveLinks);
-router.get("/links/all", infoContentController.getAllLinks);
-router.post("/links", infoContentController.createLink);
-router.patch("/links/:id", infoContentController.updateLink);
-router.delete("/links/:id", infoContentController.deleteLink);
+router.get("/links/all", requireAdminAuth, infoContentController.getAllLinks);
+router.post("/links", requireAdminAuth, infoContentController.createLink);
+router.patch("/links/:id", requireAdminAuth, infoContentController.updateLink);
+router.delete("/links/:id", requireAdminAuth, infoContentController.deleteLink);
 
 export default router;

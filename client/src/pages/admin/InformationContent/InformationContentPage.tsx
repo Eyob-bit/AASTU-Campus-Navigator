@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Send, Globe, Video, Play, BookOpen, Laptop, Map, Calendar,
   Phone, Mail, Link as LinkIcon, Plus, Pencil, Trash2,
   Save, X, CheckCircle2, AlertCircle, ToggleLeft, ToggleRight,
-  Info, GripVertical, ExternalLink,
+  Info, GripVertical, ExternalLink, Search,
 } from "lucide-react";
 import { infoContentApi } from "@/api/infoContent.api";
 import type { InfoChannel, InfoContact, InfoLink } from "@/api/infoContent.api";
@@ -50,11 +50,11 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
         <div
           key={t.id}
           className={`flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg text-sm font-medium pointer-events-auto transition-all
-            ${t.type === "success" ? "bg-emerald-50 border border-emerald-200 text-emerald-800" : "bg-red-50 border border-red-200 text-red-800"}`}
+            ${t.type === "success" ? "bg-emerald-50 border border-emerald-200 text-emerald-800 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400" : "bg-red-50 border border-red-200 text-red-800 dark:bg-red-950/40 dark:border-red-800 dark:text-red-400"}`}
         >
-          {t.type === "success" ? <CheckCircle2 size={16} className="text-emerald-600 shrink-0" /> : <AlertCircle size={16} className="text-red-600 shrink-0" />}
+          {t.type === "success" ? <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" /> : <AlertCircle size={16} className="text-red-600 dark:text-red-400 shrink-0" />}
           <span>{t.msg}</span>
-          <button onClick={() => onDismiss(t.id)} className="ml-2 text-gray-400 hover:text-gray-600 cursor-pointer"><X size={14} /></button>
+          <button onClick={() => onDismiss(t.id)} className="ml-2 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 cursor-pointer"><X size={14} /></button>
         </div>
       ))}
     </div>
@@ -145,6 +145,18 @@ function ChannelsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
   const [editing, setEditing]   = useState<string | null>(null); // id or "new"
   const [form, setForm]         = useState<ChannelForm>(BLANK_CHANNEL);
   const [saving, setSaving]     = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredChannels = useMemo(() => {
+    if (!searchQuery.trim()) return channels;
+    const q = searchQuery.toLowerCase();
+    return channels.filter(
+      (ch) =>
+        ch.label.toLowerCase().includes(q) ||
+        ch.url.toLowerCase().includes(q) ||
+        ch.platform.toLowerCase().includes(q)
+    );
+  }, [channels, searchQuery]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -195,8 +207,17 @@ function ChannelsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
 
   return (
     <div className="space-y-4">
-      {/* Add button */}
-      <div className="flex justify-end">
+      {/* Add button + Search */}
+      <div className="flex flex-col sm:flex-row justify-between gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search channels..."
+            className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         <Button
           onClick={() => startEdit()}
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2.5 rounded-xl font-semibold shadow-sm cursor-pointer"
@@ -246,8 +267,8 @@ function ChannelsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
             >
               {form.isActive
                 ? <ToggleRight size={20} className="text-emerald-500" />
-                : <ToggleLeft size={20} className="text-gray-400" />}
-              <span className={form.isActive ? "text-emerald-700 dark:text-emerald-400" : "text-gray-500"}>
+                : <ToggleLeft size={20} className="text-gray-400 dark:text-slate-500" />}
+              <span className={form.isActive ? "text-emerald-700 dark:text-emerald-400" : "text-gray-500 dark:text-slate-400"}>
                 {form.isActive ? "Active (visible on public page)" : "Inactive (hidden from public page)"}
               </span>
             </button>
@@ -276,14 +297,16 @@ function ChannelsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
         <div className="space-y-2">
           {[...Array(4)].map((_, i) => <div key={i} className="h-14 rounded-xl bg-gray-200 dark:bg-slate-800 animate-pulse" />)}
         </div>
-      ) : channels.length === 0 ? (
+      ) : filteredChannels.length === 0 ? (
         <Card className="p-8 text-center">
           <Send size={32} className="mx-auto text-gray-300 dark:text-slate-600 mb-3" />
-          <p className="text-sm text-gray-500 dark:text-slate-400">No channels yet. Add the first one!</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            {searchQuery ? "No channels match your search." : "No channels yet. Add the first one!"}
+          </p>
         </Card>
       ) : (
         <div className="space-y-2">
-          {channels.map(ch => {
+          {filteredChannels.map(ch => {
             const Icon = getPlatformIcon(ch.platform);
             const color = getPlatformColor(ch.platform);
             return (
@@ -299,16 +322,16 @@ function ChannelsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
                   </a>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ch.isActive ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400" : "bg-gray-100 dark:bg-slate-800 text-gray-500"}`}>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${ch.isActive ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400" : "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400"}`}>
                     {ch.isActive ? "Active" : "Inactive"}
                   </span>
                   <button onClick={() => toggleActive(ch)} title={ch.isActive ? "Deactivate" : "Activate"} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer">
-                    {ch.isActive ? <ToggleRight size={16} className="text-emerald-500" /> : <ToggleLeft size={16} className="text-gray-400" />}
+                    {ch.isActive ? <ToggleRight size={16} className="text-emerald-500" /> : <ToggleLeft size={16} className="text-gray-400 dark:text-slate-500" />}
                   </button>
                   <button onClick={() => startEdit(ch)} className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 transition-all cursor-pointer">
                     <Pencil size={14} />
                   </button>
-                  <button onClick={() => handleDelete(ch.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/40 text-red-500 transition-all cursor-pointer">
+                  <button onClick={() => handleDelete(ch.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/40 text-red-500 dark:text-red-400 transition-all cursor-pointer">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -334,6 +357,18 @@ function ContactsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
   const [editing, setEditing]   = useState<string | null>(null);
   const [form, setForm]         = useState<ContactForm>(BLANK_CONTACT);
   const [saving, setSaving]     = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredContacts = useMemo(() => {
+    if (!searchQuery.trim()) return contacts;
+    const q = searchQuery.toLowerCase();
+    return contacts.filter(
+      (co) =>
+        co.label.toLowerCase().includes(q) ||
+        co.value.toLowerCase().includes(q) ||
+        co.type.toLowerCase().includes(q)
+    );
+  }, [contacts, searchQuery]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -372,7 +407,16 @@ function ContactsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-col sm:flex-row justify-between gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search contacts..."
+            className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         <Button onClick={() => startEdit()} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2.5 rounded-xl font-semibold shadow-sm cursor-pointer">
           <Plus size={14} /> Add Contact
         </Button>
@@ -401,8 +445,8 @@ function ContactsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
           </div>
           <div className="flex items-center gap-3 mt-3">
             <button type="button" onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))} className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-              {form.isActive ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} className="text-gray-400" />}
-              <span className={form.isActive ? "text-emerald-700 dark:text-emerald-400" : "text-gray-500"}>{form.isActive ? "Active" : "Inactive"}</span>
+              {form.isActive ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} className="text-gray-400 dark:text-slate-500" />}
+              <span className={form.isActive ? "text-emerald-700 dark:text-emerald-400" : "text-gray-500 dark:text-slate-400"}>{form.isActive ? "Active" : "Inactive"}</span>
             </button>
           </div>
           <div className="flex gap-2 mt-4">
@@ -419,10 +463,10 @@ function ContactsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
       {loading ? (
         <div className="space-y-2">{[...Array(2)].map((_, i) => <div key={i} className="h-14 rounded-xl bg-gray-200 dark:bg-slate-800 animate-pulse" />)}</div>
       ) : contacts.length === 0 ? (
-        <Card className="p-8 text-center"><Phone size={32} className="mx-auto text-gray-300 dark:text-slate-600 mb-3" /><p className="text-sm text-gray-500 dark:text-slate-400">No contacts yet.</p></Card>
+        <Card className="p-8 text-center"><Phone size={32} className="mx-auto text-gray-300 dark:text-slate-600 mb-3" /><p className="text-sm text-gray-500 dark:text-slate-400">{searchQuery ? "No contacts match your search." : "No contacts yet."}</p></Card>
       ) : (
         <div className="space-y-2">
-          {contacts.map(co => (
+          {filteredContacts.map(co => (
             <Card key={co.id} className={`p-4 flex items-center gap-3 transition-all ${!co.isActive ? "opacity-50" : ""}`}>
               <div className={`h-9 w-9 rounded-lg flex items-center justify-center flex-shrink-0 ${co.type === "email" ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"}`}>
                 {co.type === "email" ? <Mail size={16} /> : <Phone size={16} />}
@@ -432,12 +476,12 @@ function ContactsTab({ toast }: { toast: (msg: string, type?: ToastType) => void
                 <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate">{co.value}</p>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${co.isActive ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400" : "bg-gray-100 dark:bg-slate-800 text-gray-500"}`}>{co.isActive ? "Active" : "Inactive"}</span>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${co.isActive ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400" : "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400"}`}>{co.isActive ? "Active" : "Inactive"}</span>
                 <button onClick={() => toggleActive(co)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer">
-                  {co.isActive ? <ToggleRight size={16} className="text-emerald-500" /> : <ToggleLeft size={16} className="text-gray-400" />}
+                  {co.isActive ? <ToggleRight size={16} className="text-emerald-500" /> : <ToggleLeft size={16} className="text-gray-400 dark:text-slate-500" />}
                 </button>
                 <button onClick={() => startEdit(co)} className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 transition-all cursor-pointer"><Pencil size={14} /></button>
-                <button onClick={() => handleDelete(co.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/40 text-red-500 transition-all cursor-pointer"><Trash2 size={14} /></button>
+                <button onClick={() => handleDelete(co.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/40 text-red-500 dark:text-red-400 transition-all cursor-pointer"><Trash2 size={14} /></button>
               </div>
             </Card>
           ))}
@@ -460,6 +504,18 @@ function LinksTab({ toast }: { toast: (msg: string, type?: ToastType) => void })
   const [editing, setEditing] = useState<string | null>(null);
   const [form, setForm]       = useState<LinkForm>(BLANK_LINK);
   const [saving, setSaving]   = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredLinks = useMemo(() => {
+    if (!searchQuery.trim()) return links;
+    const q = searchQuery.toLowerCase();
+    return links.filter(
+      (lk) =>
+        lk.label.toLowerCase().includes(q) ||
+        lk.url.toLowerCase().includes(q) ||
+        lk.iconName.toLowerCase().includes(q)
+    );
+  }, [links, searchQuery]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -498,7 +554,16 @@ function LinksTab({ toast }: { toast: (msg: string, type?: ToastType) => void })
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-col sm:flex-row justify-between gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search links..."
+            className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
         <Button onClick={() => startEdit()} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs px-4 py-2.5 rounded-xl font-semibold shadow-sm cursor-pointer">
           <Plus size={14} /> Add Link
         </Button>
@@ -530,8 +595,8 @@ function LinksTab({ toast }: { toast: (msg: string, type?: ToastType) => void })
           </div>
           <div className="flex items-center gap-3 mt-3">
             <button type="button" onClick={() => setForm(f => ({ ...f, isActive: !f.isActive }))} className="flex items-center gap-1.5 text-xs font-semibold cursor-pointer">
-              {form.isActive ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} className="text-gray-400" />}
-              <span className={form.isActive ? "text-emerald-700 dark:text-emerald-400" : "text-gray-500"}>{form.isActive ? "Active" : "Inactive"}</span>
+              {form.isActive ? <ToggleRight size={20} className="text-emerald-500" /> : <ToggleLeft size={20} className="text-gray-400 dark:text-slate-500" />}
+              <span className={form.isActive ? "text-emerald-700 dark:text-emerald-400" : "text-gray-500 dark:text-slate-400"}>{form.isActive ? "Active" : "Inactive"}</span>
             </button>
           </div>
           <div className="flex gap-2 mt-4">
@@ -548,10 +613,10 @@ function LinksTab({ toast }: { toast: (msg: string, type?: ToastType) => void })
       {loading ? (
         <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-14 rounded-xl bg-gray-200 dark:bg-slate-800 animate-pulse" />)}</div>
       ) : links.length === 0 ? (
-        <Card className="p-8 text-center"><LinkIcon size={32} className="mx-auto text-gray-300 dark:text-slate-600 mb-3" /><p className="text-sm text-gray-500 dark:text-slate-400">No campus links yet.</p></Card>
+        <Card className="p-8 text-center"><LinkIcon size={32} className="mx-auto text-gray-300 dark:text-slate-600 mb-3" /><p className="text-sm text-gray-500 dark:text-slate-400">{searchQuery ? "No links match your search." : "No campus links yet."}</p></Card>
       ) : (
         <div className="space-y-2">
-          {links.map(lk => {
+          {filteredLinks.map(lk => {
             const Icon = getLinkIcon(lk.iconName);
             return (
               <Card key={lk.id} className={`p-4 flex items-center gap-3 transition-all ${!lk.isActive ? "opacity-50" : ""}`}>
@@ -564,12 +629,12 @@ function LinksTab({ toast }: { toast: (msg: string, type?: ToastType) => void })
                   <p className="text-[11px] text-gray-500 dark:text-slate-400 truncate">{lk.url}</p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${lk.isActive ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400" : "bg-gray-100 dark:bg-slate-800 text-gray-500"}`}>{lk.isActive ? "Active" : "Inactive"}</span>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${lk.isActive ? "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400" : "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400"}`}>{lk.isActive ? "Active" : "Inactive"}</span>
                   <button onClick={() => toggleActive(lk)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-all cursor-pointer">
-                    {lk.isActive ? <ToggleRight size={16} className="text-emerald-500" /> : <ToggleLeft size={16} className="text-gray-400" />}
+                    {lk.isActive ? <ToggleRight size={16} className="text-emerald-500" /> : <ToggleLeft size={16} className="text-gray-400 dark:text-slate-500" />}
                   </button>
                   <button onClick={() => startEdit(lk)} className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 transition-all cursor-pointer"><Pencil size={14} /></button>
-                  <button onClick={() => handleDelete(lk.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/40 text-red-500 transition-all cursor-pointer"><Trash2 size={14} /></button>
+                  <button onClick={() => handleDelete(lk.id)} className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/40 text-red-500 dark:text-red-400 transition-all cursor-pointer"><Trash2 size={14} /></button>
                 </div>
               </Card>
             );

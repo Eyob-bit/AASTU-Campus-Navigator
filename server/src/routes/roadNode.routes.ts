@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireAdminAuth } from "../middleware/auth.middleware.js";
 import {
   getRoadNodes,
   getRoadNodeById,
@@ -11,8 +12,8 @@ const router = Router();
 
 router.get("/", getRoadNodes);
 router.get("/:id", getRoadNodeById);
-router.post("/", createRoadNode);
-router.patch("/:id", updateRoadNode);
-router.delete("/:id", deleteRoadNode);
+router.post("/", requireAdminAuth, createRoadNode);
+router.patch("/:id", requireAdminAuth, updateRoadNode);
+router.delete("/:id", requireAdminAuth, deleteRoadNode);
 
 export default router;

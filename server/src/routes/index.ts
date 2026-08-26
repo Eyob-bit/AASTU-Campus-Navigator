@@ -30,7 +30,7 @@ router.use("/search", searchRoutes);        // Campus search (public, used by cl
 router.use("/navigation", navigationRoutes); // Indoor navigation (public)
 router.use("/navigation", roadNavigationRoutes); // A* route (public)
 router.use("/chat", chatRouter);            // AI chatbot (public)
-// Public read-only endpoints for campus map/client
+// Campus map/client routes (read-only GET endpoints protected by route handlers, write operations protected by requireAdminAuth within each route file)
 router.use("/buildings", buildingRoutes);
 router.use("/floors", floorRoutes);
 router.use("/offices", officeRoutes);

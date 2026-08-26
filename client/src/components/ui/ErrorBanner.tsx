@@ -17,15 +17,15 @@ export interface ErrorBannerProps {
 export function ErrorBanner({ title, message, onRetry }: ErrorBannerProps) {
   if (!message) return null;
   return (
-    <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl">
-      <AlertCircle size={16} className="text-red-500 flex-shrink-0 mt-0.5" />
+    <div className="flex items-start gap-3 p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl">
+      <AlertCircle size={16} className="text-red-500 dark:text-red-400 flex-shrink-0 mt-0.5" />
       <div>
-        <p className="text-sm font-medium text-red-800">{title}</p>
-        <p className="text-xs text-red-600 mt-0.5">{message}</p>
+        <p className="text-sm font-medium text-red-800 dark:text-red-400">{title}</p>
+        <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">{message}</p>
       </div>
       <button
         onClick={onRetry}
-        className="ml-auto text-xs text-red-600 font-medium hover:underline"
+        className="ml-auto text-xs text-red-600 dark:text-red-400 font-medium hover:underline"
       >
         Retry
       </button>

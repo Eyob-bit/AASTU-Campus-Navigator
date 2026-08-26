@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 
 // Public layout + pages
@@ -16,23 +17,39 @@ import { NotFoundPage } from "@/pages/NotFound";
 import { AdminLayout } from "@/layouts/AdminLayout";
 import { AuthGuard } from "@/router/AuthGuard";
 
-// Admin pages
+// Admin pages - eagerly loaded (small, frequently accessed)
 import { LoginPage } from "@/pages/admin/Login/LoginPage";
 import { DashboardPage } from "@/pages/admin/Dashboard/DashboardPage";
-import { BuildingsPage } from "@/pages/admin/Buildings/BuildingsPage";
-import { FloorsPage } from "@/pages/admin/Floors/FloorsPage";
-import { OfficesPage } from "@/pages/admin/Offices/OfficesPage";
-import { StaffPage } from "@/pages/admin/Staff/StaffPage";
-import { AliasesPage } from "@/pages/admin/Aliases/AliasesPage";
-import { AnalyticsPage } from "@/pages/admin/Analytics/AnalyticsPage";
-import { PanoramaGalleryPage } from "@/pages/admin/PanoramaGallery/PanoramaGalleryPage";
-import { SceneEditorPage } from "@/pages/admin/SceneEditor/SceneEditorPage";
-import { NavigationPreviewPage } from "@/pages/admin/NavigationPreview/NavigationPreviewPage";
-import { SettingsPage } from "@/pages/admin/Settings/SettingsPage";
-import { ProfilePage } from "@/pages/admin/Profile/ProfilePage";
-import { LandmarksPage } from "@/pages/admin/Landmarks/LandmarksPage";
-import { RoadNetworkPage } from "@/pages/admin/RoadNetwork/RoadNetworkPage";
-import { InformationContentPage } from "@/pages/admin/InformationContent/InformationContentPage";
+
+// Admin pages - lazy loaded (heavy, less frequent)
+const BuildingsPage = lazy(() => import("@/pages/admin/Buildings/BuildingsPage").then(m => ({ default: m.BuildingsPage })));
+const FloorsPage = lazy(() => import("@/pages/admin/Floors/FloorsPage").then(m => ({ default: m.FloorsPage })));
+const OfficesPage = lazy(() => import("@/pages/admin/Offices/OfficesPage").then(m => ({ default: m.OfficesPage })));
+const StaffPage = lazy(() => import("@/pages/admin/Staff/StaffPage").then(m => ({ default: m.StaffPage })));
+const AliasesPage = lazy(() => import("@/pages/admin/Aliases/AliasesPage").then(m => ({ default: m.AliasesPage })));
+const AnalyticsPage = lazy(() => import("@/pages/admin/Analytics/AnalyticsPage").then(m => ({ default: m.AnalyticsPage })));
+const PanoramaGalleryPage = lazy(() => import("@/pages/admin/PanoramaGallery/PanoramaGalleryPage").then(m => ({ default: m.PanoramaGalleryPage })));
+const SceneEditorPage = lazy(() => import("@/pages/admin/SceneEditor/SceneEditorPage").then(m => ({ default: m.SceneEditorPage })));
+const NavigationPreviewPage = lazy(() => import("@/pages/admin/NavigationPreview/NavigationPreviewPage").then(m => ({ default: m.NavigationPreviewPage })));
+const SettingsPage = lazy(() => import("@/pages/admin/Settings/SettingsPage").then(m => ({ default: m.SettingsPage })));
+const ProfilePage = lazy(() => import("@/pages/admin/Profile/ProfilePage").then(m => ({ default: m.ProfilePage })));
+const LandmarksPage = lazy(() => import("@/pages/admin/Landmarks/LandmarksPage").then(m => ({ default: m.LandmarksPage })));
+const RoadNetworkPage = lazy(() => import("@/pages/admin/RoadNetwork/RoadNetworkPage").then(m => ({ default: m.RoadNetworkPage })));
+const InformationContentPage = lazy(() => import("@/pages/admin/InformationContent/InformationContentPage").then(m => ({ default: m.InformationContentPage })));
+
+function AdminSuspense({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+        </div>
+      }
+    >
+      {children}
+    </Suspense>
+  );
+}
 
 export default function App() {
   return (
@@ -68,22 +85,22 @@ export default function App() {
         }
       >
         <Route index element={<DashboardPage />} />
-        <Route path="analytics" element={<AnalyticsPage />} />
-        <Route path="buildings" element={<BuildingsPage />} />
-        <Route path="floors" element={<FloorsPage />} />
-        <Route path="offices" element={<OfficesPage />} />
-        <Route path="staff" element={<StaffPage />} />
-        <Route path="aliases" element={<AliasesPage />} />
-        <Route path="panoramas" element={<PanoramaGalleryPage />} />
-        <Route path="scene-editor" element={<SceneEditorPage />} />
-        <Route path="scene-editor/:sceneId" element={<SceneEditorPage />} />
-        <Route path="nav-preview" element={<NavigationPreviewPage />} />
-        <Route path="nav-preview/:sceneId" element={<NavigationPreviewPage />} />
-        <Route path="road-network" element={<RoadNetworkPage />} />
-        <Route path="profile" element={<ProfilePage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="landmarks" element={<LandmarksPage />} />
-        <Route path="info-content" element={<InformationContentPage />} />
+        <Route path="analytics" element={<AdminSuspense><AnalyticsPage /></AdminSuspense>} />
+        <Route path="buildings" element={<AdminSuspense><BuildingsPage /></AdminSuspense>} />
+        <Route path="floors" element={<AdminSuspense><FloorsPage /></AdminSuspense>} />
+        <Route path="offices" element={<AdminSuspense><OfficesPage /></AdminSuspense>} />
+        <Route path="staff" element={<AdminSuspense><StaffPage /></AdminSuspense>} />
+        <Route path="aliases" element={<AdminSuspense><AliasesPage /></AdminSuspense>} />
+        <Route path="panoramas" element={<AdminSuspense><PanoramaGalleryPage /></AdminSuspense>} />
+        <Route path="scene-editor" element={<AdminSuspense><SceneEditorPage /></AdminSuspense>} />
+        <Route path="scene-editor/:sceneId" element={<AdminSuspense><SceneEditorPage /></AdminSuspense>} />
+        <Route path="nav-preview" element={<AdminSuspense><NavigationPreviewPage /></AdminSuspense>} />
+        <Route path="nav-preview/:sceneId" element={<AdminSuspense><NavigationPreviewPage /></AdminSuspense>} />
+        <Route path="road-network" element={<AdminSuspense><RoadNetworkPage /></AdminSuspense>} />
+        <Route path="profile" element={<AdminSuspense><ProfilePage /></AdminSuspense>} />
+        <Route path="settings" element={<AdminSuspense><SettingsPage /></AdminSuspense>} />
+        <Route path="landmarks" element={<AdminSuspense><LandmarksPage /></AdminSuspense>} />
+        <Route path="info-content" element={<AdminSuspense><InformationContentPage /></AdminSuspense>} />
       </Route>
 
       {/* ── Fallback ── */}

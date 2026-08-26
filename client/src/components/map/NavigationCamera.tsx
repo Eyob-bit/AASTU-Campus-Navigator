@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import { LngLatBounds } from "maplibre-gl";
-import { useMapInstance } from "./MapLibreContainer";
+import { useGoogleMapInstance } from "./GoogleMapsContainer";
 import { useAppStore } from "@/store";
 
 interface NavigationCameraProps {
@@ -20,14 +19,16 @@ export function NavigationCamera({
   shouldCenter,
   setShouldCenter,
 }: NavigationCameraProps) {
-  const map = useMapInstance();
+  const map = useGoogleMapInstance();
   const { navStep, destinationTarget } = useAppStore();
   const hasFitRouteRef = useRef<boolean>(false);
   const isNavigating = navStep === "OUTDOOR_NAV";
+  const lastEaseToTimeRef = useRef<number>(0);
+  const easeToTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Listen for user manual gestures (drag/pan) to pause follow mode
   useEffect(() => {
-    if (!map) return;
+    if (!map || typeof google === "undefined" || !google.maps) return;
 
     const handleUserInteraction = () => {
       if (isNavigating) {
@@ -35,32 +36,25 @@ export function NavigationCamera({
       }
     };
 
-    map.on("dragstart", handleUserInteraction);
-    map.on("rotatestart", handleUserInteraction);
-    map.on("pitchstart", handleUserInteraction);
+    const dragListener = map.addListener("dragstart", handleUserInteraction);
 
     return () => {
-      map.off("dragstart", handleUserInteraction);
-      map.off("rotatestart", handleUserInteraction);
-      map.off("pitchstart", handleUserInteraction);
+      google.maps.event.removeListener(dragListener);
     };
   }, [map, isNavigating, setIsFollowingUser]);
 
   // Initial fit bounds when outdoor navigation starts
   useEffect(() => {
-    if (!map) return;
+    if (!map || typeof google === "undefined" || !google.maps) return;
 
     if (isNavigating && destinationTarget && userLocation && !hasFitRouteRef.current) {
-      const bounds = new LngLatBounds();
-      bounds.extend([userLocation.lng, userLocation.lat]);
-      bounds.extend([destinationTarget.longitude, destinationTarget.latitude]);
+      const bounds = new google.maps.LatLngBounds();
+      bounds.extend(new google.maps.LatLng(userLocation.lat, userLocation.lng));
+      bounds.extend(
+        new google.maps.LatLng(destinationTarget.latitude, destinationTarget.longitude)
+      );
 
-      map.fitBounds(bounds, {
-        padding: { top: 100, bottom: 180, left: 60, right: 60 },
-        maxZoom: 18,
-        duration: 1000,
-      });
-
+      map.fitBounds(bounds, 60);
       hasFitRouteRef.current = true;
     }
 
@@ -79,11 +73,11 @@ export function NavigationCamera({
       const customEvent = e as CustomEvent<{ lat: number; lng: number; zoom?: number }>;
       if (customEvent.detail?.lat && customEvent.detail?.lng) {
         setIsFollowingUser(false);
-        map.flyTo({
-          center: [customEvent.detail.lng, customEvent.detail.lat],
-          zoom: customEvent.detail.zoom ?? 19,
-          duration: 1200,
+        map.setCenter({
+          lat: customEvent.detail.lat,
+          lng: customEvent.detail.lng,
         });
+        map.setZoom(customEvent.detail.zoom ?? 19);
       }
     }
 
@@ -96,46 +90,59 @@ export function NavigationCamera({
     if (!map || !shouldCenter || !userLocation) return;
 
     setIsFollowingUser(true);
-    const targetZoom = Math.max(map.getZoom(), 18);
 
     if (isNavigating) {
-      map.easeTo({
-        center: [userLocation.lng, userLocation.lat],
-        bearing: fusedHeading,
-        pitch: 50,
-        zoom: 19,
-        padding: { top: 60, bottom: Math.round(window.innerHeight * 0.35), left: 0, right: 0 },
-        duration: 800,
+      map.setCenter({
+        lat: userLocation.lat,
+        lng: userLocation.lng,
       });
+      map.setZoom(19);
     } else {
-      map.flyTo({
-        center: [userLocation.lng, userLocation.lat],
-        zoom: targetZoom,
-        pitch: 0,
-        bearing: 0,
-        duration: 800,
+      map.setCenter({
+        lat: userLocation.lat,
+        lng: userLocation.lng,
       });
+      map.setZoom(19);
     }
 
     setShouldCenter(false);
-  }, [map, shouldCenter, userLocation, isNavigating, fusedHeading, setIsFollowingUser, setShouldCenter]);
+  }, [map, shouldCenter, userLocation, isNavigating, fusedHeading, setShouldCenter]);
 
-  // Sole owner of MapLibre camera during active OUTDOOR_NAV + FOLLOW=true
+  // Camera update during active navigation - smooth following
   useEffect(() => {
     if (!map || !isNavigating || !isFollowingUser || !userLocation) return;
 
-    // Smooth camera easeTo with native MapLibre padding offset (user at ~65-70% down screen)
-    map.easeTo({
-      center: [userLocation.lng, userLocation.lat],
-      bearing: fusedHeading,
-      pitch: 50,
-      zoom: 19,
-      padding: { top: 60, bottom: Math.round(window.innerHeight * 0.32), left: 0, right: 0 },
-      duration: 350,
-      easing: (t) => t,
-    });
+    const now = Date.now();
+    const elapsed = now - lastEaseToTimeRef.current;
+
+    if (elapsed >= 200) {
+      lastEaseToTimeRef.current = now;
+      map.panTo({
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+      });
+    } else {
+      if (easeToTimerRef.current !== null) {
+        clearTimeout(easeToTimerRef.current);
+      }
+      easeToTimerRef.current = setTimeout(() => {
+        map.panTo({
+          lat: userLocation.lat,
+          lng: userLocation.lng,
+        });
+        easeToTimerRef.current = null;
+      }, 200 - elapsed);
+    }
   }, [map, isNavigating, isFollowingUser, userLocation, fusedHeading]);
 
-  // Navigation camera handles camera tracking and returns no DOM elements
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (easeToTimerRef.current !== null) {
+        clearTimeout(easeToTimerRef.current);
+      }
+    };
+  }, []);
+
   return null;
 }

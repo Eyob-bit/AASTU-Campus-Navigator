@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Marker } from "maplibre-gl";
-import { useMapInstance } from "./MapLibreContainer";
+import { useGoogleMapInstance } from "./GoogleMapsContainer";
 
 interface UserLocationMarkerProps {
   lat: number;
@@ -15,113 +14,63 @@ export function UserLocationMarker({
   lng,
   isNavigating = false,
   heading = 0,
-  isCourseUp = false,
 }: UserLocationMarkerProps) {
-  const map = useMapInstance();
-  const markerRef = useRef<Marker | null>(null);
-  const elementRef = useRef<HTMLDivElement | null>(null);
-
-  // Helper to build marker HTML content
-  const renderMarkerHtml = () => {
-    if (isNavigating && isCourseUp) {
-      return `
-        <div style="position:relative;display:flex;align-items:center;justify-content:center;width:48px;height:48px;pointer-events:none;">
-          <!-- Glowing pulse halo -->
-          <div style="
-            position:absolute;
-            width:44px;height:44px;
-            border-radius:50%;
-            background:radial-gradient(circle, rgba(6,182,212,0.35) 0%, rgba(6,182,212,0) 75%);
-            animation:pulse 2s infinite ease-out;
-          "></div>
-          <!-- Directional forward pointer (pointing straight UP, matching map camera bearing) -->
-          <div style="
-            position:relative;
-            width:32px;height:32px;
-            display:flex;align-items:center;justify-content:center;
-            filter:drop-shadow(0 4px 8px rgba(0,0,0,0.6));
-          ">
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M16 3L28 27L16 21L4 27L16 3Z" fill="#06B6D4" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
-              <path d="M16 6L24 23L16 19L8 23L16 6Z" fill="#22D3EE"/>
-            </svg>
-          </div>
-        </div>
-      `;
-    }
-
-    // Normal Map Mode: Pulsing dot with optional compass beam
-    return `
-      <div style="position:relative;display:flex;align-items:center;justify-content:center;width:40px;height:40px;pointer-events:none;">
-        ${
-          heading > 0
-            ? `<div style="
-                position:absolute;
-                width:0;height:0;
-                border-left:14px solid transparent;
-                border-right:14px solid transparent;
-                border-bottom:28px solid rgba(6,182,212,0.35);
-                top:-10px;
-                transform-origin:bottom center;
-                transform:rotate(${heading}deg);
-                pointer-events:none;
-              "></div>`
-            : ""
-        }
-        <div style="
-          position:absolute;
-          width:36px;height:36px;
-          border-radius:50%;
-          background:rgba(6,182,212,0.25);
-          border:1.5px solid rgba(6,182,212,0.6);
-        "></div>
-        <div style="
-          position:relative;
-          width:16px;height:16px;
-          border-radius:50%;
-          background:#06b6d4;
-          border:2.5px solid #ffffff;
-          box-shadow:0 0 14px rgba(6,182,212,0.9), 0 2px 6px rgba(0,0,0,0.5);
-        "></div>
-      </div>
-    `;
-  };
+  const map = useGoogleMapInstance();
+  const markerRef = useRef<google.maps.Marker | null>(null);
 
   useEffect(() => {
-    if (!map || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) return;
+    if (!map || typeof google === "undefined" || !google.maps || isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0)) {
+      return;
+    }
 
-    if (!markerRef.current) {
-      const el = document.createElement("div");
-      el.className = "user-location-marker";
-      el.innerHTML = renderMarkerHtml();
-      elementRef.current = el;
+    const position = { lat, lng };
 
-      const marker = new Marker({
-        element: el,
-        anchor: "center",
-        rotationAlignment: "viewport",
-        pitchAlignment: "viewport",
-      })
-        .setLngLat([lng, lat])
-        .addTo(map);
+    const svgIcon = isNavigating
+      ? `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="20" cy="20" r="18" fill="#06B6D4" fill-opacity="0.25"/>
+          <g transform="rotate(${heading}, 20, 20)">
+            <path d="M20 6L31 32L20 25L9 32L20 6Z" fill="#06B6D4" stroke="#FFFFFF" stroke-width="2.5" stroke-linejoin="round"/>
+            <path d="M20 9L27 28L20 23L13 28L20 9Z" fill="#22D3EE"/>
+          </g>
+        </svg>
+      `)}`
+      : `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+        <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="18" cy="18" r="16" fill="#06B6D4" fill-opacity="0.25" stroke="#06B6D4" stroke-width="1"/>
+          <circle cx="18" cy="18" r="8" fill="#06B6D4" stroke="#FFFFFF" stroke-width="2.5"/>
+        </svg>
+      `)}`;
 
-      markerRef.current = marker;
+    if (markerRef.current) {
+      markerRef.current.setPosition(position);
+      markerRef.current.setIcon({
+        url: svgIcon,
+        scaledSize: new google.maps.Size(isNavigating ? 40 : 36, isNavigating ? 40 : 36),
+        anchor: new google.maps.Point(isNavigating ? 20 : 18, isNavigating ? 20 : 18),
+      });
     } else {
-      if (elementRef.current) {
-        elementRef.current.innerHTML = renderMarkerHtml();
-      }
-      markerRef.current.setLngLat([lng, lat]);
+      const marker = new google.maps.Marker({
+        position,
+        map,
+        title: "Your Location",
+        zIndex: 999,
+        icon: {
+          url: svgIcon,
+          scaledSize: new google.maps.Size(isNavigating ? 40 : 36, isNavigating ? 40 : 36),
+          anchor: new google.maps.Point(isNavigating ? 20 : 18, isNavigating ? 20 : 18),
+        },
+      });
+      markerRef.current = marker;
     }
 
     return () => {
       if (markerRef.current) {
-        markerRef.current.remove();
+        markerRef.current.setMap(null);
         markerRef.current = null;
       }
     };
-  // Update marker position & appearance on location/nav state change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, lat, lng, isNavigating, heading, isCourseUp]);
+  }, [map, lat, lng, isNavigating, heading]);
 
   return null;
 }

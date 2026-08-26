@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { Modal, Input, Select, Button } from "@/components/ui";
-import { MapLibreContainer, MapLocationPickerInner, CampusBoundaryPolygon, AASTU_CENTER, CATEGORY_CONFIG, type TileMode } from "@/components/map";
+import { GoogleMapsContainer, MapLocationPickerInner, CampusBoundaryPolygon, AASTU_CENTER, CATEGORY_CONFIG, type TileMode } from "@/components/map";
 import type { Landmark, LandmarkCategory, CreateLandmarkBody, UpdateLandmarkBody } from "@/types";
 import { buildingApi } from "@/api/building.api";
 import { roadNetworkApi, type RoadNode } from "@/api/roadNetwork.api";
@@ -174,7 +174,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
             disabled={saving}
           />
           {form.buildingId && (
-            <p className="text-[10px] text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1">
+            <p className="text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-lg px-2 py-1">
               🏢 The map marker name will always show the linked building's name as it appears in admin.
             </p>
           )}
@@ -189,7 +189,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
             onChange={set("roadNodeId")}
             disabled={saving}
           />
-          <p className="text-[11px] text-gray-500 mt-1">
+          <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
             Connects outdoor navigation directly to this road waypoint.
           </p>
         </div>
@@ -202,18 +202,18 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
           onChange={set("name")}
           disabled={saving}
         />
-        {errors.name && <p className="-mt-2 text-xs text-red-600">{errors.name}</p>}
+        {errors.name && <p className="-mt-2 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
 
         {/* Description */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-gray-700">Description (optional)</label>
+          <label className="text-sm font-medium text-gray-700 dark:text-slate-300">Description (optional)</label>
           <textarea
             rows={2}
             placeholder="Short description of this landmark…"
             value={form.description}
             onChange={(e) => set("description")(e.target.value)}
             disabled={saving}
-            className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full rounded-xl border border-gray-200 dark:border-slate-700 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
         </div>
 
@@ -234,7 +234,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
               onChange={set("icon")}
               disabled={saving}
             />
-            <p className="text-[10px] text-gray-400">Leave empty to use category default</p>
+            <p className="text-[10px] text-gray-400 dark:text-slate-500">Leave empty to use category default</p>
           </div>
         </div>
 
@@ -257,7 +257,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
               onChange={set("latitude")}
               disabled={saving}
             />
-            {errors.latitude && <p className="text-xs text-red-600">{errors.latitude}</p>}
+            {errors.latitude && <p className="text-xs text-red-600 dark:text-red-400">{errors.latitude}</p>}
           </div>
           <div className="flex flex-col gap-1.5">
             <Input
@@ -267,28 +267,28 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
               onChange={set("longitude")}
               disabled={saving}
             />
-            {errors.longitude && <p className="text-xs text-red-600">{errors.longitude}</p>}
+            {errors.longitude && <p className="text-xs text-red-600 dark:text-red-400">{errors.longitude}</p>}
           </div>
         </div>
 
         {/* Map picker */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 flex items-center gap-1.5">
               <MapPin size={14} className="text-blue-600" />
               Pick Location on AASTU Campus Map
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 shadow-2xs">
+              <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/60 shadow-2xs">
                 🟡 AASTU Boundary
               </span>
-              <span className="text-[11px] text-gray-500">Click map or drag pin</span>
+              <span className="text-[11px] text-gray-500 dark:text-slate-400">Click map or drag pin</span>
             </div>
           </div>
 
-          <div className="rounded-xl overflow-hidden border border-gray-300 shadow-sm relative h-[240px] sm:h-[300px] w-full">
-            <MapLibreContainer
-              center={[pickerLng, pickerLat]}
+          <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-600 shadow-sm relative h-[240px] sm:h-[300px] w-full">
+            <GoogleMapsContainer
+              center={AASTU_CENTER}
               zoom={18}
               minZoom={14}
               maxZoom={21}
@@ -301,7 +301,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
                 lng={pickerLng}
                 onChange={handleMapPick}
               />
-            </MapLibreContainer>
+            </GoogleMapsContainer>
             {/* Satellite toggle overlay */}
             <button
               type="button"
@@ -315,7 +315,7 @@ export function LandmarkFormModal({ open, onClose, onSubmit, landmark }: Landmar
         </div>
 
         {submitError && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+          <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
             {submitError}
           </p>
         )}

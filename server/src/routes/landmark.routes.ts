@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { landmarkController } from "../controllers/landmark.controller.js";
+import { requireAdminAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
 
@@ -8,8 +9,8 @@ router.get("/search", landmarkController.searchLandmarks);
 
 router.get("/", landmarkController.getLandmarks);
 router.get("/:id", landmarkController.getLandmarkById);
-router.post("/", landmarkController.createLandmark);
-router.patch("/:id", landmarkController.updateLandmark);
-router.delete("/:id", landmarkController.deleteLandmark);
+router.post("/", requireAdminAuth, landmarkController.createLandmark);
+router.patch("/:id", requireAdminAuth, landmarkController.updateLandmark);
+router.delete("/:id", requireAdminAuth, landmarkController.deleteLandmark);
 
 export default router;

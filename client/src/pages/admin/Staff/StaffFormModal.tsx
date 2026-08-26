@@ -160,7 +160,7 @@ export function StaffFormModal({
               disabled={saving || isEdit}
             />
             {errors.buildingId && (
-              <p className="text-xs text-red-600">{errors.buildingId}</p>
+              <p className="text-xs text-red-600 dark:text-red-400">{errors.buildingId}</p>
             )}
           </div>
 
@@ -177,7 +177,7 @@ export function StaffFormModal({
               disabled={saving || isEdit || filteredFloors.length === 0}
             />
             {errors.floorId && (
-              <p className="text-xs text-red-600">{errors.floorId}</p>
+              <p className="text-xs text-red-600 dark:text-red-400">{errors.floorId}</p>
             )}
           </div>
 
@@ -194,13 +194,13 @@ export function StaffFormModal({
               disabled={saving || isEdit || filteredOffices.length === 0}
             />
             {errors.officeId && (
-              <p className="text-xs text-red-600">{errors.officeId}</p>
+              <p className="text-xs text-red-600 dark:text-red-400">{errors.officeId}</p>
             )}
           </div>
         </div>
 
         {isEdit && (
-          <p className="text-xs text-gray-400 -mt-2">
+          <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">
             Building, floor, and office cannot be changed after creation.
           </p>
         )}
@@ -214,7 +214,7 @@ export function StaffFormModal({
             onChange={handleChange("fullName")}
             disabled={saving}
           />
-          {errors.fullName && <p className="text-xs text-red-600">{errors.fullName}</p>}
+          {errors.fullName && <p className="text-xs text-red-600 dark:text-red-400">{errors.fullName}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -226,7 +226,7 @@ export function StaffFormModal({
               onChange={handleChange("position")}
               disabled={saving}
             />
-            {errors.position && <p className="text-xs text-red-600">{errors.position}</p>}
+            {errors.position && <p className="text-xs text-red-600 dark:text-red-400">{errors.position}</p>}
           </div>
 
           {isEdit && (
@@ -261,7 +261,7 @@ export function StaffFormModal({
         </div>
 
         {submitError && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+          <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
             {submitError}
           </p>
         )}

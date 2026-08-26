@@ -1,10 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../config/prisma.js";
 import { analyzeQueryIntent, type ChatIntent } from "../utils/intentDetector.js";
 import { searchCampusKnowledge, type CampusMatchData } from "./campusKnowledge.service.js";
 import { chatMemory, type SessionMemory } from "./chatMemory.service.js";
 import { generateLLMResponse } from "./llm.service.js";
-
-const prisma = new PrismaClient();
 
 export interface ChatResponsePayload {
   message: string;

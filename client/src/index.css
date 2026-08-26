@@ -3,6 +3,7 @@
 
 /* ── Tailwind v4 base ── */
 @import "tailwindcss";
+@custom-variant dark (&:is(.dark *));
 @import "maplibre-gl/dist/maplibre-gl.css";
 
 /* ── MapLibre Container & Popup Styles ── */

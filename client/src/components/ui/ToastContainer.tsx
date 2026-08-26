@@ -14,13 +14,13 @@ export function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
         <div
           key={t.id}
           className={cn(
-            "flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border min-w-[280px] max-w-[360px] bg-white",
-            t.type === "success" ? "border-emerald-200" : t.type === "error" ? "border-red-200" : "border-blue-200"
+            "flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg border min-w-[280px] max-w-[360px] bg-white dark:bg-slate-900",
+            t.type === "success" ? "border-emerald-200 dark:border-emerald-800" : t.type === "error" ? "border-red-200 dark:border-red-800" : "border-blue-200 dark:border-blue-800"
           )}
         >
           <span
             className={cn(
-              t.type === "success" ? "text-emerald-600" : t.type === "error" ? "text-red-600" : "text-blue-600"
+              t.type === "success" ? "text-emerald-600 dark:text-emerald-400" : t.type === "error" ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"
             )}
           >
             {t.type === "success" ? (
@@ -31,8 +31,8 @@ export function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
               <Info size={18} />
             )}
           </span>
-          <p className="text-sm text-gray-800 flex-1">{t.message}</p>
-          <button onClick={() => onRemove(t.id)} className="text-gray-400 hover:text-gray-600">
+          <p className="text-sm text-gray-800 dark:text-slate-200 flex-1">{t.message}</p>
+          <button onClick={() => onRemove(t.id)} className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300">
             <X size={14} />
           </button>
         </div>

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Sidebar, AdminHeader } from "@/components/layout";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
+import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 
 export function AdminLayout() {
   const [collapsed, setCollapsed]       = useState(false);
@@ -16,7 +17,7 @@ export function AdminLayout() {
 
   return (
     <div
-      className="flex h-screen bg-gray-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-200"
+      className="flex h-screen bg-gray-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-200"
       style={{ fontFamily: "var(--font-sans, 'Inter', system-ui, sans-serif)" }}
     >
       {/* Mobile sidebar overlay */}
@@ -46,11 +47,13 @@ export function AdminLayout() {
       </div>
 
       {/* Content area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0">
         <AdminHeader onLogout={handleLogout} onMenuClick={() => setMobileOpen(true)} />
 
         <main className="flex-1 overflow-y-auto">
-          <Outlet />
+          <ErrorBoundary fallbackTitle="Page Error" fallbackDescription="This admin page encountered an error.">
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

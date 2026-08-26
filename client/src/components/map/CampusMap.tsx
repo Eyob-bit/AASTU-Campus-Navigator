@@ -6,9 +6,8 @@ import { useLandmarks } from "@/hooks/useLandmarks";
 import { useAppStore } from "@/store";
 import { useOutdoorRoute, useLiveNavigation, useHeadingFusion } from "@/hooks";
 import { OutdoorNavOverlay, ArrivalBottomSheet, BuildingTransitionOverlay, IndoorGuidanceCard } from "@/components/navigation";
-import { RouteProgressTracker } from "@/utils";
 
-import { MapLibreContainer, useMapInstance } from "./MapLibreContainer";
+import { GoogleMapsContainer } from "./GoogleMapsContainer";
 import { NavigationCamera } from "./NavigationCamera";
 import { BuildingMarker } from "./BuildingMarker";
 import { LandmarkMarker } from "./LandmarkMarker";
@@ -18,77 +17,32 @@ import { MapLoadingOverlay } from "./MapLoadingOverlay";
 import { MapErrorOverlay } from "./MapErrorOverlay";
 import { CampusBoundaryPolygon } from "./CampusBoundaryPolygon";
 import {
-  TILE_LAYERS,
-  AASTU_CENTER_LNG_LAT,
+  AASTU_CENTER,
   DEFAULT_ZOOM,
   MIN_ZOOM,
   MAX_ZOOM,
   type TileMode,
 } from "./mapConfig";
 
-export { TILE_LAYERS, type TileMode };
+export { AASTU_CENTER, type TileMode };
 
-// ── Floating Map Controls (GPS Pin + Satellite toggle + Compass Reset) ────────
+// ── Floating Map Controls (GPS Pin + Satellite toggle) ────────────────────────
 interface MapControlsProps {
-  onCenterLocation: () => void;
   tileMode: TileMode;
   onToggleTile: () => void;
-  onPauseFollow: () => void;
+  onCenterLocation: () => void;
 }
 
 function MapControls({
-  onCenterLocation,
   tileMode,
   onToggleTile,
-  onPauseFollow,
+  onCenterLocation,
 }: MapControlsProps) {
-  const map = useMapInstance();
-  const [bearing, setBearing] = useState<number>(0);
-
-  useEffect(() => {
-    if (!map) return;
-    const updateBearing = () => setBearing(map.getBearing());
-    updateBearing();
-    map.on("rotate", updateBearing);
-    return () => {
-      map.off("rotate", updateBearing);
-    };
-  }, [map]);
-
-  const isRotated = Math.abs(bearing) > 1;
-
-  const handleResetRotation = () => {
-    onPauseFollow();
-    if (map) {
-      map.easeTo({ bearing: 0, pitch: 0, duration: 400 });
-    }
-  };
-
   return (
     <div
       className="absolute bottom-24 right-3 sm:right-4 z-[1000] flex flex-col gap-2 pointer-events-auto select-none"
       style={{ zIndex: 1000 }}
     >
-      {/* Compass Reset Rotation Button */}
-      {isRotated && (
-        <button
-          onClick={handleResetRotation}
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B132B]/95 text-amber-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95"
-          title={`Reset Map Rotation (${bearing.toFixed(1)}°) to North`}
-        >
-          <span
-            style={{
-              display: "inline-block",
-              transform: `rotate(${-bearing}deg)`,
-              transition: "transform 0.15s ease-out",
-              fontSize: 16,
-            }}
-          >
-            🧭
-          </span>
-        </button>
-      )}
-
       {/* Satellite / Street toggle */}
       <button
         onClick={onToggleTile}
@@ -100,9 +54,13 @@ function MapControls({
         title={tileMode === "street" ? "Switch to Satellite View" : "Switch to Street View"}
       >
         {tileMode === "street" ? (
-          <><span style={{ fontSize: 13 }}>🛰️</span><span>Satellite</span></>
+          <>
+            <span style={{ fontSize: 13 }}>🛰️</span><span>Satellite</span>
+          </>
         ) : (
-          <><span style={{ fontSize: 13 }}>🗺️</span><span>Street</span></>
+          <>
+            <span style={{ fontSize: 13 }}>🗺️</span><span>Street</span>
+          </>
         )}
       </button>
 
@@ -217,7 +175,9 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     function handleOpenPanorama(e: Event) {
       const customEvent = e as CustomEvent<{ sceneId: string }>;
       if (customEvent.detail?.sceneId) {
-        window.location.href = `/dashboard/nav-preview/${customEvent.detail.sceneId}`;
+        window.dispatchEvent(new CustomEvent("aatsu_navigate", {
+          detail: { path: `/dashboard/nav-preview/${customEvent.detail.sceneId}` },
+        }));
       }
     }
 
@@ -238,48 +198,76 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
   const isLoading = buildingsLoading || landmarksLoading;
 
   // Map building lookup map by ID and normalized name
-  const buildingById = new Map(buildings.map((b) => [b.id, b]));
-  const buildingByName = new Map(
-    buildings.map((b) => [b.name.toLowerCase().trim(), b])
+  const buildingById = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
+  const buildingByName = useMemo(
+    () => new Map(buildings.map((b) => [b.name.toLowerCase().trim(), b])),
+    [buildings]
   );
 
   // Set of building IDs that are matched to a landmark
-  const coveredBuildingIds = new Set<string>();
-
-  landmarks.forEach((landmark) => {
-    if (landmark.buildingId && buildingById.has(landmark.buildingId)) {
-      coveredBuildingIds.add(landmark.buildingId);
-    } else {
-      const match = buildingByName.get(landmark.name.toLowerCase().trim());
-      if (match) {
-        coveredBuildingIds.add(match.id);
+  const coveredBuildingIds = useMemo(() => {
+    const ids = new Set<string>();
+    landmarks.forEach((landmark) => {
+      if (landmark.buildingId && buildingById.has(landmark.buildingId)) {
+        ids.add(landmark.buildingId);
+      } else {
+        const match = buildingByName.get(landmark.name.toLowerCase().trim());
+        if (match) ids.add(match.id);
       }
-    }
-  });
+    });
+    return ids;
+  }, [landmarks, buildingById, buildingByName]);
 
   // Standalone buildings (not merged into a landmark)
-  const standaloneBuildings = buildings.filter(
-    (b) => b.isActive !== false && !coveredBuildingIds.has(b.id)
+  const standaloneBuildings = useMemo(
+    () => buildings.filter((b) => b.isActive !== false && !coveredBuildingIds.has(b.id)),
+    [buildings, coveredBuildingIds]
   );
 
-  // Dynamic active route polyline starting from userLocation and slicing off passed segments
+  // Dynamic active route polyline starting from userLocation
   const activePolyline = useMemo(() => {
     if (!activeRoute || activeRoute.coordinates.length < 2 || !userLocation) {
       return activeRoute?.coordinates ?? [];
     }
 
     const polyline = activeRoute.coordinates;
-    const tracker = new RouteProgressTracker(polyline, userLocation);
-    const progress = tracker.update(userLocation.lat, userLocation.lng);
+    let bestDist = Infinity;
+    let bestIdx = 0;
+    const { lat, lng } = userLocation;
 
-    if (progress.isOffRoute) {
-      return [[userLocation.lat, userLocation.lng], ...polyline] as [number, number][];
+    for (let i = 0; i < polyline.length - 1; i++) {
+      const [aLat, aLng] = polyline[i];
+      const [bLat, bLng] = polyline[i + 1];
+      const midLat = ((aLat + bLat) / 2) * (Math.PI / 180);
+      const cosLat = Math.cos(midLat);
+      const dLat = bLat - aLat;
+      const dLng = (bLng - aLng) * cosLat;
+      const segLenSq = dLat * dLat + dLng * dLng;
+
+      if (segLenSq < 1e-18) {
+        const distSq = (lat - aLat) ** 2 + ((lng - aLng) * cosLat) ** 2;
+        if (distSq < bestDist) {
+          bestDist = distSq;
+          bestIdx = i;
+        }
+        continue;
+      }
+
+      const pDeltaLat = lat - aLat;
+      const pDeltaLng = (lng - aLng) * cosLat;
+      const t = Math.max(0, Math.min(1, (pDeltaLat * dLat + pDeltaLng * dLng) / segLenSq));
+      const projLat = aLat + t * dLat;
+      const projLng = aLng + t * dLng;
+      const distSq = (lat - projLat) ** 2 + ((lng - projLng) * cosLat) ** 2;
+
+      if (distSq < bestDist) {
+        bestDist = distSq;
+        bestIdx = i;
+      }
     }
 
-    const { segmentIndex } = progress;
-    const remainingNodes = polyline.slice(segmentIndex + 1);
-
-    return [[userLocation.lat, userLocation.lng], ...remainingNodes] as [number, number][];
+    const remainingNodes = polyline.slice(bestIdx + 1);
+    return [[lat, lng], ...remainingNodes] as [number, number][];
   }, [activeRoute, userLocation]);
 
   return (
@@ -287,15 +275,15 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
       className={className ?? "relative h-full w-full overflow-hidden bg-slate-950 select-none"}
       style={{ height: "100%", width: "100%", minHeight: "350px", overflow: "hidden" }}
     >
-      <MapLibreContainer
-        center={AASTU_CENTER_LNG_LAT}
+      <GoogleMapsContainer
+        center={AASTU_CENTER}
         zoom={DEFAULT_ZOOM}
         minZoom={MIN_ZOOM}
         maxZoom={MAX_ZOOM}
         tileMode={tileMode}
         className="h-full w-full"
       >
-        {/* Navigation Camera Controller (Sole camera owner during OUTDOOR_NAV) */}
+        {/* Navigation Camera Controller */}
         <NavigationCamera
           userLocation={userLocation}
           fusedHeading={fusedHeading}
@@ -319,7 +307,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           />
         )}
 
-        {/* Outdoor walking route polyline — coordinates dynamically anchored & sliced */}
+        {/* Outdoor walking route polyline */}
         {navStep === "OUTDOOR_NAV" && activePolyline.length > 1 && (
           <WalkingRoutePolyline positions={activePolyline} />
         )}
@@ -345,11 +333,10 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           );
         })}
 
-        {/* Floating Controls (Satellite toggle, center location, reset compass) */}
+        {/* Floating Controls (Satellite toggle, center location) */}
         <MapControls
           tileMode={tileMode}
           onToggleTile={() => setTileMode((m) => (m === "street" ? "satellite" : "street"))}
-          onPauseFollow={() => setIsFollowingUser(false)}
           onCenterLocation={() => {
             if ("geolocation" in navigator) {
               navigator.geolocation.getCurrentPosition(
@@ -369,9 +356,9 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
             }
           }}
         />
-      </MapLibreContainer>
+      </GoogleMapsContainer>
 
-      {/* Floating Recenter Pill (shown when user manually panned during active navigation) */}
+      {/* Floating Recenter Pill */}
       {navStep === "OUTDOOR_NAV" && !isFollowingUser && (
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto">
           <button

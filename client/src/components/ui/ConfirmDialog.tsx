@@ -23,12 +23,12 @@ export function ConfirmDialog({
           <div
             className={cn(
               "flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center",
-              danger ? "bg-red-50" : "bg-blue-50"
+              danger ? "bg-red-50 dark:bg-red-950/50" : "bg-blue-50 dark:bg-blue-950/50"
             )}
           >
-            <AlertCircle size={20} className={danger ? "text-red-600" : "text-blue-600"} />
+            <AlertCircle size={20} className={danger ? "text-red-600 dark:text-red-400" : "text-blue-600 dark:text-blue-400"} />
           </div>
-          <p className="text-sm text-gray-600 pt-2">{description}</p>
+          <p className="text-sm text-gray-600 dark:text-slate-300 pt-2">{description}</p>
         </div>
         <div className="flex gap-3 justify-end">
           <Button variant="outline" onClick={onClose} disabled={loading}>Cancel</Button>

@@ -1,8 +1,10 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -78,6 +80,8 @@ const AppStoreContext = createContext<AppStoreValue | null>(null);
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(initialState);
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // Initialise dark mode from localStorage / system preference on mount
   useEffect(() => {
@@ -88,92 +92,140 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle("dark", dark);
   }, []);
 
+  // Stable setter functions using useCallback - these never change identity
+  const setSearchQuery = useCallback(
+    (searchQuery: string) => setState((current) => ({ ...current, searchQuery })),
+    []
+  );
+  const setSearchResults = useCallback(
+    (searchResults: SearchResult[]) => setState((current) => ({ ...current, searchResults })),
+    []
+  );
+  const setSelectedResult = useCallback(
+    (selectedResult: SearchResult | null) => setState((current) => ({ ...current, selectedResult })),
+    []
+  );
+  const setNavigation = useCallback(
+    (navigation: NavigationResult | null) => setState((current) => ({ ...current, navigation })),
+    []
+  );
+  const resetNavigationFlow = useCallback(
+    () =>
+      setState((current) => ({
+        ...current,
+        navStep: "IDLE",
+        destinationTarget: null,
+        navigation: null,
+        selectedResult: null,
+        currentStepIndex: 0,
+        currentInstructionIndex: 0,
+      })),
+    []
+  );
+  const toggleDarkMode = useCallback(() => {
+    setState((current) => {
+      const next = !current.isDarkMode;
+      document.documentElement.classList.toggle("dark", next);
+      localStorage.setItem("aastu-dark-mode", String(next));
+      return { ...current, isDarkMode: next };
+    });
+  }, []);
+  const setLanguage = useCallback(
+    (language: Language) => setState((current) => ({ ...current, language })),
+    []
+  );
+  const setNavStep = useCallback(
+    (navStep: NavStep) => setState((current) => ({ ...current, navStep })),
+    []
+  );
+  const setDestinationTarget = useCallback(
+    (destinationTarget: DestinationTarget | null) => setState((current) => ({ ...current, destinationTarget })),
+    []
+  );
+  const setUserLocation = useCallback(
+    (userLocation: { lat: number; lng: number } | null) => setState((current) => ({ ...current, userLocation })),
+    []
+  );
+  const setCurrentStepIndex = useCallback(
+    (currentStepIndex: number) => setState((current) => ({ ...current, currentStepIndex })),
+    []
+  );
+  const setActiveRoute = useCallback(
+    (activeRoute: RouteResponse | null) => setState((current) => ({ ...current, activeRoute })),
+    []
+  );
+  const setCurrentInstructionIndex = useCallback(
+    (currentInstructionIndex: number) => setState((current) => ({ ...current, currentInstructionIndex })),
+    []
+  );
+  const startOutdoorNavigation = useCallback(
+    (target: DestinationTarget) =>
+      setState((current) => ({
+        ...current,
+        destinationTarget: target,
+        navStep: "OUTDOOR_NAV",
+        currentStepIndex: 0,
+        currentInstructionIndex: 0,
+        activeRoute: null,
+      })),
+    []
+  );
+  const triggerArrival = useCallback(
+    () => setState((current) => ({ ...current, navStep: "ARRIVAL_BOTSHEET" })),
+    []
+  );
+  const enterBuilding = useCallback(
+    () => setState((current) => ({ ...current, navStep: "BUILDING_TRANSITION" })),
+    []
+  );
+  const startIndoorNavigation = useCallback(
+    () =>
+      setState((current) => ({
+        ...current,
+        navStep: "INDOOR_PANORAMA",
+        currentStepIndex: 0,
+      })),
+    []
+  );
+  const finishNavigation = useCallback(
+    () =>
+      setState((current) => ({
+        ...current,
+        navStep: "IDLE",
+        destinationTarget: null,
+        navigation: null,
+        selectedResult: null,
+        currentStepIndex: 0,
+        currentInstructionIndex: 0,
+        activeRoute: null,
+      })),
+    []
+  );
+
   const value = useMemo<AppStoreValue>(
     () => ({
       ...state,
-      setSearchQuery: (searchQuery) =>
-        setState((current) => ({ ...current, searchQuery })),
-      setSearchResults: (searchResults) =>
-        setState((current) => ({ ...current, searchResults })),
-      setSelectedResult: (selectedResult) =>
-        setState((current) => ({ ...current, selectedResult })),
-      setNavigation: (navigation) =>
-        setState((current) => ({ ...current, navigation })),
-      resetNavigationFlow: () =>
-        setState((current) => ({
-          ...current,
-          navStep: "IDLE",
-          destinationTarget: null,
-          navigation: null,
-          selectedResult: null,
-          currentStepIndex: 0,
-          currentInstructionIndex: 0,
-        })),
-      toggleDarkMode: () =>
-        setState((current) => {
-          const next = !current.isDarkMode;
-          document.documentElement.classList.toggle("dark", next);
-          localStorage.setItem("aastu-dark-mode", String(next));
-          return { ...current, isDarkMode: next };
-        }),
-      setLanguage: (language) =>
-        setState((current) => ({ ...current, language })),
-
-      setNavStep: (navStep) =>
-        setState((current) => ({ ...current, navStep })),
-      setDestinationTarget: (destinationTarget) =>
-        setState((current) => ({ ...current, destinationTarget })),
-      setUserLocation: (userLocation) =>
-        setState((current) => ({ ...current, userLocation })),
-      setCurrentStepIndex: (currentStepIndex) =>
-        setState((current) => ({ ...current, currentStepIndex })),
-      setActiveRoute: (activeRoute) =>
-        setState((current) => ({ ...current, activeRoute })),
-      setCurrentInstructionIndex: (currentInstructionIndex) =>
-        setState((current) => ({ ...current, currentInstructionIndex })),
-
-      startOutdoorNavigation: (target) =>
-        setState((current) => ({
-          ...current,
-          destinationTarget: target,
-          navStep: "OUTDOOR_NAV",
-          currentStepIndex: 0,
-          currentInstructionIndex: 0,
-          activeRoute: null, // cleared; will be fetched fresh
-        })),
-
-      triggerArrival: () =>
-        setState((current) => ({
-          ...current,
-          navStep: "ARRIVAL_BOTSHEET",
-        })),
-
-      enterBuilding: () =>
-        setState((current) => ({
-          ...current,
-          navStep: "BUILDING_TRANSITION",
-        })),
-
-      startIndoorNavigation: () =>
-        setState((current) => ({
-          ...current,
-          navStep: "INDOOR_PANORAMA",
-          currentStepIndex: 0,
-        })),
-
-      finishNavigation: () =>
-        setState((current) => ({
-          ...current,
-          navStep: "IDLE",
-          destinationTarget: null,
-          navigation: null,
-          selectedResult: null,
-          currentStepIndex: 0,
-          currentInstructionIndex: 0,
-          activeRoute: null,
-        })),
+      setSearchQuery,
+      setSearchResults,
+      setSelectedResult,
+      setNavigation,
+      resetNavigationFlow,
+      toggleDarkMode,
+      setLanguage,
+      setNavStep,
+      setDestinationTarget,
+      setUserLocation,
+      setCurrentStepIndex,
+      setActiveRoute,
+      setCurrentInstructionIndex,
+      startOutdoorNavigation,
+      triggerArrival,
+      enterBuilding,
+      startIndoorNavigation,
+      finishNavigation,
     }),
-    [state]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state, setSearchQuery, setSearchResults, setSelectedResult, setNavigation, resetNavigationFlow, toggleDarkMode, setLanguage, setNavStep, setDestinationTarget, setUserLocation, setCurrentStepIndex, setActiveRoute, setCurrentInstructionIndex, startOutdoorNavigation, triggerArrival, enterBuilding, startIndoorNavigation, finishNavigation]
   );
 
   return (

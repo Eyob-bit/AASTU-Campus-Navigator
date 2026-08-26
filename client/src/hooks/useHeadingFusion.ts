@@ -41,6 +41,16 @@ export function useHeadingFusion({
   const rawCompassRef = useRef<number | null>(null);
   const animFrameIdRef = useRef<number | null>(null);
   const isGpsPreferredRef = useRef<boolean>(false);
+  const gpsHeadingRef = useRef<number | null>(gpsHeading);
+  const gpsSpeedRef = useRef<number | null>(gpsSpeed);
+
+  // Sync props into refs so the rAF loop reads latest values without restarting
+  useEffect(() => {
+    gpsHeadingRef.current = gpsHeading;
+  }, [gpsHeading]);
+  useEffect(() => {
+    gpsSpeedRef.current = gpsSpeed;
+  }, [gpsSpeed]);
 
   // Request DeviceOrientation permission for iOS 13+
   const requestPermission = useCallback(async (): Promise<boolean> => {
@@ -112,8 +122,8 @@ export function useHeadingFusion({
       if (!isRunning) return;
 
       const compass = rawCompassRef.current;
-      const speed = gpsSpeed ?? 0;
-      const gps = gpsHeading;
+      const speed = gpsSpeedRef.current ?? 0;
+      const gps = gpsHeadingRef.current;
 
       let targetHeading: number | null = null;
       let activeSource: "gps" | "compass" | "none" = "none";
@@ -166,7 +176,7 @@ export function useHeadingFusion({
         cancelAnimationFrame(animFrameIdRef.current);
       }
     };
-  }, [enabled, gpsHeading, gpsSpeed]);
+  }, [enabled]); // GPS values accessed via refs to avoid rAF loop restart
 
   return {
     heading,

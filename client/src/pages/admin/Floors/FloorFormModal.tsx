@@ -84,10 +84,10 @@ export function FloorFormModal({ open, onClose, onSubmit, buildings, floor }: Fl
             disabled={saving || isEdit} // building can't change on edit
           />
           {errors.buildingId && (
-            <p className="text-xs text-red-600">{errors.buildingId}</p>
+            <p className="text-xs text-red-600 dark:text-red-400">{errors.buildingId}</p>
           )}
           {isEdit && (
-            <p className="text-xs text-gray-400">Building cannot be changed after creation.</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500">Building cannot be changed after creation.</p>
           )}
         </div>
 
@@ -101,12 +101,12 @@ export function FloorFormModal({ open, onClose, onSubmit, buildings, floor }: Fl
             disabled={saving}
           />
           {errors.floorNumber && (
-            <p className="text-xs text-red-600">{errors.floorNumber}</p>
+            <p className="text-xs text-red-600 dark:text-red-400">{errors.floorNumber}</p>
           )}
         </div>
 
         {submitError && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+          <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
             {submitError}
           </p>
         )}

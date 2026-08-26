@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "changeme_insecure_default";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("[FATAL] JWT_SECRET environment variable is not set. Server cannot start securely.");
+  process.exit(1);
+}
+
+const SECRET: string = JWT_SECRET;
 
 interface AdminTokenPayload {
   adminId: string;
@@ -17,8 +23,7 @@ export function requireAdminAuth(req: Request, res: Response, next: NextFunction
 
   const token = authHeader.slice(7);
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as AdminTokenPayload;
-    // Attach the admin identity to request for downstream controllers if needed
+    const payload = jwt.verify(token, SECRET) as AdminTokenPayload;
     (req as Request & { admin: AdminTokenPayload }).admin = payload;
     next();
   } catch {
@@ -27,5 +32,5 @@ export function requireAdminAuth(req: Request, res: Response, next: NextFunction
 }
 
 export function signAdminToken(adminId: string, role: string): string {
-  return jwt.sign({ adminId, role }, JWT_SECRET, { expiresIn: "12h" });
+  return jwt.sign({ adminId, role }, SECRET, { expiresIn: "12h" });
 }

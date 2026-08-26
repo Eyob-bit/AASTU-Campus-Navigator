@@ -133,10 +133,10 @@ export function OfficeFormModal({
               disabled={saving || isEdit}
             />
             {errors.buildingId && (
-              <p className="text-xs text-red-600">{errors.buildingId}</p>
+              <p className="text-xs text-red-600 dark:text-red-400">{errors.buildingId}</p>
             )}
             {isEdit && (
-              <p className="text-xs text-gray-400">Cannot change building after creation.</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500">Cannot change building after creation.</p>
             )}
           </div>
 
@@ -149,10 +149,10 @@ export function OfficeFormModal({
               disabled={saving || isEdit || filteredFloors.length === 0}
             />
             {errors.floorId && (
-              <p className="text-xs text-red-600">{errors.floorId}</p>
+              <p className="text-xs text-red-600 dark:text-red-400">{errors.floorId}</p>
             )}
             {isEdit && (
-              <p className="text-xs text-gray-400">Cannot change floor after creation.</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500">Cannot change floor after creation.</p>
             )}
           </div>
         </div>
@@ -166,7 +166,7 @@ export function OfficeFormModal({
             onChange={handleChange("name")}
             disabled={saving}
           />
-          {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
+          {errors.name && <p className="text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -179,7 +179,7 @@ export function OfficeFormModal({
               disabled={saving}
             />
             {errors.roomNumber && (
-              <p className="text-xs text-red-600">{errors.roomNumber}</p>
+              <p className="text-xs text-red-600 dark:text-red-400">{errors.roomNumber}</p>
             )}
           </div>
 
@@ -203,7 +203,7 @@ export function OfficeFormModal({
         />
 
         {submitError && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+          <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
             {submitError}
           </p>
         )}

@@ -18,7 +18,7 @@ export function ActionButton({ icon, label, hoverClass, onClick }: ActionButtonP
     <button
       onClick={onClick}
       title={label}
-      className={`p-1.5 text-gray-400 rounded-lg transition-colors ${hoverClass}`}
+      className={`p-1.5 text-gray-400 dark:text-slate-500 rounded-lg transition-colors ${hoverClass}`}
     >
       {icon}
     </button>

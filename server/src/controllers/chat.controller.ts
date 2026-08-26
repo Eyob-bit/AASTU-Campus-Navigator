@@ -16,7 +16,6 @@ export async function handleChatMessage(req: Request, res: Response): Promise<vo
     console.error("[Chat Controller Error]:", err);
     res.status(500).json({
       error: "Internal server error while processing chat message.",
-      details: err instanceof Error ? err.message : String(err),
     });
   }
 }

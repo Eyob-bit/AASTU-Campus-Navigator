@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { MapPin } from "lucide-react";
 
 import { Modal, Input, Select, Button } from "@/components/ui";
-import { MapLibreContainer, MapLocationPickerInner, CampusBoundaryPolygon, AASTU_CENTER } from "@/components/map";
+import { GoogleMapsContainer, MapLocationPickerInner, CampusBoundaryPolygon, AASTU_CENTER } from "@/components/map";
 import type { TileMode } from "@/components/map";
 import type { Building, CreateBuildingBody, UpdateBuildingBody } from "@/types";
 import { roadNetworkApi, type RoadNode } from "@/api/roadNetwork.api";
@@ -128,7 +128,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
             className="col-span-2"
             disabled={saving}
           />
-          {errors.name && <p className="col-span-2 -mt-2 text-xs text-red-600">{errors.name}</p>}
+          {errors.name && <p className="col-span-2 -mt-2 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
 
           <div className="flex flex-col gap-1.5">
             <Input
@@ -138,7 +138,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
               onChange={handleChange("code")}
               disabled={saving}
             />
-            {errors.code && <p className="text-xs text-red-600">{errors.code}</p>}
+            {errors.code && <p className="text-xs text-red-600 dark:text-red-400">{errors.code}</p>}
           </div>
 
           {isEdit && (
@@ -161,7 +161,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
             onChange={handleChange("entranceRoadNodeId")}
             disabled={saving}
           />
-          <p className="text-[11px] text-gray-500 mt-1">
+          <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-1">
             Connects outdoor GPS walking route directly to this entrance node.
           </p>
         </div>
@@ -177,7 +177,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
               disabled={saving}
             />
             {errors.entranceLatitude && (
-              <p className="text-xs text-red-600">{errors.entranceLatitude}</p>
+              <p className="text-xs text-red-600 dark:text-red-400">{errors.entranceLatitude}</p>
             )}
           </div>
 
@@ -190,7 +190,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
               disabled={saving}
             />
             {errors.entranceLongitude && (
-              <p className="text-xs text-red-600">{errors.entranceLongitude}</p>
+              <p className="text-xs text-red-600 dark:text-red-400">{errors.entranceLongitude}</p>
             )}
           </div>
         </div>
@@ -198,21 +198,21 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
         {/* Map picker */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 flex items-center gap-1.5">
               <MapPin size={14} className="text-blue-600" />
               Pick Entrance Location on AASTU Campus Map
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 shadow-2xs">
+              <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/60 shadow-2xs">
                 🟡 AASTU Boundary
               </span>
-              <span className="text-[11px] text-gray-500">Click map or drag pin</span>
+              <span className="text-[11px] text-gray-500 dark:text-slate-400">Click map or drag pin</span>
             </div>
           </div>
 
-          <div className="rounded-xl overflow-hidden border border-gray-300 shadow-sm relative h-[240px] sm:h-[300px] w-full">
-            <MapLibreContainer
-              center={[pickerLng, pickerLat]}
+          <div className="rounded-xl overflow-hidden border border-gray-300 dark:border-slate-600 shadow-sm relative h-[240px] sm:h-[300px] w-full">
+            <GoogleMapsContainer
+              center={AASTU_CENTER}
               zoom={18}
               minZoom={14}
               maxZoom={21}
@@ -225,7 +225,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
                 lng={pickerLng}
                 onChange={handleMapPick}
               />
-            </MapLibreContainer>
+            </GoogleMapsContainer>
             {/* Satellite toggle overlay */}
             <button
               type="button"
@@ -239,7 +239,7 @@ export function BuildingFormModal({ open, onClose, onSubmit, building }: Buildin
         </div>
 
         {submitError && (
-          <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+          <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl px-3 py-2">
             {submitError}
           </p>
         )}

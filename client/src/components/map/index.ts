@@ -7,6 +7,7 @@ export { MapErrorOverlay } from "./MapErrorOverlay";
 export { MapLegend } from "./MapLegend";
 export { MapLocationPickerInner } from "./MapLocationPicker";
 export { CampusBoundaryPolygon } from "./CampusBoundaryPolygon";
+export { GoogleMapsContainer, useGoogleMapInstance } from "./GoogleMapsContainer";
 export { MapLibreContainer, useMapInstance } from "./MapLibreContainer";
 export { NavigationCamera } from "./NavigationCamera";
 export * from "./mapConfig";

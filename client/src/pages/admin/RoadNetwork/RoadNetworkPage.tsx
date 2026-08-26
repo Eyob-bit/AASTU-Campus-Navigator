@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
-import { Marker, type GeoJSONSource, type MapMouseEvent, type FilterSpecification } from "maplibre-gl";
 import {
   MapPin, Trash2, RefreshCw, Compass, Link2, X, ArrowRightLeft, Waypoints,
 } from "lucide-react";
@@ -9,16 +8,16 @@ import {
 import { roadNetworkApi, type RoadNode, type RoadEdge } from "@/api/roadNetwork.api";
 import { useToast } from "@/hooks/useToast";
 import {
-  MapLibreContainer,
-  useMapInstance,
+  GoogleMapsContainer,
   CampusBoundaryPolygon,
-  AASTU_CENTER_LNG_LAT,
+  AASTU_CENTER,
   DEFAULT_ZOOM,
   type TileMode,
+  useGoogleMapInstance,
 } from "@/components/map";
 import { calculateDistanceInMeters } from "@/utils/geo";
 
-// ── Interactive MapLibre Road Network Edges Layer ─────────────────────────
+// ── Google Maps Road Edges Layer ──────────────────────────────────────────
 interface RoadEdgesLayerProps {
   edges: RoadEdge[];
   nodeMap: Map<string, RoadNode>;
@@ -27,204 +26,50 @@ interface RoadEdgesLayerProps {
 }
 
 function RoadEdgesLayer({ edges, nodeMap, selectedEdgeId, onSelectEdge }: RoadEdgesLayerProps) {
-  const map = useMapInstance();
+  const map = useGoogleMapInstance();
   const onSelectEdgeRef = useRef(onSelectEdge);
   useEffect(() => {
     onSelectEdgeRef.current = onSelectEdge;
   }, [onSelectEdge]);
 
-  const geojson = useMemo<GeoJSON.FeatureCollection<GeoJSON.LineString>>(() => {
-    const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+  useEffect(() => {
+    if (!map || typeof google === "undefined" || !google.maps || edges.length === 0) return;
+
+    const polylines: google.maps.Polyline[] = [];
+
     edges.forEach((edge) => {
       const u = edge.fromNode ?? nodeMap.get(edge.fromNodeId);
       const v = edge.toNode ?? nodeMap.get(edge.toNodeId);
       if (!u || !v) return;
-      const uLng = Number(u.longitude), uLat = Number(u.latitude);
-      const vLng = Number(v.longitude), vLat = Number(v.latitude);
-      if (isNaN(uLng) || isNaN(uLat) || isNaN(vLng) || isNaN(vLat)) return;
-      if (uLat === 0 && uLng === 0) return;
-      features.push({
-        type: "Feature",
-        properties: {
-          id: edge.id,
-          isBidirectional: edge.isBidirectional,
-          distance: edge.distance,
-          fromNodeId: edge.fromNodeId,
-          toNodeId: edge.toNodeId,
-        },
-        geometry: { type: "LineString", coordinates: [[uLng, uLat], [vLng, vLat]] },
+
+      const isSelected = selectedEdgeId === edge.id;
+      const poly = new google.maps.Polyline({
+        path: [
+          { lat: u.latitude, lng: u.longitude },
+          { lat: v.latitude, lng: v.longitude },
+        ],
+        strokeColor: isSelected ? "#f59e0b" : "#22d3ee",
+        strokeWeight: isSelected ? 6 : 4,
+        strokeOpacity: 1.0,
+        map,
       });
+
+      poly.addListener("click", () => {
+        onSelectEdgeRef.current(edge);
+      });
+
+      polylines.push(poly);
     });
-    return { type: "FeatureCollection", features };
-  }, [edges, nodeMap]);
-
-  useEffect(() => {
-    if (!map) return;
-
-    const SOURCE_ID = "road-edges-source";
-    const LAYER_CASING = "road-edges-casing";
-    const LAYER_GLOW = "road-edges-glow";
-    const LAYER_LINE = "road-edges-line";
-    const LAYER_SELECTED_GLOW = "road-edges-selected-glow";
-    const LAYER_SELECTED_LINE = "road-edges-selected-line";
-    const LAYER_HITBOX = "road-edges-hitbox";
-
-    function applyData() {
-      if (!map) return;
-
-      try {
-        const existingSource = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
-        if (existingSource) {
-          existingSource.setData(geojson);
-        } else {
-          map.addSource(SOURCE_ID, {
-            type: "geojson",
-            data: geojson,
-          });
-
-          // 1. Dark casing background
-          if (!map.getLayer(LAYER_CASING)) {
-            map.addLayer({
-              id: LAYER_CASING,
-              type: "line",
-              source: SOURCE_ID,
-              layout: { "line-cap": "round", "line-join": "round" },
-              paint: { "line-color": "#020617", "line-width": 8, "line-opacity": 0.9 },
-            });
-          }
-
-          // 2. Cyan ambient glow
-          if (!map.getLayer(LAYER_GLOW)) {
-            map.addLayer({
-              id: LAYER_GLOW,
-              type: "line",
-              source: SOURCE_ID,
-              layout: { "line-cap": "round", "line-join": "round" },
-              paint: { "line-color": "#06b6d4", "line-width": 6, "line-opacity": 0.6, "line-blur": 2 },
-            });
-          }
-
-          // 3. Normal cyan route line
-          if (!map.getLayer(LAYER_LINE)) {
-            map.addLayer({
-              id: LAYER_LINE,
-              type: "line",
-              source: SOURCE_ID,
-              layout: { "line-cap": "round", "line-join": "round" },
-              paint: { "line-color": "#22d3ee", "line-width": 3.5, "line-opacity": 1.0 },
-            });
-          }
-
-          // 4. Selected edge glow highlight
-          if (!map.getLayer(LAYER_SELECTED_GLOW)) {
-            map.addLayer({
-              id: LAYER_SELECTED_GLOW,
-              type: "line",
-              source: SOURCE_ID,
-              layout: { "line-cap": "round", "line-join": "round" },
-              paint: {
-                "line-color": "#f59e0b",
-                "line-width": 10,
-                "line-opacity": 0.85,
-                "line-blur": 3,
-              },
-              filter: ["==", ["get", "id"], selectedEdgeId || ""],
-            });
-          }
-
-          // 5. Selected edge bright core
-          if (!map.getLayer(LAYER_SELECTED_LINE)) {
-            map.addLayer({
-              id: LAYER_SELECTED_LINE,
-              type: "line",
-              source: SOURCE_ID,
-              layout: { "line-cap": "round", "line-join": "round" },
-              paint: {
-                "line-color": "#fbbf24",
-                "line-width": 5,
-                "line-opacity": 1.0,
-              },
-              filter: ["==", ["get", "id"], selectedEdgeId || ""],
-            });
-          }
-
-          // 6. Transparent wide hit-detection layer for easy clicking and hover
-          if (!map.getLayer(LAYER_HITBOX)) {
-            map.addLayer({
-              id: LAYER_HITBOX,
-              type: "line",
-              source: SOURCE_ID,
-              layout: { "line-cap": "round", "line-join": "round" },
-              paint: {
-                "line-color": "#ffffff",
-                "line-width": 22,
-                "line-opacity": 0.001,
-              },
-            });
-          }
-        }
-      } catch {
-        // Style load will fire and call applyData
-      }
-    }
-
-    applyData();
-    map.on("style.load", applyData);
-    map.on("styledata", applyData);
-
-    const handleEdgeClick = (e: MapMouseEvent & { features?: GeoJSON.Feature[] }) => {
-      if (!e.features || e.features.length === 0) return;
-      (e.originalEvent as unknown as { _edgeHandled: boolean })._edgeHandled = true;
-      const edgeId = e.features[0].properties?.id as string | undefined;
-      if (edgeId) {
-        const found = edges.find((ed) => ed.id === edgeId);
-        if (found) {
-          onSelectEdgeRef.current(found);
-        }
-      }
-    };
-
-    const handleMouseEnter = () => {
-      map.getCanvas().style.cursor = "pointer";
-    };
-
-    const handleMouseLeave = () => {
-      map.getCanvas().style.cursor = "";
-    };
-
-    map.on("click", LAYER_HITBOX, handleEdgeClick);
-    map.on("mouseenter", LAYER_HITBOX, handleMouseEnter);
-    map.on("mouseleave", LAYER_HITBOX, handleMouseLeave);
 
     return () => {
-      map.off("style.load", applyData);
-      map.off("styledata", applyData);
-      map.off("click", LAYER_HITBOX, handleEdgeClick);
-      map.off("mouseenter", LAYER_HITBOX, handleMouseEnter);
-      map.off("mouseleave", LAYER_HITBOX, handleMouseLeave);
+      polylines.forEach((p) => p.setMap(null));
     };
-  }, [map, geojson, edges]);
-
-  // Update selected edge filter dynamically
-  useEffect(() => {
-    if (!map) return;
-    try {
-      const filter = ["==", ["get", "id"], selectedEdgeId || ""] as unknown as FilterSpecification;
-      if (map.getLayer("road-edges-selected-glow")) {
-        map.setFilter("road-edges-selected-glow", filter);
-      }
-      if (map.getLayer("road-edges-selected-line")) {
-        map.setFilter("road-edges-selected-line", filter);
-      }
-    } catch {
-      // Ignore if layers not yet mounted
-    }
-  }, [map, selectedEdgeId]);
+  }, [map, edges, nodeMap, selectedEdgeId]);
 
   return null;
 }
 
-// ── MapLibre Road Node Marker ──────────────────────────────────────────────────
+// ── Google Maps Road Node Marker ──────────────────────────────────────────
 interface RoadNodeMarkerProps {
   node: RoadNode;
   isSelected: boolean;
@@ -242,9 +87,8 @@ const RoadNodeMarker = memo(function RoadNodeMarker({
   onNodeClick,
   onDragEnd,
 }: RoadNodeMarkerProps) {
-  const map = useMapInstance();
-  const markerRef = useRef<Marker | null>(null);
-  const elementRef = useRef<HTMLDivElement | null>(null);
+  const map = useGoogleMapInstance();
+  const markerRef = useRef<google.maps.Marker | null>(null);
 
   const onNodeClickRef = useRef(onNodeClick);
   const onDragEndRef = useRef(onDragEnd);
@@ -261,76 +105,48 @@ const RoadNodeMarker = memo(function RoadNodeMarker({
     : "#3b82f6";
   const size = isConnectSource ? 22 : isSelected ? 20 : 16;
 
-  // Initialize marker once per node ID
   useEffect(() => {
-    if (!map) return;
+    if (!map || typeof google === "undefined" || !google.maps) return;
 
-    const el = document.createElement("div");
-    elementRef.current = el;
-    el.style.width = `${size}px`;
-    el.style.height = `${size}px`;
-    el.style.backgroundColor = color;
-    el.style.border = isConnectSource ? "3px solid #ffffff" : isSelected ? "3px solid #ffffff" : "2px solid white";
-    el.style.borderRadius = "50%";
-    el.style.boxShadow = isConnectSource
-      ? "0 0 14px 4px rgba(245, 158, 11, 0.95)"
-      : isSelected
-      ? "0 0 14px 4px rgba(6, 182, 212, 0.95)"
-      : `0 0 8px ${color}88`;
-    el.style.cursor = isDraggable ? "move" : "pointer";
-    el.style.transition = "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)";
+    const position = { lat: node.latitude, lng: node.longitude };
 
-    const marker = new Marker({
-      element: el,
+    const svgIcon = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="${size / 2}" cy="${size / 2}" r="${size / 2 - 2}" fill="${color}" stroke="#FFFFFF" stroke-width="2"/>
+      </svg>
+    `)}`;
+
+    const marker = new google.maps.Marker({
+      position,
+      map,
       draggable: isDraggable,
-    })
-      .setLngLat([node.longitude, node.latitude])
-      .addTo(map);
-
-    el.addEventListener("click", (e) => {
-      e.stopPropagation();
-      (e as unknown as { _nodeHandled: boolean })._nodeHandled = true;
-      onNodeClickRef.current?.(node);
-    });
-
-    marker.on("dragend", () => {
-      const pos = marker.getLngLat();
-      onDragEndRef.current?.(node, pos.lat, pos.lng);
+      icon: {
+        url: svgIcon,
+        scaledSize: new google.maps.Size(size, size),
+        anchor: new google.maps.Point(size / 2, size / 2),
+      },
+      title: node.name ?? "Waypoint",
     });
 
     markerRef.current = marker;
 
-    return () => {
-      if (markerRef.current) {
-        markerRef.current.remove();
-        markerRef.current = null;
-      }
-    };
-  }, [map, node.id]);
+    const clickListener = marker.addListener("click", () => {
+      onNodeClickRef.current?.(node);
+    });
 
-  // Update styles & position dynamically without remounting DOM elements
-  useEffect(() => {
-    if (markerRef.current) {
-      markerRef.current.setLngLat([node.longitude, node.latitude]);
-      markerRef.current.setDraggable(isDraggable);
-    }
-    if (elementRef.current) {
-      elementRef.current.style.width = `${size}px`;
-      elementRef.current.style.height = `${size}px`;
-      elementRef.current.style.backgroundColor = color;
-      elementRef.current.style.border = isConnectSource
-        ? "3px solid #ffffff"
-        : isSelected
-        ? "3px solid #ffffff"
-        : "2px solid white";
-      elementRef.current.style.boxShadow = isConnectSource
-        ? "0 0 14px 4px rgba(245, 158, 11, 0.95)"
-        : isSelected
-        ? "0 0 14px 4px rgba(6, 182, 212, 0.95)"
-        : `0 0 8px ${color}88`;
-      elementRef.current.style.cursor = isDraggable ? "move" : "pointer";
-    }
-  }, [node.latitude, node.longitude, color, size, isDraggable, isConnectSource, isSelected]);
+    const dragListener = marker.addListener("dragend", (e: google.maps.MapMouseEvent) => {
+      if (e.latLng) {
+        onDragEndRef.current?.(node, e.latLng.lat(), e.latLng.lng());
+      }
+    });
+
+    return () => {
+      google.maps.event.removeListener(clickListener);
+      google.maps.event.removeListener(dragListener);
+      marker.setMap(null);
+      markerRef.current = null;
+    };
+  }, [map, node.id, isDraggable, isSelected, isConnectSource, color, size, node.latitude, node.longitude, node.name]);
 
   return null;
 });
@@ -418,11 +234,8 @@ export function RoadNetworkPage() {
 
   const nodeMap = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 
-  const handleMapClick = useCallback((e: MapMouseEvent) => {
-    const rawEvent = e.originalEvent as unknown as { _edgeHandled?: boolean; _nodeHandled?: boolean };
-    if (rawEvent._edgeHandled || rawEvent._nodeHandled) {
-      return;
-    }
+  const handleMapClick = useCallback((e: google.maps.MapMouseEvent) => {
+    if (!e.latLng) return;
 
     if (connectSourceNode) {
       setConnectSourceNode(null);
@@ -435,7 +248,7 @@ export function RoadNetworkPage() {
 
     // If not in drag mode, open add node dialog
     if (!dragModeActive && !isModifierPressed) {
-      setNewLatLng({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      setNewLatLng({ lat: e.latLng.lat(), lng: e.latLng.lng() });
       setNodeName(`Waypoint ${nodes.length + 1}`);
       setNodeModalOpen(true);
     }
@@ -718,10 +531,10 @@ export function RoadNetworkPage() {
             </div>
           </div>
 
-          {/* MapLibre Map */}
+          {/* Google Maps */}
           <div className="flex-1 relative">
-            <MapLibreContainer
-              center={AASTU_CENTER_LNG_LAT}
+            <GoogleMapsContainer
+              center={AASTU_CENTER}
               zoom={DEFAULT_ZOOM}
               minZoom={13}
               maxZoom={22}
@@ -748,7 +561,7 @@ export function RoadNetworkPage() {
                   onDragEnd={handleMarkerDragEnd}
                 />
               ))}
-            </MapLibreContainer>
+            </GoogleMapsContainer>
 
             {/* Satellite / Street Switch Button */}
             <div className="absolute top-4 right-4 z-20 flex gap-1 bg-[#0B132B]/90 p-1 rounded-xl border border-slate-700 shadow-xl">

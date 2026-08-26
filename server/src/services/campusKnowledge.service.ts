@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../config/prisma.js";
 import { calculateSimilarity, type NormalizedQuery } from "../utils/intentDetector.js";
-
-const prisma = new PrismaClient();
 
 export interface CampusMatchData {
   entityType: "alias" | "staff" | "office" | "building" | "panorama";
