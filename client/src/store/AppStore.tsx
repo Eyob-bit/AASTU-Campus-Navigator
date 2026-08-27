@@ -1,11 +1,10 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import type {
@@ -37,13 +36,15 @@ interface AppState {
   currentInstructionIndex: number;
 }
 
-interface AppStoreValue extends AppState {
+interface AppActions {
   setSearchQuery: (query: string) => void;
   setSearchResults: (results: SearchResult[]) => void;
   setSelectedResult: (result: SearchResult | null) => void;
   setNavigation: (navigation: NavigationResult | null) => void;
   resetNavigationFlow: () => void;
   toggleDarkMode: () => void;
+  /** Applies a dark-mode value without persisting it (used for first-load detection). */
+  setDarkMode: (dark: boolean) => void;
   setLanguage: (lang: Language) => void;
 
   // Navigation Actions
@@ -59,6 +60,8 @@ interface AppStoreValue extends AppState {
   startIndoorNavigation: () => void;
   finishNavigation: () => void;
 }
+
+type AppStoreValue = AppState & AppActions;
 
 const initialState: AppState = {
   searchQuery: "",
@@ -76,41 +79,41 @@ const initialState: AppState = {
   currentInstructionIndex: 0,
 };
 
-const AppStoreContext = createContext<AppStoreValue | null>(null);
+interface Store {
+  subscribe: (listener: () => void) => () => void;
+  getSnapshot: () => AppStoreValue;
+  actions: AppActions;
+}
 
-export function AppStoreProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AppState>(initialState);
-  const stateRef = useRef(state);
-  stateRef.current = state;
+/**
+ * Builds an external store rather than holding state in `useState`.
+ *
+ * The previous implementation kept one monolithic state object in Context, so any
+ * change — including a 2Hz GPS position update — produced a new context value and
+ * re-rendered every consumer, navigation-related or not. Here consumers subscribe
+ * and can select just the slice they care about.
+ */
+function createStore(): Store {
+  let state: AppState = initialState;
+  let snapshot: AppStoreValue;
+  const listeners = new Set<() => void>();
 
-  // Initialise dark mode from localStorage / system preference on mount
-  useEffect(() => {
-    const stored = localStorage.getItem("aastu-dark-mode");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const dark = stored !== null ? stored === "true" : prefersDark;
-    setState((s) => ({ ...s, isDarkMode: dark }));
-    document.documentElement.classList.toggle("dark", dark);
-  }, []);
+  function setState(updater: (current: AppState) => AppState): void {
+    const next = updater(state);
+    // Reference equality means the action decided nothing changed — skip the notify.
+    if (next === state) return;
+    state = next;
+    snapshot = { ...state, ...actions };
+    for (const listener of listeners) listener();
+  }
 
-  // Stable setter functions using useCallback - these never change identity
-  const setSearchQuery = useCallback(
-    (searchQuery: string) => setState((current) => ({ ...current, searchQuery })),
-    []
-  );
-  const setSearchResults = useCallback(
-    (searchResults: SearchResult[]) => setState((current) => ({ ...current, searchResults })),
-    []
-  );
-  const setSelectedResult = useCallback(
-    (selectedResult: SearchResult | null) => setState((current) => ({ ...current, selectedResult })),
-    []
-  );
-  const setNavigation = useCallback(
-    (navigation: NavigationResult | null) => setState((current) => ({ ...current, navigation })),
-    []
-  );
-  const resetNavigationFlow = useCallback(
-    () =>
+  const actions: AppActions = {
+    setSearchQuery: (searchQuery) => setState((current) => ({ ...current, searchQuery })),
+    setSearchResults: (searchResults) => setState((current) => ({ ...current, searchResults })),
+    setSelectedResult: (selectedResult) => setState((current) => ({ ...current, selectedResult })),
+    setNavigation: (navigation) => setState((current) => ({ ...current, navigation })),
+
+    resetNavigationFlow: () =>
       setState((current) => ({
         ...current,
         navStep: "IDLE",
@@ -120,46 +123,64 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         currentStepIndex: 0,
         currentInstructionIndex: 0,
       })),
-    []
-  );
-  const toggleDarkMode = useCallback(() => {
-    setState((current) => {
-      const next = !current.isDarkMode;
-      document.documentElement.classList.toggle("dark", next);
-      localStorage.setItem("aastu-dark-mode", String(next));
-      return { ...current, isDarkMode: next };
-    });
-  }, []);
-  const setLanguage = useCallback(
-    (language: Language) => setState((current) => ({ ...current, language })),
-    []
-  );
-  const setNavStep = useCallback(
-    (navStep: NavStep) => setState((current) => ({ ...current, navStep })),
-    []
-  );
-  const setDestinationTarget = useCallback(
-    (destinationTarget: DestinationTarget | null) => setState((current) => ({ ...current, destinationTarget })),
-    []
-  );
-  const setUserLocation = useCallback(
-    (userLocation: { lat: number; lng: number } | null) => setState((current) => ({ ...current, userLocation })),
-    []
-  );
-  const setCurrentStepIndex = useCallback(
-    (currentStepIndex: number) => setState((current) => ({ ...current, currentStepIndex })),
-    []
-  );
-  const setActiveRoute = useCallback(
-    (activeRoute: RouteResponse | null) => setState((current) => ({ ...current, activeRoute })),
-    []
-  );
-  const setCurrentInstructionIndex = useCallback(
-    (currentInstructionIndex: number) => setState((current) => ({ ...current, currentInstructionIndex })),
-    []
-  );
-  const startOutdoorNavigation = useCallback(
-    (target: DestinationTarget) =>
+
+    toggleDarkMode: () =>
+      setState((current) => {
+        const next = !current.isDarkMode;
+        document.documentElement.classList.toggle("dark", next);
+        localStorage.setItem("aastu-dark-mode", String(next));
+        return { ...current, isDarkMode: next };
+      }),
+
+    setLanguage: (language) => setState((current) => ({ ...current, language })),
+
+    setDarkMode: (isDarkMode) =>
+      setState((current) => (current.isDarkMode === isDarkMode ? current : { ...current, isDarkMode })),
+
+    setNavStep: (navStep) =>
+      setState((current) => (current.navStep === navStep ? current : { ...current, navStep })),
+
+    setDestinationTarget: (destinationTarget) =>
+      setState((current) => ({ ...current, destinationTarget })),
+
+    /**
+     * Keeps the previous object when the coordinates are unchanged. Downstream route
+     * geometry is memoised on this reference, so allocating a fresh `{lat,lng}` for an
+     * identical fix would needlessly invalidate the polyline every tick.
+     */
+    setUserLocation: (userLocation) =>
+      setState((current) => {
+        const prev = current.userLocation;
+        if (prev === userLocation) return current;
+        if (prev == null && userLocation == null) return current;
+        if (
+          prev != null &&
+          userLocation != null &&
+          prev.lat === userLocation.lat &&
+          prev.lng === userLocation.lng
+        ) {
+          return current;
+        }
+        return { ...current, userLocation };
+      }),
+
+    setCurrentStepIndex: (currentStepIndex) =>
+      setState((current) =>
+        current.currentStepIndex === currentStepIndex
+          ? current
+          : { ...current, currentStepIndex }
+      ),
+
+    setActiveRoute: (activeRoute) => setState((current) => ({ ...current, activeRoute })),
+
+    setCurrentInstructionIndex: (currentInstructionIndex) =>
+      setState((current) =>
+        current.currentInstructionIndex === currentInstructionIndex
+          ? current
+          : { ...current, currentInstructionIndex }
+      ),
+
+    startOutdoorNavigation: (target) =>
       setState((current) => ({
         ...current,
         destinationTarget: target,
@@ -168,27 +189,24 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         currentInstructionIndex: 0,
         activeRoute: null,
       })),
-    []
-  );
-  const triggerArrival = useCallback(
-    () => setState((current) => ({ ...current, navStep: "ARRIVAL_BOTSHEET" })),
-    []
-  );
-  const enterBuilding = useCallback(
-    () => setState((current) => ({ ...current, navStep: "BUILDING_TRANSITION" })),
-    []
-  );
-  const startIndoorNavigation = useCallback(
-    () =>
+
+    triggerArrival: () =>
+      setState((current) =>
+        current.navStep === "ARRIVAL_BOTSHEET"
+          ? current
+          : { ...current, navStep: "ARRIVAL_BOTSHEET" }
+      ),
+
+    enterBuilding: () => setState((current) => ({ ...current, navStep: "BUILDING_TRANSITION" })),
+
+    startIndoorNavigation: () =>
       setState((current) => ({
         ...current,
         navStep: "INDOOR_PANORAMA",
         currentStepIndex: 0,
       })),
-    []
-  );
-  const finishNavigation = useCallback(
-    () =>
+
+    finishNavigation: () =>
       setState((current) => ({
         ...current,
         navStep: "IDLE",
@@ -199,48 +217,78 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         currentInstructionIndex: 0,
         activeRoute: null,
       })),
-    []
-  );
+  };
 
-  const value = useMemo<AppStoreValue>(
-    () => ({
-      ...state,
-      setSearchQuery,
-      setSearchResults,
-      setSelectedResult,
-      setNavigation,
-      resetNavigationFlow,
-      toggleDarkMode,
-      setLanguage,
-      setNavStep,
-      setDestinationTarget,
-      setUserLocation,
-      setCurrentStepIndex,
-      setActiveRoute,
-      setCurrentInstructionIndex,
-      startOutdoorNavigation,
-      triggerArrival,
-      enterBuilding,
-      startIndoorNavigation,
-      finishNavigation,
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state, setSearchQuery, setSearchResults, setSelectedResult, setNavigation, resetNavigationFlow, toggleDarkMode, setLanguage, setNavStep, setDestinationTarget, setUserLocation, setCurrentStepIndex, setActiveRoute, setCurrentInstructionIndex, startOutdoorNavigation, triggerArrival, enterBuilding, startIndoorNavigation, finishNavigation]
-  );
+  snapshot = { ...state, ...actions };
 
-  return (
-    <AppStoreContext.Provider value={value}>
-      {children}
-    </AppStoreContext.Provider>
-  );
+  return {
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    getSnapshot: () => snapshot,
+    actions,
+  };
 }
 
-export function useAppStore(): AppStoreValue {
-  const context = useContext(AppStoreContext);
+const AppStoreContext = createContext<Store | null>(null);
 
-  if (!context) {
+export function AppStoreProvider({ children }: { children: ReactNode }) {
+  const storeRef = useRef<Store | null>(null);
+  if (storeRef.current === null) {
+    storeRef.current = createStore();
+  }
+  const store = storeRef.current;
+
+  // Initialise dark mode from localStorage / system preference on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("aastu-dark-mode");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const dark = stored !== null ? stored === "true" : prefersDark;
+    document.documentElement.classList.toggle("dark", dark);
+    store.actions.setDarkMode(dark);
+  }, [store]);
+
+  return <AppStoreContext.Provider value={store}>{children}</AppStoreContext.Provider>;
+}
+
+function useStore(): Store {
+  const store = useContext(AppStoreContext);
+  if (!store) {
     throw new Error("useAppStore must be used within AppStoreProvider");
   }
-
-  return context;
+  return store;
 }
+
+/**
+ * Subscribe to the app store.
+ *
+ * Called with no argument it returns the whole store and re-renders on any change.
+ * Pass a selector to re-render only when that slice changes:
+ *
+ *   const navStep = useAppStore((s) => s.navStep);
+ *
+ * The selector must return a stable reference for unchanged data — selecting an
+ * existing field or action is fine, building a new object inline is not.
+ */
+export function useAppStore(): AppStoreValue;
+export function useAppStore<T>(selector: (store: AppStoreValue) => T): T;
+export function useAppStore<T>(selector?: (store: AppStoreValue) => T): AppStoreValue | T {
+  const store = useStore();
+
+  const getSnapshot = useMemo<() => AppStoreValue | T>(
+    () => (selector ? () => selector(store.getSnapshot()) : store.getSnapshot),
+    [store, selector]
+  );
+
+  return useSyncExternalStore(store.subscribe, getSnapshot, getSnapshot);
+}
+
+/** Actions only — stable for the lifetime of the provider, so this never re-renders. */
+export function useAppActions(): AppActions {
+  return useStore().actions;
+}
+
+export type { AppState, AppActions, AppStoreValue };

@@ -100,11 +100,24 @@ export const LandmarkMarker = memo(function LandmarkMarker({
 
     const position = { lat, lng };
 
+    // Calculate dynamic badge dimensions for scaled SVG pin + name label (~25% smaller)
+    const safeName = displayName.replace(/["'<>]/g, "");
+    const charCount = Math.min(safeName.length, 22);
+    const pillWidth = Math.max(charCount * 5.5 + 12, 40);
+    const svgWidth = Math.max(pillWidth + 10, 40);
+    const svgHeight = 48;
+    const pinX = (svgWidth - 26) / 2;
+    const pillX = (svgWidth - pillWidth) / 2;
+
     const svgIcon = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
-      <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M17 0C7.611 0 0 7.611 0 17C0 29.75 17 42 17 42C17 42 34 29.75 34 17C34 7.611 26.389 0 17 0Z" fill="${cfg.bg}" stroke="#FFFFFF" stroke-width="2"/>
-        <circle cx="17" cy="16" r="11" fill="#FFFFFF" fill-opacity="0.9"/>
-        <text x="17" y="21" font-size="13" text-anchor="middle" fill="#000000">${emoji}</text>
+      <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(${pinX}, 0) scale(0.7647)">
+          <path d="M17 0C7.611 0 0 7.611 0 17C0 29.75 17 42 17 42C17 42 34 29.75 34 17C34 7.611 26.389 0 17 0Z" fill="${cfg.bg}" stroke="#FFFFFF" stroke-width="2"/>
+          <circle cx="17" cy="16" r="11" fill="#FFFFFF" fill-opacity="0.95"/>
+          <text x="17" y="21" font-size="13" text-anchor="middle" fill="#000000">${emoji}</text>
+        </g>
+        <rect x="${pillX}" y="31" width="${pillWidth}" height="15" rx="7.5" fill="#0B132B" fill-opacity="0.92" stroke="${cfg.bg}" stroke-width="1.2"/>
+        <text x="${svgWidth / 2}" y="41.5" font-size="9" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle" fill="#FFFFFF">${safeName}</text>
       </svg>
     `)}`;
 
@@ -114,8 +127,8 @@ export const LandmarkMarker = memo(function LandmarkMarker({
       title: displayName,
       icon: {
         url: svgIcon,
-        scaledSize: new google.maps.Size(34, 42),
-        anchor: new google.maps.Point(17, 42),
+        scaledSize: new google.maps.Size(svgWidth, svgHeight),
+        anchor: new google.maps.Point(svgWidth / 2, 32),
       },
     });
 

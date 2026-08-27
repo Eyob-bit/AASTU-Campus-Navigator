@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
-import { useAppStore } from "@/store";
-import { RouteProgressTracker } from "@/utils";
-import { calculateDistanceInMeters } from "@/utils/geo";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { useAppStore, useAppActions } from "@/store";
+import { routeProgressStore } from "@/utils";
+import { fastDistanceInMeters } from "@/utils/geo";
 import type { RouteInstruction } from "@/api/roadNetwork.api";
 
 export interface UseTurnByTurnNavigationResult {
@@ -19,56 +19,48 @@ export interface UseTurnByTurnNavigationResult {
 const STEP_ADVANCE_RADIUS_METERS = 12;
 const ARRIVAL_RADIUS_METERS = 12;
 
-export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
-  const {
-    navStep,
-    userLocation,
-    destinationTarget,
-    activeRoute,
-    currentInstructionIndex,
-    setCurrentInstructionIndex,
-    triggerArrival,
-  } = useAppStore();
+const EMPTY_INSTRUCTIONS: RouteInstruction[] = [];
 
-  const instructions = activeRoute?.instructions ?? [];
+export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
+  const navStep = useAppStore((s) => s.navStep);
+  const userLocation = useAppStore((s) => s.userLocation);
+  const destinationTarget = useAppStore((s) => s.destinationTarget);
+  const activeRoute = useAppStore((s) => s.activeRoute);
+  const currentInstructionIndex = useAppStore((s) => s.currentInstructionIndex);
+  const { setCurrentInstructionIndex, triggerArrival } = useAppActions();
+
+  // Progress is advanced by `useOutdoorRoute`; this hook only observes it.
+  const routeProgress = useSyncExternalStore(
+    routeProgressStore.subscribe,
+    routeProgressStore.getProgress,
+    routeProgressStore.getProgress
+  );
+
+  // Bumped when the tracker is rebuilt, which is when the node index and total
+  // distance below become valid for the new route.
+  const routeVersion = useSyncExternalStore(
+    routeProgressStore.subscribe,
+    routeProgressStore.getRouteVersion,
+    routeProgressStore.getRouteVersion
+  );
+
+  const instructions = activeRoute?.instructions ?? EMPTY_INSTRUCTIONS;
   const totalSteps = instructions.length;
 
-  const trackerRef = useRef<RouteProgressTracker | null>(null);
-
-  // Initialize or update tracker when route coordinates change
-  useEffect(() => {
-    if (activeRoute && activeRoute.coordinates.length >= 2) {
-      trackerRef.current = new RouteProgressTracker(
-        activeRoute.coordinates,
-        userLocation || undefined
-      );
-    } else {
-      trackerRef.current = null;
-    }
-  }, [activeRoute]);
-
-  // Update tracker on user location changes
-  const routeProgress = useMemo(() => {
-    if (!trackerRef.current || !userLocation || navStep !== "OUTDOOR_NAV") {
-      return null;
-    }
-    return trackerRef.current.update(userLocation.lat, userLocation.lng);
-  }, [userLocation, navStep]);
-
-  // Pre-calculate target distance along the route for each instruction
+  // Each instruction's target distance along the route. The node index is built once
+  // per route by the progress store, so this is a plain O(instructions) lookup.
   const instructionTargetDistances = useMemo(() => {
-    if (!activeRoute || !trackerRef.current || instructions.length === 0) {
-      return [];
-    }
+    if (!activeRoute || instructions.length === 0) return [];
 
-    const tracker = trackerRef.current;
+    const nodeDistances = routeProgressStore.getNodeDistances();
+    const totalDistance = routeProgressStore.getTotalDistance();
     let accumulatedDist = 0;
 
     return instructions.map((inst, idx) => {
       // 1. Target node along polyline
-      if (inst.targetNodeId && activeRoute.pathNodes) {
-        const dist = tracker.getDistanceAlongRouteForNodeId(inst.targetNodeId, activeRoute.pathNodes);
-        if (dist !== null) {
+      if (inst.targetNodeId) {
+        const dist = nodeDistances.get(inst.targetNodeId);
+        if (dist != null) {
           accumulatedDist = dist;
           return dist;
         }
@@ -76,14 +68,16 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
 
       // 2. Destination node for ARRIVE instruction
       if (inst.type === "ARRIVE" || idx === instructions.length - 1) {
-        return tracker.getTotalDistance();
+        return totalDistance;
       }
 
       // 3. Fallback: cumulative instruction distance
       accumulatedDist += inst.distance;
       return accumulatedDist;
     });
-  }, [activeRoute, instructions]);
+    // Keyed on `routeVersion` rather than `routeProgress` so this recomputes once per
+    // route instead of on every GPS fix.
+  }, [activeRoute, instructions, routeVersion]);
 
   const currentInstruction =
     instructions.length > 0 && currentInstructionIndex < instructions.length
@@ -105,12 +99,18 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
     const targetDist = instructionTargetDistances[currentInstructionIndex];
 
     if (targetDist != null) {
-      const remaining = targetDist - userDistAlongRoute;
-      return Math.max(0, Math.round(remaining));
+      return Math.max(0, Math.round(targetDist - userDistAlongRoute));
     }
 
     return currentInstruction.distance;
-  }, [userLocation, currentInstruction, navStep, routeProgress, instructionTargetDistances, currentInstructionIndex]);
+  }, [
+    userLocation,
+    currentInstruction,
+    navStep,
+    routeProgress,
+    instructionTargetDistances,
+    currentInstructionIndex,
+  ]);
 
   // Auto-advance step when user reaches / passes target distance along the route
   useEffect(() => {
@@ -139,27 +139,26 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
 
   // Live total remaining distance along the route
   const totalRemainingDistance = useMemo(() => {
-    if (!activeRoute || !trackerRef.current) return 0;
-    const totalDist = trackerRef.current.getTotalDistance() || activeRoute.totalDistanceMeters || 0;
+    if (!activeRoute) return 0;
+    const totalDist = routeProgressStore.getTotalDistance() || activeRoute.totalDistanceMeters || 0;
     const userDist = routeProgress?.distanceAlongRoute ?? 0;
     return Math.max(0, Math.round(totalDist - userDist));
-  }, [activeRoute, routeProgress]);
+  }, [activeRoute, routeProgress, routeVersion]);
 
   const totalRemainingMinutes = Math.max(1, Math.ceil(totalRemainingDistance / 78));
 
   // Continuous percentage based on meters travelled along the path
   const progressPercent = useMemo(() => {
-    if (!trackerRef.current) return 0;
-    const total = trackerRef.current.getTotalDistance();
+    const total = routeProgressStore.getTotalDistance();
     if (total <= 0) return 0;
     const current = routeProgress?.distanceAlongRoute ?? 0;
     return Math.min(100, Math.max(0, Math.round((current / total) * 100)));
-  }, [routeProgress]);
+  }, [routeProgress, routeVersion]);
 
-  // Direct Haversine distance between current user location and destination target
+  // Direct distance between current user location and destination target
   const directDistanceToDestination = useMemo(() => {
     if (!userLocation || !destinationTarget) return null;
-    return calculateDistanceInMeters(
+    return fastDistanceInMeters(
       userLocation.lat,
       userLocation.lng,
       destinationTarget.latitude,
@@ -171,7 +170,7 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
   const isArrived = useMemo(() => {
     if (navStep !== "OUTDOOR_NAV" || !destinationTarget) return false;
 
-    // 1. Direct Haversine distance to destination target coordinates
+    // 1. Direct distance to destination target coordinates
     if (
       directDistanceToDestination !== null &&
       directDistanceToDestination <= ARRIVAL_RADIUS_METERS
@@ -180,10 +179,7 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
     }
 
     // 2. Remaining distance along route path
-    if (
-      totalRemainingDistance > 0 &&
-      totalRemainingDistance <= ARRIVAL_RADIUS_METERS
-    ) {
+    if (totalRemainingDistance > 0 && totalRemainingDistance <= ARRIVAL_RADIUS_METERS) {
       return true;
     }
 
@@ -225,4 +221,3 @@ export function useTurnByTurnNavigation(): UseTurnByTurnNavigationResult {
     isArrived,
   };
 }
-

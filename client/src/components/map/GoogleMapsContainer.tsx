@@ -86,9 +86,15 @@ export function GoogleMapsContainer({
   );
 
   const mapTypeId = useMemo<string>(() => {
-    if (tileMode === "satellite") return "satellite";
+    if (tileMode === "satellite") return "hybrid";
     return "roadmap";
   }, [tileMode]);
+
+  useEffect(() => {
+    if (map) {
+      map.setMapTypeId(mapTypeId);
+    }
+  }, [map, mapTypeId]);
 
   const mapOptions = useMemo<google.maps.MapOptions>(() => ({
     mapTypeId,
@@ -97,10 +103,22 @@ export function GoogleMapsContainer({
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: false,
-    rotateControl: false,
+    rotateControl: true,
     minZoom,
     maxZoom,
     gestureHandling: "greedy",
+    styles: [
+      {
+        featureType: "poi",
+        elementType: "all",
+        stylers: [{ visibility: "off" }],
+      },
+      {
+        featureType: "transit",
+        elementType: "all",
+        stylers: [{ visibility: "off" }],
+      },
+    ],
   }), [mapTypeId, minZoom, maxZoom]);
 
   if (loadError) {

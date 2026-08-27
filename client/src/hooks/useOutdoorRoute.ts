@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { roadNetworkApi } from "@/api/roadNetwork.api";
-import { useAppStore } from "@/store";
-import { RouteProgressTracker } from "@/utils";
+import { useAppStore, useAppActions } from "@/store";
+import { routeProgressStore } from "@/utils";
 
 // Minimum milliseconds between consecutive route fetches (debounce)
 const REROUTE_DEBOUNCE_MS = 3000;
@@ -11,31 +11,29 @@ const REQUIRED_CONSECUTIVE_OFF_ROUTE_COUNT = 3;
 /**
  * Fetches the outdoor A* route from the server when outdoor navigation is active.
  * Only re-fetches (reroutes) when the user sustains off-route movement or target changes.
- * Tracks monotonic progress along the route and prevents GPS jitter from jumping backward.
+ *
+ * This hook is the single owner of `routeProgressStore` updates — it advances progress
+ * once per GPS fix and everything else reads from that shared tracker.
  */
 export function useOutdoorRoute() {
-  const {
-    navStep,
-    userLocation,
-    destinationTarget,
-    activeRoute,
-    setActiveRoute,
-    setCurrentInstructionIndex,
-  } = useAppStore();
+  const navStep = useAppStore((s) => s.navStep);
+  const userLocation = useAppStore((s) => s.userLocation);
+  const destinationTarget = useAppStore((s) => s.destinationTarget);
+  const activeRoute = useAppStore((s) => s.activeRoute);
+  const { setActiveRoute, setCurrentInstructionIndex } = useAppActions();
 
   const lastFetchPosRef = useRef<{ lat: number; lng: number } | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
   const isFetchingRef = useRef<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
   const requestIdRef = useRef<number>(0);
-  const trackerRef = useRef<RouteProgressTracker | null>(null);
   const consecutiveOffRouteCountRef = useRef<number>(0);
+  const userLocationRef = useRef(userLocation);
+  // Position a freshly fetched route should be anchored at, handed to the effect below
+  // so the tracker is rebuilt exactly once per route.
+  const pendingAnchorRef = useRef<{ lat: number; lng: number } | null>(null);
 
-  // Keep a ref to activeRoute to avoid activeRoute in effect dependency array
-  const activeRouteRef = useRef(activeRoute);
-  useEffect(() => {
-    activeRouteRef.current = activeRoute;
-  }, [activeRoute]);
+  userLocationRef.current = userLocation;
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -44,17 +42,13 @@ export function useOutdoorRoute() {
     };
   }, []);
 
-  // Update or initialize tracker when activeRoute changes
+  // Rebuild the shared tracker whenever the route geometry changes, anchored at the
+  // position the route was requested from (or the latest fix, for externally set routes).
   useEffect(() => {
-    if (activeRoute && activeRoute.coordinates.length >= 2) {
-      trackerRef.current = new RouteProgressTracker(
-        activeRoute.coordinates,
-        userLocation || undefined
-      );
-      consecutiveOffRouteCountRef.current = 0;
-    } else {
-      trackerRef.current = null;
-    }
+    const anchor = pendingAnchorRef.current ?? userLocationRef.current ?? undefined;
+    pendingAnchorRef.current = null;
+    routeProgressStore.setRoute(activeRoute, anchor);
+    consecutiveOffRouteCountRef.current = 0;
   }, [activeRoute]);
 
   const fetchRoute = useCallback(
@@ -79,18 +73,14 @@ export function useOutdoorRoute() {
 
         // Stale response guard: only update if this is still the latest request
         if (isMountedRef.current && currentRequestId === requestIdRef.current) {
-          // Reset navigation state atomically for the new route
+          // Reset navigation state atomically for the new route. The tracker is rebuilt
+          // by the effect above, anchored at the position this route was requested from.
+          pendingAnchorRef.current = { lat: fromLat, lng: fromLng };
           setActiveRoute(route);
           setCurrentInstructionIndex(0);
           lastFetchPosRef.current = { lat: fromLat, lng: fromLng };
           lastFetchTimeRef.current = Date.now();
           consecutiveOffRouteCountRef.current = 0;
-
-          // Initialize tracker anchored at the current GPS position
-          trackerRef.current = new RouteProgressTracker(route.coordinates, {
-            lat: fromLat,
-            lng: fromLng,
-          });
         }
       } catch (err) {
         console.warn("[useOutdoorRoute] Route fetch failed:", err);
@@ -109,43 +99,38 @@ export function useOutdoorRoute() {
 
     const { lat, lng } = userLocation;
     const now = Date.now();
-    const lastPos = lastFetchPosRef.current;
 
-    const neverFetched = lastPos === null;
-    const debouncePassed = now - lastFetchTimeRef.current > REROUTE_DEBOUNCE_MS;
-
-    if (neverFetched) {
+    if (lastFetchPosRef.current === null) {
       fetchRoute(lat, lng);
       return;
     }
 
-    // Check off-route using RouteProgressTracker
-    if (trackerRef.current) {
-      const progress = trackerRef.current.update(lat, lng);
+    // Advance the shared tracker for this fix and check whether we've left the route.
+    const progress = routeProgressStore.update(lat, lng);
+    if (!progress) return;
 
-      if (progress.isOffRoute) {
-        consecutiveOffRouteCountRef.current += 1;
-      } else {
-        consecutiveOffRouteCountRef.current = 0;
-      }
+    if (progress.isOffRoute) {
+      consecutiveOffRouteCountRef.current += 1;
+    } else {
+      consecutiveOffRouteCountRef.current = 0;
+    }
 
-      // Reroute if user sustained off-route position for multiple consecutive readings
-      if (
-        debouncePassed &&
-        consecutiveOffRouteCountRef.current >= REQUIRED_CONSECUTIVE_OFF_ROUTE_COUNT
-      ) {
-        fetchRoute(lat, lng);
-      }
+    // Reroute if user sustained off-route position for multiple consecutive readings
+    if (
+      now - lastFetchTimeRef.current > REROUTE_DEBOUNCE_MS &&
+      consecutiveOffRouteCountRef.current >= REQUIRED_CONSECUTIVE_OFF_ROUTE_COUNT
+    ) {
+      fetchRoute(lat, lng);
     }
   }, [navStep, userLocation, destinationTarget, fetchRoute]);
 
-  // When navigation ends or destination changes, reset tracking refs
+  // When navigation ends, reset tracking refs and drop the tracker
   useEffect(() => {
     if (navStep === "IDLE") {
       lastFetchPosRef.current = null;
       lastFetchTimeRef.current = 0;
       consecutiveOffRouteCountRef.current = 0;
-      trackerRef.current = null;
+      routeProgressStore.reset();
     }
   }, [navStep]);
 }

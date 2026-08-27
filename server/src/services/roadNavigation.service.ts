@@ -39,16 +39,27 @@ export interface RouteResponse {
 const roadNodeRepo = new RoadNodeRepository();
 const roadEdgeRepo = new RoadEdgeRepository();
 
-// In-memory graph cache to prevent DB queries on every GPS tick / reroute request
+type GraphNode = Awaited<ReturnType<typeof roadNodeRepo.findGraphNodes>>[number];
+
+const DEG_TO_RAD = Math.PI / 180;
+// Cap on cached graph paths. The campus has a small node count, so this covers
+// essentially every realistic origin/destination pair.
+const MAX_CACHED_PATHS = 128;
+
 interface CachedGraph {
-  nodes: Awaited<ReturnType<typeof roadNodeRepo.findAll>>;
-  nodeMap: Map<string, Awaited<ReturnType<typeof roadNodeRepo.findAll>>[0]>;
+  nodes: GraphNode[];
+  nodeMap: Map<string, GraphNode>;
   adj: Map<string, Array<{ toId: string; distance: number }>>;
-  cachedAt: number;
+  /** Cached graph-only paths keyed `startNodeId:destNodeId`. */
+  pathCache: Map<string, string[]>;
 }
 
 let graphCache: CachedGraph | null = null;
-const CACHE_TTL_MS = 60_000; // 1 minute TTL, invalidated on admin edits
+// In-flight load, so concurrent cache misses share one round trip to the database.
+let graphLoadPromise: Promise<CachedGraph> | null = null;
+// Incremented on every invalidation. A load that finishes after its generation has been
+// superseded discards its result rather than caching data that is already stale.
+let graphGeneration = 0;
 
 export class RoadNavigationService {
   /**
@@ -56,118 +67,163 @@ export class RoadNavigationService {
    */
   static invalidateGraphCache(): void {
     graphCache = null;
+    graphLoadPromise = null;
+    graphGeneration += 1;
   }
 
   /**
-   * Loads or returns cached graph representation.
+   * Load the graph into memory ahead of the first request so nobody pays cold-start cost.
+   */
+  static async warmGraphCache(): Promise<void> {
+    try {
+      await new RoadNavigationService().getGraph();
+    } catch (err) {
+      console.warn("[RoadNavigationService] Graph cache warm-up failed:", err);
+    }
+  }
+
+  /**
+   * Loads or returns the cached graph representation.
+   *
+   * There is no TTL: every node and edge mutation already calls `invalidateGraphCache`,
+   * so expiring on a timer only forced needless reloads of a graph that hadn't changed.
    */
   private async getGraph(): Promise<CachedGraph> {
-    const now = Date.now();
-    if (graphCache && now - graphCache.cachedAt < CACHE_TTL_MS) {
-      return graphCache;
-    }
+    if (graphCache) return graphCache;
+    if (graphLoadPromise) return graphLoadPromise;
 
-    const allNodes = await roadNodeRepo.findAll();
-    const allEdges = await roadEdgeRepo.findAll();
-    const walkableEdges = allEdges.filter((e) => e.isWalkable !== false);
+    const generation = graphGeneration;
 
-    const nodeMap = new Map(allNodes.map((n) => [n.id, n]));
-    const adj = new Map<string, Array<{ toId: string; distance: number }>>();
+    graphLoadPromise = (async () => {
+      const [allNodes, allEdges] = await Promise.all([
+        roadNodeRepo.findGraphNodes(),
+        roadEdgeRepo.findGraphEdges(),
+      ]);
 
-    for (const node of allNodes) {
-      adj.set(node.id, []);
-    }
+      const nodeMap = new Map<string, GraphNode>();
+      const adj = new Map<string, Array<{ toId: string; distance: number }>>();
 
-    for (const edge of walkableEdges) {
-      if (!adj.has(edge.fromNodeId)) adj.set(edge.fromNodeId, []);
-      adj.get(edge.fromNodeId)!.push({ toId: edge.toNodeId, distance: edge.distance });
-
-      if (edge.isBidirectional) {
-        if (!adj.has(edge.toNodeId)) adj.set(edge.toNodeId, []);
-        adj.get(edge.toNodeId)!.push({ toId: edge.fromNodeId, distance: edge.distance });
+      for (const node of allNodes) {
+        nodeMap.set(node.id, node);
+        adj.set(node.id, []);
       }
-    }
 
-    graphCache = {
-      nodes: allNodes,
-      nodeMap,
-      adj,
-      cachedAt: now,
-    };
+      for (const edge of allEdges) {
+        if (edge.isWalkable === false) continue;
 
-    return graphCache;
+        let from = adj.get(edge.fromNodeId);
+        if (!from) {
+          from = [];
+          adj.set(edge.fromNodeId, from);
+        }
+        from.push({ toId: edge.toNodeId, distance: edge.distance });
+
+        if (edge.isBidirectional) {
+          let to = adj.get(edge.toNodeId);
+          if (!to) {
+            to = [];
+            adj.set(edge.toNodeId, to);
+          }
+          to.push({ toId: edge.fromNodeId, distance: edge.distance });
+        }
+      }
+
+      const graph: CachedGraph = {
+        nodes: allNodes,
+        nodeMap,
+        adj,
+        pathCache: new Map(),
+      };
+
+      // Only publish if no invalidation landed while this load was in flight; the
+      // caller still gets this graph, it just doesn't become the cached one.
+      if (generation === graphGeneration) {
+        graphCache = graph;
+        graphLoadPromise = null;
+      }
+      return graph;
+    })().catch((err) => {
+      if (generation === graphGeneration) {
+        graphLoadPromise = null;
+      }
+      throw err;
+    });
+
+    return graphLoadPromise;
   }
 
   /**
-   * Calculates shortest path along AASTU road graph using optimized A* pathfinding
-   * with a Binary Min-Heap Priority Queue and Haversine heuristic.
+   * Finds the graph node closest to a coordinate.
+   *
+   * A linear scan, but with the trigonometry hoisted out: `cosLat` is computed once per
+   * query instead of the four trig calls plus `atan2` that Haversine needed per node.
+   * At campus scale that reduces this from the most expensive part of a route request
+   * to a rounding error, without the correctness traps of a spatial index.
+   */
+  private findNearestNode(graph: CachedGraph, lat: number, lng: number): GraphNode {
+    const { nodes } = graph;
+    const cosLat = Math.cos(lat * DEG_TO_RAD);
+
+    let best = nodes[0];
+    let bestDistSq = Infinity;
+
+    for (const node of nodes) {
+      const dLat = node.latitude - lat;
+      const dLng = (node.longitude - lng) * cosLat;
+      const distSq = dLat * dLat + dLng * dLng;
+      if (distSq < bestDistSq) {
+        bestDistSq = distSq;
+        best = node;
+      }
+    }
+
+    return best;
+  }
+
+  /**
+   * A* over the road graph with a binary min-heap and an admissible Haversine heuristic.
    * Time Complexity: O((V + E) log V)
    */
-  async calculateRoute(req: RouteRequest): Promise<RouteResponse> {
-    const { startLat, startLng, destLat, destLng, destNodeId } = req;
+  private findPath(graph: CachedGraph, startNode: GraphNode, destNode: GraphNode): string[] {
+    const { nodeMap, adj, pathCache } = graph;
 
-    if (startLat == null || startLng == null) {
-      throw new Error("startLat and startLng coordinates are required.");
-    }
+    const cacheKey = `${startNode.id}:${destNode.id}`;
+    const cached = pathCache.get(cacheKey);
+    if (cached) return cached;
 
-    const { nodes: allNodes, nodeMap, adj } = await this.getGraph();
-    if (allNodes.length === 0) {
-      throw new Error("No road nodes available in database.");
-    }
-
-    // 1. Find nearest start node
-    let startNode = allNodes[0];
-    let minStartDist = Infinity;
-    for (const node of allNodes) {
-      const d = calculateHaversineDistance(startLat, startLng, node.latitude, node.longitude);
-      if (d < minStartDist) {
-        minStartDist = d;
-        startNode = node;
-      }
-    }
-
-    // 2. Find nearest dest node (or by destNodeId)
-    let destNode = allNodes[0];
-    if (destNodeId) {
-      const found = nodeMap.get(destNodeId);
-      if (found) destNode = found;
-    } else if (destLat != null && destLng != null) {
-      let minDestDist = Infinity;
-      for (const node of allNodes) {
-        const d = calculateHaversineDistance(destLat, destLng, node.latitude, node.longitude);
-        if (d < minDestDist) {
-          minDestDist = d;
-          destNode = node;
-        }
-      }
-    } else {
-      throw new Error("Either destLat/destLng or destNodeId must be provided.");
-    }
-
-    // 3. Optimized A* Search Algorithm using Binary Min-Heap Priority Queue
     const pq = new PriorityQueue<string>();
     const cameFrom = new Map<string, string>();
+    // Lazily populated — pre-seeding every node with Infinity costs O(V) per request
+    // for no benefit, since a missing entry already means "unreached".
     const gScore = new Map<string, number>();
     const closedSet = new Set<string>();
+    // h(n) is fixed for a given destination, so memoise it instead of recomputing on
+    // every edge relaxation.
+    const hCache = new Map<string, number>();
 
-    for (const node of allNodes) {
-      gScore.set(node.id, Infinity);
-    }
+    const heuristic = (node: GraphNode): number => {
+      const memo = hCache.get(node.id);
+      if (memo !== undefined) return memo;
+      const h = calculateHaversineDistance(
+        node.latitude,
+        node.longitude,
+        destNode.latitude,
+        destNode.longitude
+      );
+      hCache.set(node.id, h);
+      return h;
+    };
 
     gScore.set(startNode.id, 0);
-    const initialH = calculateHaversineDistance(
-      startNode.latitude,
-      startNode.longitude,
-      destNode.latitude,
-      destNode.longitude
-    );
+    pq.push(startNode.id, heuristic(startNode));
 
-    pq.push(startNode.id, initialH);
+    let reached = startNode.id === destNode.id;
 
     while (!pq.isEmpty()) {
       const currentId = pq.pop()!;
 
       if (currentId === destNode.id) {
+        reached = true;
         break;
       }
 
@@ -175,7 +231,8 @@ export class RoadNavigationService {
       closedSet.add(currentId);
 
       const currentG = gScore.get(currentId) ?? Infinity;
-      const neighbors = adj.get(currentId) ?? [];
+      const neighbors = adj.get(currentId);
+      if (!neighbors) continue;
 
       for (const neighbor of neighbors) {
         if (closedSet.has(neighbor.toId)) continue;
@@ -188,28 +245,20 @@ export class RoadNavigationService {
         if (tentativeG < (gScore.get(neighbor.toId) ?? Infinity)) {
           cameFrom.set(neighbor.toId, currentId);
           gScore.set(neighbor.toId, tentativeG);
-
-          // Admissible & Consistent Haversine Heuristic h(n)
-          const h = calculateHaversineDistance(
-            neighborNode.latitude,
-            neighborNode.longitude,
-            destNode.latitude,
-            destNode.longitude
-          );
-          const f = tentativeG + h;
-
-          pq.push(neighbor.toId, f);
+          pq.push(neighbor.toId, tentativeG + heuristic(neighborNode));
         }
       }
     }
 
-    // 5. Reconstruct Path
-    const pathIds: string[] = [];
-    let curr: string | undefined = destNode.id;
+    // Reconstruct the path
+    let pathIds: string[];
 
-    if (gScore.get(destNode.id) === Infinity && startNode.id !== destNode.id) {
-      pathIds.push(startNode.id, destNode.id);
+    if (!reached && startNode.id !== destNode.id) {
+      // Disconnected: fall back to a direct hop so the user still gets a bearing.
+      pathIds = [startNode.id, destNode.id];
     } else {
+      pathIds = [];
+      let curr: string | undefined = destNode.id;
       while (curr) {
         pathIds.push(curr);
         if (curr === startNode.id) break;
@@ -218,10 +267,61 @@ export class RoadNavigationService {
       pathIds.reverse();
     }
 
+    if (pathCache.size >= MAX_CACHED_PATHS) {
+      // Map preserves insertion order, so the first key is the oldest entry.
+      const oldest = pathCache.keys().next().value;
+      if (oldest !== undefined) pathCache.delete(oldest);
+    }
+    pathCache.set(cacheKey, pathIds);
+
+    return pathIds;
+  }
+
+  /**
+   * Calculates the shortest walking route along the AASTU road graph.
+   */
+  async calculateRoute(req: RouteRequest): Promise<RouteResponse> {
+    const { startLat, startLng, destLat, destLng, destNodeId } = req;
+
+    if (startLat == null || startLng == null || isNaN(startLat) || isNaN(startLng)) {
+      throw new Error("startLat and startLng coordinates are required.");
+    }
+
+    const graph = await this.getGraph();
+    const { nodes: allNodes, nodeMap } = graph;
+    if (allNodes.length === 0) {
+      throw new Error("No road nodes available in database.");
+    }
+
+    // 1. Nearest start node
+    const startNode = this.findNearestNode(graph, startLat, startLng);
+
+    // 2. Destination node, either explicit or nearest to the target coordinates
+    let destNode: GraphNode;
+    if (destNodeId) {
+      const found = nodeMap.get(destNodeId);
+      if (!found) {
+        throw new Error(`Road node ${destNodeId} was not found.`);
+      }
+      destNode = found;
+    } else if (destLat != null && destLng != null && !isNaN(destLat) && !isNaN(destLng)) {
+      destNode = this.findNearestNode(graph, destLat, destLng);
+    } else {
+      throw new Error("Either destLat/destLng or destNodeId must be provided.");
+    }
+
+    // 3. Shortest path through the graph
+    const pathIds = this.findPath(graph, startNode, destNode);
+
     const pathNodes = pathIds
       .map((id) => nodeMap.get(id))
-      .filter((n): n is (typeof allNodes)[0] => n != null);
+      .filter((n): n is GraphNode => n != null);
 
+    if (pathNodes.length === 0) {
+      throw new Error("Failed to resolve a route through the road network.");
+    }
+
+    // 4. Stitch the raw GPS origin and the true destination onto the graph path
     const coordinates: [number, number][] = [[startLat, startLng]];
     let graphDistance = 0;
 
@@ -241,20 +341,16 @@ export class RoadNavigationService {
     const targetLng = destLng ?? destNode.longitude;
     coordinates.push([targetLat, targetLng]);
 
+    const lastNode = pathNodes[pathNodes.length - 1];
     const totalDistanceMeters = Math.round(
       calculateHaversineDistance(startLat, startLng, pathNodes[0].latitude, pathNodes[0].longitude) +
         graphDistance +
-        calculateHaversineDistance(
-          pathNodes[pathNodes.length - 1].latitude,
-          pathNodes[pathNodes.length - 1].longitude,
-          targetLat,
-          targetLng
-        )
+        calculateHaversineDistance(lastNode.latitude, lastNode.longitude, targetLat, targetLng)
     );
 
     const estimatedWalkingMinutes = Math.max(1, Math.ceil(totalDistanceMeters / 78));
 
-    const mapNodeToInfo = (node: (typeof allNodes)[0]): RouteNodeInfo => ({
+    const mapNodeToInfo = (node: GraphNode): RouteNodeInfo => ({
       id: node.id,
       name: node.name,
       type: node.type,
@@ -281,4 +377,3 @@ export class RoadNavigationService {
     };
   }
 }
-

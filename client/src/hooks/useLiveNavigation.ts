@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { calculateDistanceInMeters } from "@/utils/geo";
+import { fastDistanceInMeters, calculateDistanceInMeters } from "@/utils/geo";
 
 export interface GPSPosition {
   latitude: number;
@@ -15,6 +15,11 @@ export interface UseLiveNavigationOptions {
   targetLng?: number | null;
   arrivalThresholdMeters?: number;
   enabled?: boolean;
+  /**
+   * Request high-accuracy fixes. Meaningfully more battery and CPU, so enable it only
+   * while actively navigating.
+   */
+  highAccuracy?: boolean;
   onArrival?: () => void;
 }
 
@@ -38,6 +43,7 @@ export function useLiveNavigation({
   targetLng,
   arrivalThresholdMeters = 15,
   enabled = true,
+  highAccuracy = true,
   onArrival,
 }: UseLiveNavigationOptions = {}): UseLiveNavigationResult {
   const [userPosition, setUserPosition] = useState<GPSPosition | null>(null);
@@ -100,9 +106,11 @@ export function useLiveNavigation({
           return;
         }
 
-        // 3. Jitter filtering: If change is tiny (< 1.0m) and speed is zero/low, skip unnecessary render
+        // 3. Jitter filtering: If change is tiny (< 1.0m) and speed is zero/low, skip
+        //    unnecessary render. Uses the unrounded metric — the rounded one snaps to
+        //    whole metres and cannot resolve a 1.0m threshold.
         if (prevPos !== null) {
-          const deltaMeters = calculateDistanceInMeters(
+          const deltaMeters = fastDistanceInMeters(
             latitude,
             longitude,
             prevPos.latitude,
@@ -131,12 +139,12 @@ export function useLiveNavigation({
         setIsTracking(false);
       },
       {
-        enableHighAccuracy: true,
+        enableHighAccuracy: highAccuracy,
         timeout: 15000,
-        maximumAge: 1000,
+        maximumAge: highAccuracy ? 1000 : 10000,
       }
     );
-  }, []);
+  }, [highAccuracy]);
 
   // Update distance to target and arrival locally whenever userPosition or target changes
   useEffect(() => {
@@ -159,17 +167,25 @@ export function useLiveNavigation({
     }
   }, [userPosition, targetLat, targetLng, arrivalThresholdMeters]);
 
+  // (Re)start the watcher when enablement or accuracy mode changes.
   useEffect(() => {
-    if (enabled) {
-      startTracking();
-    } else {
+    if (!enabled) {
       stopTracking();
+      return;
     }
+
+    // `startTracking` bails if a watcher is live, so tear down first to let an
+    // accuracy-mode change take effect.
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    startTracking();
 
     return () => {
       stopTracking();
     };
-  }, [enabled, startTracking, stopTracking]);
+  }, [enabled, highAccuracy, startTracking, stopTracking]);
 
   return {
     userPosition,
@@ -181,4 +197,3 @@ export function useLiveNavigation({
     stopTracking,
   };
 }
-

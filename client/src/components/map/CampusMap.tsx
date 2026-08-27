@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
-import { Navigation2 } from "lucide-react";
+import { useEffect, useRef, useState, useCallback, useMemo, memo } from "react";
+import { Navigation2, Compass } from "lucide-react";
 
 import { useBuildings } from "@/hooks/useBuildings";
 import { useLandmarks } from "@/hooks/useLandmarks";
-import { useAppStore } from "@/store";
+import { useAppStore, useAppActions } from "@/store";
 import { useOutdoorRoute, useLiveNavigation, useHeadingFusion } from "@/hooks";
 import { OutdoorNavOverlay, ArrivalBottomSheet, BuildingTransitionOverlay, IndoorGuidanceCard } from "@/components/navigation";
+import type { Building, Landmark } from "@/types";
 
 import { GoogleMapsContainer } from "./GoogleMapsContainer";
 import { NavigationCamera } from "./NavigationCamera";
@@ -26,6 +27,9 @@ import {
 
 export { AASTU_CENTER, type TileMode };
 
+// How often the live GPS position is pushed into the app store, in ms.
+const STORE_UPDATE_INTERVAL_MS = 500;
+
 // ── Floating Map Controls (GPS Pin + Satellite toggle) ────────────────────────
 interface MapControlsProps {
   tileMode: TileMode;
@@ -33,7 +37,7 @@ interface MapControlsProps {
   onCenterLocation: () => void;
 }
 
-function MapControls({
+const MapControls = memo(function MapControls({
   tileMode,
   onToggleTile,
   onCenterLocation,
@@ -74,7 +78,39 @@ function MapControls({
       </button>
     </div>
   );
+});
+
+// ── Static Marker Layers ──────────────────────────────────────────────────────
+interface MarkerLayersProps {
+  standaloneBuildings: Building[];
+  landmarks: Landmark[];
+  buildingCodeByLandmarkId: Map<string, string | undefined>;
 }
+
+/**
+ * Building and landmark pins. Memoised and isolated from the rest of the map so that
+ * position, heading and route updates can never reconcile these lists.
+ */
+const MarkerLayers = memo(function MarkerLayers({
+  standaloneBuildings,
+  landmarks,
+  buildingCodeByLandmarkId,
+}: MarkerLayersProps) {
+  return (
+    <>
+      {standaloneBuildings.map((building) => (
+        <BuildingMarker key={building.id} building={building} />
+      ))}
+      {landmarks.map((landmark) => (
+        <LandmarkMarker
+          key={landmark.id}
+          landmark={landmark}
+          buildingCode={buildingCodeByLandmarkId.get(landmark.id)}
+        />
+      ))}
+    </>
+  );
+});
 
 // ── Main Map Component ────────────────────────────────────────────────────────
 interface CampusMapProps {
@@ -83,24 +119,27 @@ interface CampusMapProps {
 }
 
 export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
+  const mapRef = useRef<google.maps.Map | null>(null);
   const { buildings, isLoading: buildingsLoading, error: buildingsError, fetchBuildings } =
     useBuildings();
   const { landmarks, isLoading: landmarksLoading, fetchLandmarks } = useLandmarks();
 
-  const {
-    navStep,
-    userLocation,
-    setUserLocation,
-    activeRoute,
-    startOutdoorNavigation,
-  } = useAppStore();
+  const navStep = useAppStore((s) => s.navStep);
+  const userLocation = useAppStore((s) => s.userLocation);
+  const activeRoute = useAppStore((s) => s.activeRoute);
+  const { setUserLocation, startOutdoorNavigation } = useAppActions();
 
-  // Continuous high-accuracy live GPS tracking
-  const { userPosition } = useLiveNavigation({ enabled: true });
+  const isNavigating = navStep === "OUTDOOR_NAV";
 
-  // Heading fusion (Device compass + GPS course with circular EMA smoothing)
+  // Continuous live GPS tracking. High accuracy costs battery, so it is reserved for
+  // active navigation.
+  const { userPosition } = useLiveNavigation({ enabled: true, highAccuracy: isNavigating });
+
+  // Heading fusion (device compass + GPS course with circular EMA smoothing).
+  // The heading is delivered by subscription rather than state — at ~10Hz, holding it
+  // in state here would re-render the entire map subtree ten times a second.
   const {
-    heading: fusedHeading,
+    subscribeHeading,
     requestPermission: requestCompassPermission,
   } = useHeadingFusion({
     gpsHeading: userPosition?.heading,
@@ -108,18 +147,46 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     enabled: true,
   });
 
+  // ── Throttled position → store, trailing edge ──────────────────────────────
+  // Fixes arriving inside the throttle window are held and flushed on a timer rather
+  // than dropped, so the marker never lags a whole GPS interval behind.
   const lastStoreUpdateRef = useRef<number>(0);
-  const STORE_UPDATE_INTERVAL_MS = 500;
+  const pendingPositionRef = useRef<{ lat: number; lng: number } | null>(null);
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (userPosition) {
-      const now = Date.now();
-      if (now - lastStoreUpdateRef.current >= STORE_UPDATE_INTERVAL_MS || !userLocation) {
-        lastStoreUpdateRef.current = now;
-        setUserLocation({ lat: userPosition.latitude, lng: userPosition.longitude });
-      }
+    if (!userPosition) return;
+
+    const next = { lat: userPosition.latitude, lng: userPosition.longitude };
+    const elapsed = Date.now() - lastStoreUpdateRef.current;
+
+    if (elapsed >= STORE_UPDATE_INTERVAL_MS) {
+      lastStoreUpdateRef.current = Date.now();
+      pendingPositionRef.current = null;
+      setUserLocation(next);
+      return;
     }
-  }, [userPosition, setUserLocation, userLocation]);
+
+    pendingPositionRef.current = next;
+    if (flushTimerRef.current === null) {
+      flushTimerRef.current = setTimeout(() => {
+        flushTimerRef.current = null;
+        const pending = pendingPositionRef.current;
+        pendingPositionRef.current = null;
+        if (pending) {
+          lastStoreUpdateRef.current = Date.now();
+          setUserLocation(pending);
+        }
+      }, STORE_UPDATE_INTERVAL_MS - elapsed);
+    }
+  }, [userPosition, setUserLocation]);
+
+  useEffect(
+    () => () => {
+      if (flushTimerRef.current !== null) clearTimeout(flushTimerRef.current);
+    },
+    []
+  );
 
   // Fetch A* route from server; handles auto-rerouting on position departure
   useOutdoorRoute();
@@ -136,6 +203,16 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
       startOutdoorNavigation(params);
     },
     [requestCompassPermission, startOutdoorNavigation]
+  );
+
+  const handleRecenter = useCallback(async () => {
+    await requestCompassPermission();
+    setShouldCenterLocation(true);
+  }, [requestCompassPermission]);
+
+  const handleToggleTile = useCallback(
+    () => setTileMode((prev) => (prev === "street" ? "satellite" : "street")),
+    []
   );
 
   // Listen for AI Chatbot Action Triggers
@@ -204,6 +281,23 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
 
   const isLoading = buildingsLoading || landmarksLoading;
 
+  const [mapHeading, setMapHeading] = useState<number>(0);
+
+  // Set map ref when Google Maps instance becomes available
+  const handleMapReady = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
+    map.addListener("heading_changed", () => {
+      setMapHeading(map.getHeading() ?? 0);
+    });
+  }, []);
+
+  const handleResetNorth = useCallback(() => {
+    if (mapRef.current && typeof google !== "undefined" && google.maps) {
+      mapRef.current.setHeading(0);
+      setMapHeading(0);
+    }
+  }, []);
+
   // Map building lookup map by ID and normalized name
   const buildingById = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
   const buildingByName = useMemo(
@@ -211,19 +305,36 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     [buildings]
   );
 
+  // Resolve each landmark to its matching building once, rather than inside render.
+  const matchedBuildingByLandmarkId = useMemo(() => {
+    const map = new Map<string, Building | undefined>();
+    for (const landmark of landmarks) {
+      const match =
+        (landmark.buildingId ? buildingById.get(landmark.buildingId) : undefined) ||
+        buildingByName.get(landmark.name.toLowerCase().trim());
+      map.set(landmark.id, match);
+    }
+    return map;
+  }, [landmarks, buildingById, buildingByName]);
+
+  const buildingCodeByLandmarkId = useMemo(() => {
+    const map = new Map<string, string | undefined>();
+    for (const landmark of landmarks) {
+      const matched = matchedBuildingByLandmarkId.get(landmark.id);
+      map.set(landmark.id, matched?.code ?? landmark.building?.code);
+    }
+    return map;
+  }, [landmarks, matchedBuildingByLandmarkId]);
+
   // Set of building IDs that are matched to a landmark
   const coveredBuildingIds = useMemo(() => {
     const ids = new Set<string>();
-    landmarks.forEach((landmark) => {
-      if (landmark.buildingId && buildingById.has(landmark.buildingId)) {
-        ids.add(landmark.buildingId);
-      } else {
-        const match = buildingByName.get(landmark.name.toLowerCase().trim());
-        if (match) ids.add(match.id);
-      }
-    });
+    for (const landmark of landmarks) {
+      const matched = matchedBuildingByLandmarkId.get(landmark.id);
+      if (matched) ids.add(matched.id);
+    }
     return ids;
-  }, [landmarks, buildingById, buildingByName]);
+  }, [landmarks, matchedBuildingByLandmarkId]);
 
   // Standalone buildings (not merged into a landmark)
   const standaloneBuildings = useMemo(
@@ -289,11 +400,11 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         maxZoom={MAX_ZOOM}
         tileMode={tileMode}
         className="h-full w-full"
+        onMapReady={handleMapReady}
       >
         {/* Navigation Camera Controller */}
         <NavigationCamera
           userLocation={userLocation}
-          fusedHeading={fusedHeading}
           isFollowingUser={isFollowingUser}
           setIsFollowingUser={setIsFollowingUser}
           shouldCenter={shouldCenterLocation}
@@ -308,71 +419,55 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
           <UserLocationMarker
             lat={userLocation.lat}
             lng={userLocation.lng}
-            isNavigating={navStep === "OUTDOOR_NAV"}
-            heading={fusedHeading}
-            isCourseUp={navStep === "OUTDOOR_NAV" && isFollowingUser}
+            isNavigating={isNavigating}
+            subscribeHeading={subscribeHeading}
+            isCourseUp={isNavigating && isFollowingUser}
+            accuracy={userPosition?.accuracy ?? undefined}
           />
         )}
 
         {/* Outdoor walking route polyline */}
-        {navStep === "OUTDOOR_NAV" && activePolyline.length > 1 && (
+        {isNavigating && activePolyline.length > 1 && (
           <WalkingRoutePolyline positions={activePolyline} />
         )}
 
-        {/* Standalone Building markers */}
-        {standaloneBuildings.map((building) => (
-          <BuildingMarker key={building.id} building={building} />
-        ))}
-
-        {/* Landmark markers */}
-        {landmarks.map((landmark) => {
-          const matchedBuilding =
-            (landmark.buildingId ? buildingById.get(landmark.buildingId) : null) ||
-            buildingByName.get(landmark.name.toLowerCase().trim()) ||
-            landmark.building;
-
-          return (
-            <LandmarkMarker
-              key={landmark.id}
-              landmark={landmark}
-              buildingCode={matchedBuilding?.code}
-            />
-          );
-        })}
-
-        {/* Floating Controls (Satellite toggle, center location) */}
-        <MapControls
-          tileMode={tileMode}
-          onToggleTile={() => setTileMode((m) => (m === "street" ? "satellite" : "street"))}
-          onCenterLocation={() => {
-            if ("geolocation" in navigator) {
-              navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                  setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-                  setShouldCenterLocation(true);
-                },
-                () => {
-                  if (!userLocation) setUserLocation({ lat: 8.88218, lng: 38.79665 });
-                  setShouldCenterLocation(true);
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-              );
-            } else {
-              if (!userLocation) setUserLocation({ lat: 8.88218, lng: 38.79665 });
-              setShouldCenterLocation(true);
-            }
-          }}
+        {/* Building & landmark pins */}
+        <MarkerLayers
+          standaloneBuildings={standaloneBuildings}
+          landmarks={landmarks}
+          buildingCodeByLandmarkId={buildingCodeByLandmarkId}
         />
+
+        {/* Compass/Reset North-Up button */}
+        <div
+          className="absolute top-6 right-3 sm:right-4 z-[1001] flex items-center gap-2 pointer-events-auto select-none"
+          style={{ zIndex: 1001 }}
+        >
+          <button
+            onClick={handleResetNorth}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0B132B]/95 text-cyan-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95"
+            title="Reset to North-Up"
+          >
+            <Compass
+              className="h-5 w-5 transition-transform duration-300 ease-out"
+              style={{ transform: `rotate(${-mapHeading}deg)` }}
+            />
+          </button>
+        </div>
       </GoogleMapsContainer>
 
+      {/* Floating Map Controls (Street/Satellite toggle & Center Location) */}
+      <MapControls
+        tileMode={tileMode}
+        onToggleTile={handleToggleTile}
+        onCenterLocation={handleRecenter}
+      />
+
       {/* Floating Recenter Pill */}
-      {navStep === "OUTDOOR_NAV" && !isFollowingUser && (
+      {isNavigating && !isFollowingUser && (
         <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto">
           <button
-            onClick={async () => {
-              await requestCompassPermission();
-              setShouldCenterLocation(true);
-            }}
+            onClick={handleRecenter}
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500 text-slate-950 font-bold text-xs shadow-2xl shadow-cyan-500/40 border border-cyan-300 hover:bg-cyan-400 active:scale-95 transition-all cursor-pointer"
           >
             <Navigation2 className="h-3.5 w-3.5 fill-current" />

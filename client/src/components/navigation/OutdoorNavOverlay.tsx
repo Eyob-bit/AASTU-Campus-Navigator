@@ -15,7 +15,7 @@ import {
   ChevronUp,
   Flag,
 } from "lucide-react";
-import { useAppStore } from "@/store";
+import { useAppStore, useAppActions } from "@/store";
 import { useTurnByTurnNavigation } from "@/hooks";
 import { formatDistance } from "@/utils/geo";
 import type { InstructionType, RouteInstruction } from "@/api/roadNetwork.api";
@@ -159,11 +159,9 @@ function StepList({
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function OutdoorNavOverlay() {
-  const {
-    destinationTarget,
-    activeRoute,
-    finishNavigation,
-  } = useAppStore();
+  const destinationTarget = useAppStore((s) => s.destinationTarget);
+  const activeRoute = useAppStore((s) => s.activeRoute);
+  const { finishNavigation } = useAppActions();
 
   const [isRerouting, setIsRerouting] = useState(false);
   const [showSteps, setShowSteps] = useState(false);

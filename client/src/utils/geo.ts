@@ -1,5 +1,13 @@
+const EARTH_RADIUS_METERS = 6371000;
+const DEG_TO_RAD = Math.PI / 180;
+// Metres per degree of latitude. Longitude degrees shrink by cos(latitude).
+const METERS_PER_DEG_LAT = EARTH_RADIUS_METERS * DEG_TO_RAD;
+
 /**
- * Calculate distance between two lat/lng coordinates in meters using Haversine formula
+ * Calculate distance between two lat/lng coordinates in meters using Haversine formula.
+ *
+ * Rounded to whole metres — intended for display. Use `fastDistanceInMeters` for
+ * hot-path maths where sub-metre precision matters.
  */
 export function calculateDistanceInMeters(
   lat1: number,
@@ -7,19 +15,26 @@ export function calculateDistanceInMeters(
   lat2: number,
   lon2: number
 ): number {
-  const R = 6371000; // Radius of Earth in meters
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
+  return Math.round(fastDistanceInMeters(lat1, lon1, lat2, lon2));
+}
 
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) *
-      Math.cos(lat2 * (Math.PI / 180)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return Math.round(R * c);
+/**
+ * Unrounded equirectangular distance in meters, scaled for local latitude.
+ *
+ * Accurate to well under a centimetre across a campus-sized area and free of the
+ * trigonometry Haversine needs, which matters because route projection calls this
+ * once per polyline segment on every GPS fix.
+ */
+export function fastDistanceInMeters(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number {
+  const midLatRad = ((lat1 + lat2) / 2) * DEG_TO_RAD;
+  const dLat = (lat2 - lat1) * METERS_PER_DEG_LAT;
+  const dLon = (lon2 - lon1) * METERS_PER_DEG_LAT * Math.cos(midLatRad);
+  return Math.sqrt(dLat * dLat + dLon * dLon);
 }
 
 /**
@@ -27,7 +42,7 @@ export function calculateDistanceInMeters(
  */
 export function formatDistance(meters: number): string {
   if (meters < 1000) {
-    return `${meters} m`;
+    return `${Math.round(meters)} m`;
   }
   return `${(meters / 1000).toFixed(1)} km`;
 }

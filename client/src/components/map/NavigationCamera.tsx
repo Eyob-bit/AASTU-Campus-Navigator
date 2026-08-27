@@ -4,7 +4,6 @@ import { useAppStore } from "@/store";
 
 interface NavigationCameraProps {
   userLocation: { lat: number; lng: number } | null;
-  fusedHeading: number;
   isFollowingUser: boolean;
   setIsFollowingUser: (val: boolean) => void;
   shouldCenter: boolean;
@@ -13,14 +12,14 @@ interface NavigationCameraProps {
 
 export function NavigationCamera({
   userLocation,
-  fusedHeading,
   isFollowingUser,
   setIsFollowingUser,
   shouldCenter,
   setShouldCenter,
 }: NavigationCameraProps) {
   const map = useGoogleMapInstance();
-  const { navStep, destinationTarget } = useAppStore();
+  const navStep = useAppStore((s) => s.navStep);
+  const destinationTarget = useAppStore((s) => s.destinationTarget);
   const hasFitRouteRef = useRef<boolean>(false);
   const isNavigating = navStep === "OUTDOOR_NAV";
   const lastEaseToTimeRef = useRef<number>(0);
@@ -106,7 +105,7 @@ export function NavigationCamera({
     }
 
     setShouldCenter(false);
-  }, [map, shouldCenter, userLocation, isNavigating, fusedHeading, setShouldCenter]);
+  }, [map, shouldCenter, userLocation, isNavigating, setShouldCenter, setIsFollowingUser]);
 
   // Camera update during active navigation - smooth following
   useEffect(() => {
@@ -133,7 +132,7 @@ export function NavigationCamera({
         easeToTimerRef.current = null;
       }, 200 - elapsed);
     }
-  }, [map, isNavigating, isFollowingUser, userLocation, fusedHeading]);
+  }, [map, isNavigating, isFollowingUser, userLocation]);
 
   // Cleanup timer on unmount
   useEffect(() => {

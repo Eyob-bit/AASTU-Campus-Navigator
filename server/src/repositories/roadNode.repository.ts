@@ -23,6 +23,30 @@ const nodeSelectFields = {
 };
 
 export class RoadNodeRepository {
+  /**
+   * Minimal node projection for A* pathfinding.
+   *
+   * Deliberately separate from `findAll` — that one eagerly joins every edge in both
+   * directions with its opposite node, which the router never reads. Only the
+   * coordinates, display fields, and building entrance labels matter here.
+   */
+  async findGraphNodes() {
+    return prisma.roadNode.findMany({
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        zone: true,
+        latitude: true,
+        longitude: true,
+        buildingEntrances: {
+          select: { id: true, name: true },
+        },
+      },
+    });
+  }
+
   async findAll() {
     return prisma.roadNode.findMany({
       orderBy: { createdAt: "asc" },

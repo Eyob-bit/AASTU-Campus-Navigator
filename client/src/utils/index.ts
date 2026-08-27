@@ -10,3 +10,4 @@ export {
   OFF_ROUTE_THRESHOLD_METERS,
   type RouteProgress,
 } from "./RouteProgressTracker";
+export { routeProgressStore } from "./routeProgressStore";

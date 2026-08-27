@@ -20,6 +20,22 @@ const nodeSelectFields = {
 };
 
 export class RoadEdgeRepository {
+  /**
+   * Minimal edge projection for A* pathfinding — just the adjacency and its weight.
+   * `findAll` joins both endpoint nodes, which the router already has in its node map.
+   */
+  async findGraphEdges() {
+    return prisma.roadEdge.findMany({
+      select: {
+        fromNodeId: true,
+        toNodeId: true,
+        distance: true,
+        isBidirectional: true,
+        isWalkable: true,
+      },
+    });
+  }
+
   async findAll() {
     return prisma.roadEdge.findMany({
       include: {
