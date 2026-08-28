@@ -20,6 +20,7 @@ export interface ChatResponsePayload {
     roomNumber?: string;
     officeId?: string;
     officeName?: string;
+    staffId?: string;
     staffName?: string;
     position?: string;
     entranceLatitude?: number;
@@ -55,10 +56,11 @@ export async function processChatMessage(
         buildingName: memory.lastBuildingName,
         officeId: memory.lastOfficeId,
         officeName: memory.lastOfficeName,
+        staffId: memory.lastStaffId,
+        staffName: memory.lastStaffName,
         floorId: memory.lastFloorId,
         floorNumber: memory.lastFloorNumber,
         roomNumber: memory.lastRoomNumber,
-        staffName: memory.lastStaffName,
         entranceLatitude: memory.lastEntranceLatitude,
         entranceLongitude: memory.lastEntranceLongitude,
         entrySceneId: memory.lastEntrySceneId,
@@ -72,7 +74,15 @@ export async function processChatMessage(
           latitude: memory.lastEntranceLatitude,
           longitude: memory.lastEntranceLongitude,
           buildingId: memory.lastBuildingId,
+          buildingName: memory.lastBuildingName,
           officeId: memory.lastOfficeId,
+          officeName: memory.lastOfficeName,
+          staffId: memory.lastStaffId,
+          staffName: memory.lastStaffName,
+          floorId: memory.lastFloorId,
+          floorNumber: memory.lastFloorNumber,
+          roomNumber: memory.lastRoomNumber,
+          entrySceneId: memory.lastEntrySceneId,
         },
       },
     };
@@ -198,6 +208,7 @@ export async function processChatMessage(
         roomNumber: m.roomNumber,
         officeId: m.officeId,
         officeName: m.officeName,
+        staffId: m.staffId,
         staffName: m.staffName,
         position: m.position,
         entranceLatitude: m.entranceLatitude,

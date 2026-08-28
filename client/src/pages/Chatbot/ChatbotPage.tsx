@@ -150,6 +150,8 @@ export function ChatbotPage() {
                           onClick={() => {
                             const cd = msg.payload?.campusData;
                             if (cd) {
+                              const isStaff = Boolean(cd.staffId) || (cd.entityId && Boolean(cd.staffName));
+                              const targetStaffId = cd.staffId || (isStaff ? cd.entityId : undefined);
                               const targetName = cd.staffName
                                 ? `${cd.staffName}'s Office`
                                 : cd.officeName || cd.buildingName || "Destination";
@@ -157,19 +159,22 @@ export function ChatbotPage() {
                                 state: {
                                   chatAction: "START_NAVIGATION",
                                   payload: {
-                                    id: cd.entityId || cd.officeId || cd.buildingId || "chat-nav",
-                                    type: cd.entityId && cd.staffName ? "STAFF" : cd.officeId ? "OFFICE" : "BUILDING",
+                                    id: targetStaffId || cd.officeId || cd.buildingId || cd.entityId || "chat-nav",
+                                    type: isStaff ? "STAFF" : cd.officeId ? "OFFICE" : "BUILDING",
                                     name: targetName,
                                     latitude: cd.entranceLatitude,
                                     longitude: cd.entranceLongitude,
                                     buildingId: cd.buildingId,
                                     buildingName: cd.buildingName,
+                                    buildingCode: cd.buildingCode,
                                     officeId: cd.officeId,
                                     officeName: cd.officeName,
-                                    floorNumber: cd.floorNumber,
-                                    roomNumber: cd.roomNumber,
+                                    staffId: targetStaffId,
                                     staffName: cd.staffName,
                                     staffPosition: cd.position,
+                                    floorId: cd.floorId,
+                                    floorNumber: cd.floorNumber,
+                                    roomNumber: cd.roomNumber,
                                     entrySceneId: cd.entrySceneId,
                                   },
                                 },
@@ -208,23 +213,28 @@ export function ChatbotPage() {
                           onClick={() => {
                             const cd = msg.payload?.campusData;
                             if (cd) {
+                              const isStaff = Boolean(cd.staffId) || (cd.entityId && Boolean(cd.staffName));
+                              const targetStaffId = cd.staffId || (isStaff ? cd.entityId : undefined);
                               const targetName = cd.staffName
                                 ? `${cd.staffName}'s Office`
                                 : cd.officeName || cd.buildingName || "Target Office";
                               setDestinationTarget({
-                                id: cd.entityId || cd.officeId || cd.buildingId || "chat-target",
-                                type: cd.entityId && cd.staffName ? "STAFF" : cd.officeId ? "OFFICE" : "BUILDING",
+                                id: targetStaffId || cd.officeId || cd.buildingId || cd.entityId || "chat-target",
+                                type: isStaff ? "STAFF" : cd.officeId ? "OFFICE" : "BUILDING",
                                 name: targetName,
                                 latitude: cd.entranceLatitude || 0,
                                 longitude: cd.entranceLongitude || 0,
                                 buildingId: cd.buildingId,
                                 buildingName: cd.buildingName,
+                                buildingCode: cd.buildingCode,
                                 officeId: cd.officeId,
                                 officeName: cd.officeName,
-                                floorNumber: cd.floorNumber,
-                                roomNumber: cd.roomNumber,
+                                staffId: targetStaffId,
                                 staffName: cd.staffName,
                                 staffPosition: cd.position,
+                                floorId: cd.floorId,
+                                floorNumber: cd.floorNumber,
+                                roomNumber: cd.roomNumber,
                                 entrySceneId: cd.entrySceneId,
                               });
                             }

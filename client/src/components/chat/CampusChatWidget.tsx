@@ -153,18 +153,22 @@ export function CampusChatWidget() {
                             <button
                               onClick={() => {
                                 const cd = msg.payload?.campusData;
+                                const isStaff = Boolean(cd?.staffId) || (cd?.entityId && Boolean(cd?.staffName));
+                                const targetStaffId = cd?.staffId || (isStaff ? cd?.entityId : undefined);
                                 triggerAppAction("START_NAVIGATION", {
-                                  name: cd?.officeName || cd?.staffName || cd?.buildingName || "Destination",
+                                  name: cd?.staffName ? `${cd.staffName}'s Office` : cd?.officeName || cd?.buildingName || "Destination",
                                   latitude: cd?.entranceLatitude,
                                   longitude: cd?.entranceLongitude,
                                   buildingId: cd?.buildingId,
                                   buildingName: cd?.buildingName,
+                                  buildingCode: cd?.buildingCode,
                                   officeId: cd?.officeId,
                                   officeName: cd?.officeName,
-                                  floorId: (cd as any)?.floorId,
+                                  staffId: targetStaffId,
+                                  staffName: cd?.staffName,
+                                  floorId: cd?.floorId,
                                   floorNumber: cd?.floorNumber,
                                   roomNumber: cd?.roomNumber,
-                                  staffName: cd?.staffName,
                                   entrySceneId: cd?.entrySceneId,
                                 });
                               }}

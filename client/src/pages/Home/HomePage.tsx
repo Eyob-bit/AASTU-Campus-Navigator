@@ -30,39 +30,65 @@ export function HomePage() {
 
   // Track the last processed state key so we only fire once per navigation
   const consumedStateRef = useRef<string | null>(null);
+  const searchSeqRef = useRef<number>(0);
 
   // ── Handle incoming chatbot navigation/map actions via route state ──────────
   useEffect(() => {
     const state = location.state as null | {
       chatAction?: "START_NAVIGATION" | "CENTER_MAP";
       payload?: {
+        id?: string;
+        type?: "BUILDING" | "LANDMARK" | "OFFICE" | "STAFF";
         name?: string;
         latitude?: number;
         longitude?: number;
         buildingId?: string;
+        buildingName?: string;
+        buildingCode?: string;
         officeId?: string;
+        officeName?: string;
+        staffId?: string;
+        staffName?: string;
+        staffPosition?: string;
+        floorId?: string;
+        floorNumber?: number;
+        roomNumber?: string;
+        entrySceneId?: string;
       };
     };
 
     if (!state?.chatAction || !state.payload) return;
 
     // Build a unique key for this state so we don't process it twice
-    const stateKey = `${state.chatAction}_${state.payload.latitude}_${state.payload.longitude}`;
+    const stateKey = `${state.chatAction}_${state.payload.latitude}_${state.payload.longitude}_${state.payload.officeId || state.payload.staffId || state.payload.buildingId}`;
     if (consumedStateRef.current === stateKey) return;
     consumedStateRef.current = stateKey;
 
     if (state.chatAction === "START_NAVIGATION" && state.payload.latitude && state.payload.longitude) {
+      const p = state.payload;
+      const isStaff = p.type === "STAFF" || Boolean(p.staffId);
+      const isOffice = p.type === "OFFICE" || (Boolean(p.officeId) && !isStaff);
+
       const target: DestinationTarget = {
-        id: state.payload.officeId || state.payload.buildingId || "chat-nav",
-        type: state.payload.officeId ? "OFFICE" : "BUILDING",
-        name: state.payload.name || "Destination",
+        id: p.id || p.staffId || p.officeId || p.buildingId || "chat-nav",
+        type: isStaff ? "STAFF" : isOffice ? "OFFICE" : "BUILDING",
+        name: p.name || (isStaff && p.staffName ? `${p.staffName}'s Office` : p.officeName || "Destination"),
         subtitle: "Via AI Campus Assistant",
-        latitude: state.payload.latitude,
-        longitude: state.payload.longitude,
+        latitude: p.latitude ?? 0,
+        longitude: p.longitude ?? 0,
         roadNodeId: null,
-        buildingId: state.payload.buildingId,
-        buildingName: state.payload.name,
-        officeId: state.payload.officeId,
+        buildingId: p.buildingId,
+        buildingName: p.buildingName,
+        buildingCode: p.buildingCode,
+        officeId: p.officeId,
+        officeName: p.officeName,
+        staffId: p.staffId,
+        staffName: p.staffName,
+        staffPosition: p.staffPosition,
+        floorId: p.floorId,
+        floorNumber: p.floorNumber,
+        roomNumber: p.roomNumber,
+        entrySceneId: p.entrySceneId,
       };
       // Use the ref to avoid stale closure / dep array issues
       startNavRef.current(target);
@@ -109,7 +135,7 @@ export function HomePage() {
     return () => window.removeEventListener("aastu_navigate_landmark", handler);
   }, []);
 
-  // Live search effect on query change
+  // Live search effect on query change with race-condition prevention
   useEffect(() => {
     const query = searchQuery.trim();
     if (query.length < 1) {
@@ -119,6 +145,7 @@ export function HomePage() {
       return;
     }
 
+    const currentSeq = ++searchSeqRef.current;
     const timer = setTimeout(async () => {
       setIsSearching(true);
       setShowDropdown(true);
@@ -128,19 +155,22 @@ export function HomePage() {
         searchApi.searchLandmarks(query),
       ]);
 
-      if (officesRes.status === "fulfilled") {
-        setOfficeResults(officesRes.value ?? []);
-      } else {
-        setOfficeResults([]);
-      }
+      // Only apply results if this is still the active search query sequence
+      if (searchSeqRef.current === currentSeq) {
+        if (officesRes.status === "fulfilled") {
+          setOfficeResults(officesRes.value ?? []);
+        } else {
+          setOfficeResults([]);
+        }
 
-      if (landmarksRes.status === "fulfilled") {
-        setLandmarkResults(landmarksRes.value ?? []);
-      } else {
-        setLandmarkResults([]);
-      }
+        if (landmarksRes.status === "fulfilled") {
+          setLandmarkResults(landmarksRes.value ?? []);
+        } else {
+          setLandmarkResults([]);
+        }
 
-      setIsSearching(false);
+        setIsSearching(false);
+      }
     }, 200);
 
     return () => clearTimeout(timer);
@@ -159,16 +189,6 @@ export function HomePage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // If results are already showing, pick the first office or landmark result
-    if (officeResults.length > 0) {
-      handleSelectOfficeResult(officeResults[0]);
-      return;
-    }
-    if (landmarkResults.length > 0) {
-      handleSelectLandmarkResult(landmarkResults[0]);
-      return;
-    }
-    // Otherwise show/keep the dropdown so results can load
     if (searchQuery.trim()) {
       setShowDropdown(true);
     }
@@ -200,11 +220,13 @@ export function HomePage() {
       officeId: result.office.id,
       officeName: result.office.name,
       roomNumber: result.office.roomNumber,
+      staffId: result.staff?.id,
       staffName: result.staff?.fullName,
       staffPosition: result.staff?.position,
       staffPhone: result.staff?.phone,
       staffEmail: result.staff?.email,
       entranceImage: result.building.entranceImage,
+      entrySceneId: result.entryScene?.id ?? null,
     };
 
     startOutdoorNavigation(target);

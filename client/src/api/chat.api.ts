@@ -16,10 +16,12 @@ export interface ChatResponsePayload {
     buildingId?: string;
     buildingName?: string;
     buildingCode?: string;
+    floorId?: string;
     floorNumber?: number;
     roomNumber?: string;
     officeId?: string;
     officeName?: string;
+    staffId?: string;
     staffName?: string;
     position?: string;
     entranceLatitude?: number;

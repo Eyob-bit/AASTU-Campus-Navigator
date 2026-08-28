@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "@/store";
 import { PublicPanoramaPage } from "./PublicPanoramaPage";
 import { Loader2, ArrowLeft, Building2 } from "lucide-react";
-import { sceneApi } from "@/api/scene.api";
 import { useNavigate } from "react-router-dom";
 
 export function PanoramaPage() {
@@ -11,31 +10,15 @@ export function PanoramaPage() {
   const [targetSceneId, setTargetSceneId] = useState<string | null>(
     destinationTarget?.entrySceneId || null
   );
-  const [isLoading, setIsLoading] = useState(!targetSceneId);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (destinationTarget?.entrySceneId) {
       setTargetSceneId(destinationTarget.entrySceneId);
-      setIsLoading(false);
-      return;
+    } else {
+      setTargetSceneId(null);
     }
-
-    // Try fetching the global default entrance scene
-    sceneApi
-      .getDefault()
-      .then((defScene) => {
-        if (defScene?.id) {
-          setTargetSceneId(defScene.id);
-        } else {
-          setTargetSceneId(null);
-        }
-      })
-      .catch(() => {
-        setTargetSceneId(null);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
+    setIsLoading(false);
   }, [destinationTarget]);
 
   if (isLoading) {

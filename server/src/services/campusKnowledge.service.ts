@@ -42,7 +42,7 @@ async function resolveEntrySceneId(floorId?: string, buildingId?: string): Promi
       orderBy: { displayOrder: "asc" },
       select: { id: true },
     });
-    if (fAny) return fAny.id;
+    return fAny?.id;
   }
 
   if (buildingId) {
@@ -57,14 +57,10 @@ async function resolveEntrySceneId(floorId?: string, buildingId?: string): Promi
       orderBy: { displayOrder: "asc" },
       select: { id: true },
     });
-    if (bAny) return bAny.id;
+    return bAny?.id;
   }
 
-  const globalDefault = await prisma.panoramaScene.findFirst({
-    orderBy: [{ isEntryScene: "desc" }, { createdAt: "asc" }],
-    select: { id: true },
-  });
-  return globalDefault?.id;
+  return undefined;
 }
 
 export async function searchCampusKnowledge(query: NormalizedQuery): Promise<CampusSearchResult> {
