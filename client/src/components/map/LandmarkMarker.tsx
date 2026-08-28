@@ -1,5 +1,6 @@
 import { useEffect, useRef, memo } from "react";
 import type { Landmark, LandmarkCategory } from "@/types";
+import { useAppStore } from "@/store";
 import { useGoogleMapInstance } from "./GoogleMapsContainer";
 
 interface CategoryConfig {
@@ -82,13 +83,24 @@ export const LandmarkMarker = memo(function LandmarkMarker({
   buildingCode: propBuildingCode,
 }: LandmarkMarkerProps) {
   const map = useGoogleMapInstance();
+  const destinationTarget = useAppStore((s) => s.destinationTarget);
   const markerRef = useRef<google.maps.Marker | null>(null);
+  const glowCircleRef = useRef<google.maps.Circle | null>(null);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
   const displayName = landmark.building?.name ?? landmark.name;
   const buildingCode = propBuildingCode || landmark.building?.code;
   const lat = Number(landmark.latitude);
   const lng = Number(landmark.longitude);
+
+  const isDestination = Boolean(
+    destinationTarget && (
+      destinationTarget.id === landmark.id ||
+      destinationTarget.buildingId === landmark.buildingId ||
+      destinationTarget.buildingId === landmark.building?.id ||
+      (Math.abs(destinationTarget.latitude - lat) < 0.0001 && Math.abs(destinationTarget.longitude - lng) < 0.0001)
+    )
+  );
 
   const cfg = CATEGORY_CONFIG[landmark.category] ?? CATEGORY_CONFIG.CUSTOM;
   const emoji = landmark.icon || cfg.emoji;
@@ -100,24 +112,42 @@ export const LandmarkMarker = memo(function LandmarkMarker({
 
     const position = { lat, lng };
 
-    // Calculate dynamic badge dimensions for scaled SVG pin + name label (~25% smaller)
-    const safeName = displayName.replace(/["'<>]/g, "");
-    const charCount = Math.min(safeName.length, 22);
-    const pillWidth = Math.max(charCount * 5.5 + 12, 40);
-    const svgWidth = Math.max(pillWidth + 10, 40);
-    const svgHeight = 48;
+    // Calculate dynamic badge dimensions for scaled SVG pin + name label
+    const displayText = isDestination ? `🎯 ${displayName}` : displayName;
+    const safeName = displayText.replace(/["'<>]/g, "");
+    const charCount = Math.min(safeName.length, 24);
+    const pillWidth = Math.max(charCount * 5.5 + 14, 44);
+    const svgWidth = Math.max(pillWidth + 14, 48);
+    const svgHeight = isDestination ? 58 : 48;
     const pinX = (svgWidth - 26) / 2;
     const pillX = (svgWidth - pillWidth) / 2;
 
     const svgIcon = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
       <svg width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${svgWidth} ${svgHeight}" fill="none" xmlns="http://www.w3.org/2000/svg">
+        ${
+          isDestination
+            ? `
+            <!-- Animated Glowing Halo Rings -->
+            <g transform="translate(${pinX + 13}, 17)">
+              <circle cx="0" cy="0" r="14" fill="${cfg.bg}" fill-opacity="0.5">
+                <animate attributeName="r" values="14;28;14" dur="1.6s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.8;0.05;0.8" dur="1.6s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx="0" cy="0" r="10" fill="${cfg.border}" fill-opacity="0.75">
+                <animate attributeName="r" values="10;20;10" dur="1.6s" repeatCount="indefinite"/>
+                <animate attributeName="opacity" values="0.9;0.2;0.9" dur="1.6s" repeatCount="indefinite"/>
+              </circle>
+            </g>
+            `
+            : ""
+        }
         <g transform="translate(${pinX}, 0) scale(0.7647)">
-          <path d="M17 0C7.611 0 0 7.611 0 17C0 29.75 17 42 17 42C17 42 34 29.75 34 17C34 7.611 26.389 0 17 0Z" fill="${cfg.bg}" stroke="#FFFFFF" stroke-width="2"/>
+          <path d="M17 0C7.611 0 0 7.611 0 17C0 29.75 17 42 17 42C17 42 34 29.75 34 17C34 7.611 26.389 0 17 0Z" fill="${cfg.bg}" stroke="${isDestination ? "#FFFFFF" : "#FFFFFF"}" stroke-width="${isDestination ? 3 : 2}"/>
           <circle cx="17" cy="16" r="11" fill="#FFFFFF" fill-opacity="0.95"/>
           <text x="17" y="21" font-size="13" text-anchor="middle" fill="#000000">${emoji}</text>
         </g>
-        <rect x="${pillX}" y="31" width="${pillWidth}" height="15" rx="7.5" fill="#0B132B" fill-opacity="0.92" stroke="${cfg.bg}" stroke-width="1.2"/>
-        <text x="${svgWidth / 2}" y="41.5" font-size="9" font-weight="600" font-family="system-ui, sans-serif" text-anchor="middle" fill="#FFFFFF">${safeName}</text>
+        <rect x="${pillX}" y="${isDestination ? 34 : 31}" width="${pillWidth}" height="16" rx="8" fill="${isDestination ? "#0369A1" : "#0B132B"}" fill-opacity="0.95" stroke="${isDestination ? "#38BDF8" : cfg.bg}" stroke-width="${isDestination ? 1.8 : 1.2}"/>
+        <text x="${svgWidth / 2}" y="${isDestination ? 45.5 : 42}" font-size="9" font-weight="${isDestination ? 700 : 600}" font-family="system-ui, sans-serif" text-anchor="middle" fill="#FFFFFF">${safeName}</text>
       </svg>
     `)}`;
 
@@ -125,14 +155,32 @@ export const LandmarkMarker = memo(function LandmarkMarker({
       position,
       map,
       title: displayName,
+      zIndex: isDestination ? 1000 : 10,
       icon: {
         url: svgIcon,
         scaledSize: new google.maps.Size(svgWidth, svgHeight),
-        anchor: new google.maps.Point(svgWidth / 2, 32),
+        anchor: new google.maps.Point(svgWidth / 2, isDestination ? 38 : 32),
       },
     });
 
     markerRef.current = marker;
+
+    // Glowing ground circle for active destination
+    if (isDestination) {
+      const glowCircle = new google.maps.Circle({
+        map,
+        center: position,
+        radius: 22,
+        fillColor: cfg.bg,
+        fillOpacity: 0.22,
+        strokeColor: cfg.border,
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
+        clickable: false,
+        zIndex: 5,
+      });
+      glowCircleRef.current = glowCircle;
+    }
 
     const popupHtml = `
       <div style="font-family:system-ui,sans-serif;padding:6px 4px;min-width:180px;max-width:230px;color:#0f172a;">
@@ -229,6 +277,10 @@ export const LandmarkMarker = memo(function LandmarkMarker({
       google.maps.event.removeListener(domReadyListener);
       infoWindow.close();
       marker.setMap(null);
+      if (glowCircleRef.current) {
+        glowCircleRef.current.setMap(null);
+        glowCircleRef.current = null;
+      }
     };
   }, [
     map,
@@ -239,6 +291,7 @@ export const LandmarkMarker = memo(function LandmarkMarker({
     landmark,
     cfg,
     emoji,
+    isDestination,
   ]);
 
   return null;
