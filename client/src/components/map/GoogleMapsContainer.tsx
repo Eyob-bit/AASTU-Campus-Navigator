@@ -98,14 +98,9 @@ export function GoogleMapsContainer({
     }
   }, [map, tileMode]);
 
-  const mapId =
-    import.meta.env.VITE_GOOGLE_MAP_ID ||
-    (typeof process !== "undefined" ? (process.env as any)?.REACT_APP_GOOGLE_MAP_ID : "") ||
-    "DEMO_MAP_ID";
 
   const mapOptions = useMemo<google.maps.MapOptions>(() => {
     const opts: google.maps.MapOptions = {
-      mapId,
       disableDefaultUI: true,
       clickableIcons: false,
       zoomControl: false,
@@ -113,75 +108,24 @@ export function GoogleMapsContainer({
       streetViewControl: false,
       fullscreenControl: false,
       rotateControl: true,
-      headingInteractionEnabled: true,
-      tiltInteractionEnabled: true,
-      heading: 0,
-      tilt: 0,
       minZoom,
       maxZoom,
       gestureHandling: "greedy",
       styles: [
-        {
-          featureType: "poi",
-          elementType: "all",
-          stylers: [{ visibility: "off" }],
-        },
-        {
-          featureType: "poi.business",
-          elementType: "all",
-          stylers: [{ visibility: "off" }],
-        },
-        {
-          featureType: "poi.government",
-          elementType: "all",
-          stylers: [{ visibility: "off" }],
-        },
-        {
-          featureType: "poi.medical",
-          elementType: "all",
-          stylers: [{ visibility: "off" }],
-        },
-        {
-          featureType: "poi.school",
-          elementType: "all",
-          stylers: [{ visibility: "off" }],
-        },
-        {
-          featureType: "poi.park",
-          elementType: "labels",
-          stylers: [{ visibility: "off" }],
-        },
-        {
-          featureType: "poi.sports_complex",
-          elementType: "all",
-          stylers: [{ visibility: "off" }],
-        },
-        {
-          featureType: "poi.attraction",
-          elementType: "all",
-          stylers: [{ visibility: "off" }],
-        },
-        {
-          featureType: "transit",
-          elementType: "all",
-          stylers: [{ visibility: "off" }],
-        },
-        {
-          featureType: "transit.station",
-          elementType: "all",
-          stylers: [{ visibility: "off" }],
-        },
+        { featureType: "poi",              elementType: "all",    stylers: [{ visibility: "off" }] },
+        { featureType: "poi.business",     elementType: "all",    stylers: [{ visibility: "off" }] },
+        { featureType: "poi.government",   elementType: "all",    stylers: [{ visibility: "off" }] },
+        { featureType: "poi.medical",      elementType: "all",    stylers: [{ visibility: "off" }] },
+        { featureType: "poi.school",       elementType: "all",    stylers: [{ visibility: "off" }] },
+        { featureType: "poi.park",         elementType: "labels", stylers: [{ visibility: "off" }] },
+        { featureType: "poi.sports_complex", elementType: "all",  stylers: [{ visibility: "off" }] },
+        { featureType: "poi.attraction",   elementType: "all",    stylers: [{ visibility: "off" }] },
+        { featureType: "transit",          elementType: "all",    stylers: [{ visibility: "off" }] },
+        { featureType: "transit.station",  elementType: "all",    stylers: [{ visibility: "off" }] },
       ],
     };
-
-    if (typeof google !== "undefined" && "maps" in google && (google.maps as any)?.RenderingType) {
-      opts.renderingType = (google.maps as any).RenderingType.VECTOR;
-    } else {
-      (opts as any).renderingType = "VECTOR";
-    }
-
     return opts;
-  }, [mapId, minZoom, maxZoom]);
+  }, [minZoom, maxZoom]);
 
   if (loadError) {
     return (
@@ -215,16 +159,6 @@ export function GoogleMapsContainer({
         onLoad={(loadedMap) => {
           mapRef.current = loadedMap;
           setMap(loadedMap);
-
-          // Vector Rendering & Heading Debug Log
-          const renderingType = loadedMap.getRenderingType ? loadedMap.getRenderingType() : "UNKNOWN";
-          console.log("[GoogleMaps] Rendering type:", renderingType);
-          console.log("[GoogleMaps] Initial Heading:", loadedMap.getHeading());
-
-          loadedMap.addListener("heading_changed", () => {
-            console.log("[GoogleMaps] Heading changed:", loadedMap.getHeading());
-          });
-
           onMapReady?.(loadedMap);
         }}
         onUnmount={() => {
