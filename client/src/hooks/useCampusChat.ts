@@ -24,7 +24,7 @@ export function useCampusChat() {
     {
       id: "welcome",
       sender: "bot",
-      text: "👋 Hi! I'm your AASTU Campus Assistant. Ask me anything like \"Where is the Registrar Office?\", \"Where do I pay tuition?\", or \"Where is Block 12?\".",
+      text: "👋 Hi! I'm your AASTU Campus Assistant. Ask me anything about the Center of Excellence, like \"Where is Dr. Habib's Office?\", \"Where is Center of Excellence?\", or \"Where is Mr. Habtamu's office?\".",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       payload: {
         message: "",
@@ -32,8 +32,13 @@ export function useCampusChat() {
         confidence: 1,
         sessionKey,
         canNavigate: false,
-        suggestions: ["Where is the Registrar?", "Where do I pay tuition?", "Where is Block 12?"],
-        followUpChips: ["Show campus map", "Find Main Library"],
+        suggestions: [
+          "Where is Dr. Habib's Office?",
+          "Where is Center of Excellence?",
+          "Where is Mr. Habtamu's office?",
+          "Where is Syndicate Room 4?",
+        ],
+        followUpChips: ["Dr. Habib Mohammed", "Meeting Room", "Center of Excellence"],
       },
     },
   ]);
@@ -100,7 +105,7 @@ export function useCampusChat() {
       {
         id: "welcome_reset",
         sender: "bot",
-        text: "Conversation reset! How can I assist you with AASTU Campus navigation?",
+        text: "Conversation reset! How can I assist you with Center of Excellence navigation?",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         payload: {
           message: "",
@@ -108,8 +113,13 @@ export function useCampusChat() {
           confidence: 1,
           sessionKey: newSession,
           canNavigate: false,
-          suggestions: ["Where is the Registrar?", "Where do I pay tuition?", "Where is Block 12?"],
-          followUpChips: [],
+          suggestions: [
+            "Where is Dr. Habib's Office?",
+            "Where is Center of Excellence?",
+            "Where is Mr. Habtamu's office?",
+            "Where is Syndicate Room 4?",
+          ],
+          followUpChips: ["Dr. Habib's Office", "Center of Excellence"],
         },
       },
     ]);

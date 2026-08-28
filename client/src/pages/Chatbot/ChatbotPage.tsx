@@ -289,7 +289,12 @@ export function ChatbotPage() {
           <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex-shrink-0">
             Suggestions:
           </span>
-          {["Where is the Registrar Office?", "Where do I pay tuition?", "Where is Block 12?", "Where is Main Library?"].map((suggestion, i) => (
+          {[
+            "Where is Dr. Habib's Office?",
+            "Where is Center of Excellence?",
+            "Where is Mr. Habtamu's office?",
+            "Where is Syndicate Room 4?",
+          ].map((suggestion, i) => (
             <button
               key={i}
               onClick={() => handleChipClick(suggestion)}

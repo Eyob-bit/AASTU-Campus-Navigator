@@ -255,7 +255,12 @@ export function CampusChatWidget() {
               <span className="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider flex-shrink-0">
                 Try asking:
               </span>
-              {["Where is Registrar?", "Where do I pay tuition?", "Where is Block 12?"].map((suggestion, i) => (
+              {[
+                "Where is Dr. Habib's Office?",
+                "Where is Center of Excellence?",
+                "Where is Mr. Habtamu's office?",
+                "Where is Syndicate Room 4?",
+              ].map((suggestion, i) => (
                 <button
                   key={i}
                   onClick={() => handleChipClick(suggestion)}

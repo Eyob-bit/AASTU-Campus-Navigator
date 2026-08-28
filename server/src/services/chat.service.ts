@@ -239,8 +239,13 @@ export async function processChatMessage(
     confidence: 0,
     sessionKey,
     canNavigate: false,
-    suggestions: ["Where is the Registrar?", "Where do I pay tuition?", "Show campus map"],
-    followUpChips: ["Where is Block 12?", "Where is Main Library?"],
+    suggestions: [
+      "Where is Dr. Habib's Office?",
+      "Where is Center of Excellence?",
+      "Where is Mr. Habtamu's office?",
+      "Where is Syndicate Room 4?",
+    ],
+    followUpChips: ["Dr. Habib's Office", "Center of Excellence", "Mr. Habtamu"],
   };
 }
 
