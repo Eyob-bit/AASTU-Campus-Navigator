@@ -33,7 +33,12 @@ function isTokenValid(token: string | null): boolean {
 
 export function useAdminAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    const token = localStorage.getItem(JWT_STORAGE_KEY);
+    if (typeof sessionStorage === "undefined") return false;
+    // Clear any persistent tokens from localStorage to prevent auto-login
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(JWT_STORAGE_KEY);
+    }
+    const token = sessionStorage.getItem(JWT_STORAGE_KEY);
     return isTokenValid(token);
   });
 
@@ -46,7 +51,9 @@ export function useAdminAuth() {
     try {
       const res = await apiClient.post<LoginResponse>("/auth/login", { email, password });
       const { token } = res.data;
-      localStorage.setItem(JWT_STORAGE_KEY, token);
+      if (typeof sessionStorage !== "undefined") {
+        sessionStorage.setItem(JWT_STORAGE_KEY, token);
+      }
       setIsAuthenticated(true);
       return true;
     } catch (err: unknown) {
@@ -65,7 +72,12 @@ export function useAdminAuth() {
   }, []);
 
   const logout = useCallback(() => {
-    localStorage.removeItem(JWT_STORAGE_KEY);
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem(JWT_STORAGE_KEY);
+    }
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(JWT_STORAGE_KEY);
+    }
     setIsAuthenticated(false);
     setError(null);
   }, []);

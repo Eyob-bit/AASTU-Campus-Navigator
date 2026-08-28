@@ -15,9 +15,11 @@ export const apiClient = axios.create({
   },
 });
 
-// Attach JWT token to every request
+// Attach JWT token to every request from sessionStorage
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem(JWT_STORAGE_KEY);
+  const token =
+    (typeof sessionStorage !== "undefined" ? sessionStorage.getItem(JWT_STORAGE_KEY) : null) ||
+    (typeof localStorage !== "undefined" ? localStorage.getItem(JWT_STORAGE_KEY) : null);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -29,7 +31,8 @@ apiClient.interceptors.response.use(
   (res) => res,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem(JWT_STORAGE_KEY);
+      if (typeof sessionStorage !== "undefined") sessionStorage.removeItem(JWT_STORAGE_KEY);
+      if (typeof localStorage !== "undefined") localStorage.removeItem(JWT_STORAGE_KEY);
       if (window.location.pathname.startsWith("/dashboard")) {
         window.location.href = "/login";
       }
