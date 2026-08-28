@@ -134,8 +134,8 @@ export function PublicPanoramaPage({ overrideSceneId }: PublicPanoramaPageProps 
       )}
 
 
-      {/* Target Office Details Overlay Badge (when navigated to an office/staff) */}
-      {destinationTarget && (
+      {/* Target Office Details Overlay Badge (only when destinationTarget belongs to this scene) */}
+      {destinationTarget && destinationTarget.entrySceneId === activeSceneId && (
         <div className="absolute bottom-6 left-4 z-40 max-w-xs sm:max-w-sm rounded-2xl border border-cyan-500/40 bg-[#0B132B]/95 p-3.5 text-slate-100 shadow-2xl backdrop-blur-xl space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400 shrink-0">

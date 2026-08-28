@@ -5,10 +5,12 @@ import {
   Building2, UserCheck, Layers, ChevronRight,
 } from "lucide-react";
 import { useCampusChat } from "@/hooks/useCampusChat";
+import { useAppActions } from "@/store";
 import { cn } from "@/utils/cn";
 
 export function ChatbotPage() {
   const navigate = useNavigate();
+  const { setDestinationTarget } = useAppActions();
   const [input, setInput] = useState("");
 
   const { messages, isTyping, sendMessage, clearChat } = useCampusChat();
@@ -146,18 +148,33 @@ export function ChatbotPage() {
                       {msg.payload.canNavigate && msg.payload.campusData.entranceLatitude && (
                         <button
                           onClick={() => {
-                            navigate("/", {
-                              state: {
-                                chatAction: "START_NAVIGATION",
-                                payload: {
-                                  name: msg.payload?.campusData?.officeName || msg.payload?.campusData?.buildingName || "Destination",
-                                  latitude: msg.payload?.campusData?.entranceLatitude,
-                                  longitude: msg.payload?.campusData?.entranceLongitude,
-                                  buildingId: msg.payload?.campusData?.buildingId,
-                                  officeId: msg.payload?.campusData?.officeId,
+                            const cd = msg.payload?.campusData;
+                            if (cd) {
+                              const targetName = cd.staffName
+                                ? `${cd.staffName}'s Office`
+                                : cd.officeName || cd.buildingName || "Destination";
+                              navigate("/", {
+                                state: {
+                                  chatAction: "START_NAVIGATION",
+                                  payload: {
+                                    id: cd.entityId || cd.officeId || cd.buildingId || "chat-nav",
+                                    type: cd.entityId && cd.staffName ? "STAFF" : cd.officeId ? "OFFICE" : "BUILDING",
+                                    name: targetName,
+                                    latitude: cd.entranceLatitude,
+                                    longitude: cd.entranceLongitude,
+                                    buildingId: cd.buildingId,
+                                    buildingName: cd.buildingName,
+                                    officeId: cd.officeId,
+                                    officeName: cd.officeName,
+                                    floorNumber: cd.floorNumber,
+                                    roomNumber: cd.roomNumber,
+                                    staffName: cd.staffName,
+                                    staffPosition: cd.position,
+                                    entrySceneId: cd.entrySceneId,
+                                  },
                                 },
-                              },
-                            });
+                              });
+                            }
                           }}
                           className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95"
                         >
@@ -189,6 +206,28 @@ export function ChatbotPage() {
                       {msg.payload.campusData.entrySceneId && (
                         <button
                           onClick={() => {
+                            const cd = msg.payload?.campusData;
+                            if (cd) {
+                              const targetName = cd.staffName
+                                ? `${cd.staffName}'s Office`
+                                : cd.officeName || cd.buildingName || "Target Office";
+                              setDestinationTarget({
+                                id: cd.entityId || cd.officeId || cd.buildingId || "chat-target",
+                                type: cd.entityId && cd.staffName ? "STAFF" : cd.officeId ? "OFFICE" : "BUILDING",
+                                name: targetName,
+                                latitude: cd.entranceLatitude || 0,
+                                longitude: cd.entranceLongitude || 0,
+                                buildingId: cd.buildingId,
+                                buildingName: cd.buildingName,
+                                officeId: cd.officeId,
+                                officeName: cd.officeName,
+                                floorNumber: cd.floorNumber,
+                                roomNumber: cd.roomNumber,
+                                staffName: cd.staffName,
+                                staffPosition: cd.position,
+                                entrySceneId: cd.entrySceneId,
+                              });
+                            }
                             navigate(`/panorama/${msg.payload?.campusData?.entrySceneId}`);
                           }}
                           className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-md active:scale-95"

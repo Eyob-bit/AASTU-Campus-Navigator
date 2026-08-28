@@ -84,6 +84,7 @@ export interface DestinationTarget {
   officeId?: string;
   officeName?: string;
   roomNumber?: string;
+  staffId?: string;
   staffName?: string;
   staffPosition?: string;
   staffPhone?: string | null;
