@@ -30,17 +30,21 @@ export { AASTU_CENTER, type TileMode };
 // How often the live GPS position is pushed into the app store, in ms.
 const STORE_UPDATE_INTERVAL_MS = 500;
 
-// ── Floating Map Controls (GPS Pin + Satellite toggle) ────────────────────────
+// ── Floating Map Controls (GPS Pin + Satellite toggle + Rotate buttons) ───────
 interface MapControlsProps {
   tileMode: TileMode;
   onToggleTile: () => void;
   onCenterLocation: () => void;
+  onRotateLeft: () => void;
+  onRotateRight: () => void;
 }
 
 const MapControls = memo(function MapControls({
   tileMode,
   onToggleTile,
   onCenterLocation,
+  onRotateLeft,
+  onRotateRight,
 }: MapControlsProps) {
   return (
     <div
@@ -68,10 +72,28 @@ const MapControls = memo(function MapControls({
         )}
       </button>
 
+      {/* Manual Rotate Left / Right */}
+      <div className="flex gap-1">
+        <button
+          onClick={onRotateLeft}
+          className="flex h-10 flex-1 items-center justify-center rounded-xl bg-[#0B132B]/95 text-cyan-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95 text-xs font-bold"
+          title="Rotate Left (-15°)"
+        >
+          ↺ 15°
+        </button>
+        <button
+          onClick={onRotateRight}
+          className="flex h-10 flex-1 items-center justify-center rounded-xl bg-[#0B132B]/95 text-cyan-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95 text-xs font-bold"
+          title="Rotate Right (+15°)"
+        >
+          ↻ 15°
+        </button>
+      </div>
+
       {/* Center on my location */}
       <button
         onClick={onCenterLocation}
-        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B132B]/95 text-cyan-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95"
+        className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#0B132B]/95 text-cyan-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95 self-end"
         title="Center on My Location"
       >
         <span style={{ fontSize: 16 }}>🎯</span>
@@ -297,6 +319,22 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
     }
   }, []);
 
+  const handleRotateLeft = useCallback(() => {
+    if (mapRef.current) {
+      const current = mapRef.current.getHeading() || 0;
+      const next = (current - 15 + 360) % 360;
+      mapRef.current.setHeading(next);
+    }
+  }, []);
+
+  const handleRotateRight = useCallback(() => {
+    if (mapRef.current) {
+      const current = mapRef.current.getHeading() || 0;
+      const next = (current + 15) % 360;
+      mapRef.current.setHeading(next);
+    }
+  }, []);
+
   // Map building lookup map by ID and normalized name
   const buildingById = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
   const buildingByName = useMemo(
@@ -455,11 +493,13 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         </div>
       </GoogleMapsContainer>
 
-      {/* Floating Map Controls (Street/Satellite toggle & Center Location) */}
+      {/* Floating Map Controls (Street/Satellite toggle & Center Location & Rotate) */}
       <MapControls
         tileMode={tileMode}
         onToggleTile={handleToggleTile}
         onCenterLocation={handleRecenter}
+        onRotateLeft={handleRotateLeft}
+        onRotateRight={handleRotateRight}
       />
 
       {/* Floating Recenter Pill */}
