@@ -120,8 +120,8 @@ export function GoogleMapsContainer({
       gestureHandling: "greedy",
     };
 
-    if (typeof google !== "undefined" && google.maps?.RenderingType?.VECTOR) {
-      opts.renderingType = google.maps.RenderingType.VECTOR;
+    if (typeof google !== "undefined" && "maps" in google && (google.maps as any)?.RenderingType) {
+      opts.renderingType = (google.maps as any).RenderingType.VECTOR;
     } else {
       (opts as any).renderingType = "VECTOR";
     }
