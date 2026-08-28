@@ -107,6 +107,7 @@ export function GoogleMapsContainer({
     const opts: google.maps.MapOptions = {
       mapId,
       disableDefaultUI: true,
+      clickableIcons: false,
       zoomControl: false,
       mapTypeControl: false,
       streetViewControl: false,
@@ -119,6 +120,58 @@ export function GoogleMapsContainer({
       minZoom,
       maxZoom,
       gestureHandling: "greedy",
+      styles: [
+        {
+          featureType: "poi",
+          elementType: "all",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "poi.business",
+          elementType: "all",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "poi.government",
+          elementType: "all",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "poi.medical",
+          elementType: "all",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "poi.school",
+          elementType: "all",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "poi.park",
+          elementType: "labels",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "poi.sports_complex",
+          elementType: "all",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "poi.attraction",
+          elementType: "all",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "transit",
+          elementType: "all",
+          stylers: [{ visibility: "off" }],
+        },
+        {
+          featureType: "transit.station",
+          elementType: "all",
+          stylers: [{ visibility: "off" }],
+        },
+      ],
     };
 
     if (typeof google !== "undefined" && "maps" in google && (google.maps as any)?.RenderingType) {
