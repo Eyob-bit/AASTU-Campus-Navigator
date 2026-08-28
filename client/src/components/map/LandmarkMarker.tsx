@@ -164,22 +164,26 @@ export const LandmarkMarker = memo(function LandmarkMarker({
         }
         ${
           landmark.building
-            ? `<a href="/dashboard/navigation-preview?buildingId=${landmark.building.id}" style="
-                margin-top:8px;
-                display:block;
-                text-align:center;
-                width:100%;
-                border-radius:8px;
-                background:#0284c7;
-                color:#ffffff;
-                font-size:11px;
-                font-weight:600;
-                padding:6px 10px;
-                text-decoration:none;
-                box-sizing:border-box;
-              ">
+            ? `<button
+                id="landmark-nav-btn-${landmark.id}"
+                style="
+                  margin-top:8px;
+                  display:block;
+                  text-align:center;
+                  width:100%;
+                  border-radius:8px;
+                  background:#0284c7;
+                  color:#ffffff;
+                  font-size:11px;
+                  font-weight:600;
+                  padding:6px 10px;
+                  border:none;
+                  cursor:pointer;
+                  box-sizing:border-box;
+                "
+              >
                 Navigate Here
-              </a>`
+              </button>`
             : ""
         }
       </div>
@@ -195,8 +199,34 @@ export const LandmarkMarker = memo(function LandmarkMarker({
       infoWindow.open(map, marker);
     });
 
+    // Wire up the "Navigate Here" button inside the InfoWindow after it opens
+    const domReadyListener = infoWindow.addListener("domready", () => {
+      const btn = document.getElementById(`landmark-nav-btn-${landmark.id}`);
+      if (btn) {
+        btn.addEventListener("click", () => {
+          infoWindow.close();
+          window.dispatchEvent(
+            new CustomEvent("aastu_navigate_landmark", {
+              detail: {
+                id: landmark.id,
+                name: landmark.building?.name ?? landmark.name,
+                category: landmark.category,
+                latitude: landmark.latitude,
+                longitude: landmark.longitude,
+                buildingId: landmark.buildingId,
+                buildingName: landmark.building?.name,
+                buildingCode: landmark.building?.code,
+                roadNodeId: landmark.roadNodeId ?? landmark.building?.entranceRoadNodeId ?? null,
+              },
+            })
+          );
+        });
+      }
+    });
+
     return () => {
       google.maps.event.removeListener(clickListener);
+      google.maps.event.removeListener(domReadyListener);
       infoWindow.close();
       marker.setMap(null);
     };

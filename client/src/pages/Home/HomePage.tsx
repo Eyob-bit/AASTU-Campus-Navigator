@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Search, User, DoorOpen, Loader2, Navigation2, Building2 } from "lucide-react";
 import { CampusMap } from "@/components/map";
 import { searchApi } from "@/api/search.api";
@@ -7,7 +7,6 @@ import { useAppStore } from "@/store";
 import type { SearchResult, Landmark, DestinationTarget } from "@/types";
 
 export function HomePage() {
-  const navigate = useNavigate();
   const location = useLocation();
   const { setSelectedResult, startOutdoorNavigation } = useAppStore();
 
@@ -86,6 +85,29 @@ export function HomePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
+  // ── Handle landmark "Navigate Here" custom event from map InfoWindow popups ──
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ev = e as CustomEvent;
+      const d = ev.detail;
+      if (!d) return;
+      const target: DestinationTarget = {
+        id: d.id,
+        type: d.buildingId ? "BUILDING" : "LANDMARK",
+        name: d.name,
+        subtitle: `${d.category} Landmark · AASTU Campus`,
+        latitude: d.latitude,
+        longitude: d.longitude,
+        roadNodeId: d.roadNodeId ?? null,
+        buildingId: d.buildingId,
+        buildingName: d.buildingName,
+        buildingCode: d.buildingCode,
+      };
+      startNavRef.current(target);
+    };
+    window.addEventListener("aastu_navigate_landmark", handler);
+    return () => window.removeEventListener("aastu_navigate_landmark", handler);
+  }, []);
 
   // Live search effect on query change
   useEffect(() => {
@@ -137,10 +159,18 @@ export function HomePage() {
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // If results are already showing, pick the first office or landmark result
+    if (officeResults.length > 0) {
+      handleSelectOfficeResult(officeResults[0]);
+      return;
+    }
+    if (landmarkResults.length > 0) {
+      handleSelectLandmarkResult(landmarkResults[0]);
+      return;
+    }
+    // Otherwise show/keep the dropdown so results can load
     if (searchQuery.trim()) {
-      navigate(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
-    } else {
-      navigate("/search");
+      setShowDropdown(true);
     }
   };
 
