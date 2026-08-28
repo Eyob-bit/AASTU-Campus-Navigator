@@ -29,6 +29,44 @@ export interface CampusSearchResult {
   clarificationCandidates: Array<{ name: string; type: string; details?: string }>;
 }
 
+async function resolveEntrySceneId(floorId?: string, buildingId?: string): Promise<string | undefined> {
+  if (floorId) {
+    const fEntry = await prisma.panoramaScene.findFirst({
+      where: { floorId, isEntryScene: true },
+      select: { id: true },
+    });
+    if (fEntry) return fEntry.id;
+
+    const fAny = await prisma.panoramaScene.findFirst({
+      where: { floorId },
+      orderBy: { displayOrder: "asc" },
+      select: { id: true },
+    });
+    if (fAny) return fAny.id;
+  }
+
+  if (buildingId) {
+    const bEntry = await prisma.panoramaScene.findFirst({
+      where: { floor: { buildingId }, isEntryScene: true },
+      select: { id: true },
+    });
+    if (bEntry) return bEntry.id;
+
+    const bAny = await prisma.panoramaScene.findFirst({
+      where: { floor: { buildingId } },
+      orderBy: { displayOrder: "asc" },
+      select: { id: true },
+    });
+    if (bAny) return bAny.id;
+  }
+
+  const globalDefault = await prisma.panoramaScene.findFirst({
+    orderBy: [{ isEntryScene: "desc" }, { createdAt: "asc" }],
+    select: { id: true },
+  });
+  return globalDefault?.id;
+}
+
 export async function searchCampusKnowledge(query: NormalizedQuery): Promise<CampusSearchResult> {
   const { normalized, raw, tokens } = query;
   if (!normalized) {
@@ -42,18 +80,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
         include: {
           floor: {
             include: {
-              building: {
-                include: {
-                  floors: {
-                    include: {
-                      scenes: {
-                        where: { isEntryScene: true },
-                        take: 1,
-                      },
-                    },
-                  },
-                },
-              },
+              building: true,
             },
           },
         },
@@ -91,11 +118,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
     const item = bestAliasMatch.aliasObj;
     if (item.office) {
       const b = item.office.floor.building;
-      // Find the entry scene for the SPECIFIC target floor, not the first floor
-      const targetFloorScenes = item.office.floor.id
-        ? b.floors.find((f: any) => f.id === item.office!.floor.id)?.scenes
-        : undefined;
-      const entryScene = targetFloorScenes?.[0] ?? b.floors.flatMap((f: any) => f.scenes)[0];
+      const entrySceneId = await resolveEntrySceneId(item.office.floor.id, b.id);
 
       return {
         confidence: bestAliasMatch.score,
@@ -115,7 +138,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
           floorNumber: item.office.floor.floorNumber,
           entranceLatitude: b.entranceLatitude,
           entranceLongitude: b.entranceLongitude,
-          entrySceneId: entryScene?.id,
+          entrySceneId,
         },
         clarificationCandidates: [],
       };
@@ -124,11 +147,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
     if (item.staff) {
       const off = item.staff.office;
       const b = off.floor.building;
-      // For staff alias matches, resolve the floor entry scene from the office floor
-      const staffEntryScene = await prisma.panoramaScene.findFirst({
-        where: { floorId: off.floor.id, isEntryScene: true },
-        select: { id: true },
-      });
+      const entrySceneId = await resolveEntrySceneId(off.floor.id, b.id);
 
       return {
         confidence: bestAliasMatch.score,
@@ -150,7 +169,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
           floorNumber: off.floor.floorNumber,
           entranceLatitude: b.entranceLatitude,
           entranceLongitude: b.entranceLongitude,
-          entrySceneId: staffEntryScene?.id,
+          entrySceneId,
         },
         clarificationCandidates: [],
       };
@@ -190,11 +209,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
     const st = bestStaffMatch.staff;
     const off = st.office;
     const b = off.floor.building;
-    // Resolve the entry scene for the specific floor the staff member's office is on
-    const staffFloorEntryScene = await prisma.panoramaScene.findFirst({
-      where: { floorId: off.floor.id, isEntryScene: true },
-      select: { id: true },
-    });
+    const entrySceneId = await resolveEntrySceneId(off.floor.id, b.id);
 
     return {
       confidence: bestStaffMatch.score,
@@ -216,7 +231,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
         floorNumber: off.floor.floorNumber,
         entranceLatitude: b.entranceLatitude,
         entranceLongitude: b.entranceLongitude,
-        entrySceneId: staffFloorEntryScene?.id,
+        entrySceneId,
       },
       clarificationCandidates: [],
     };
@@ -228,18 +243,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
     include: {
       floor: {
         include: {
-          building: {
-            include: {
-              floors: {
-                include: {
-                  scenes: {
-                    where: { isEntryScene: true },
-                    take: 1,
-                  },
-                },
-              },
-            },
-          },
+          building: true,
         },
       },
     },
@@ -263,9 +267,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
   if (bestOfficeMatch && bestOfficeMatch.score >= 0.65) {
     const off = bestOfficeMatch.office;
     const b = off.floor.building;
-    // Find the entry scene for the SPECIFIC target floor, not the first floor of the building
-    const officeFloorScenes = b.floors.find((f: any) => f.id === off.floor.id)?.scenes;
-    const entryScene = officeFloorScenes?.[0] ?? b.floors.flatMap((f: any) => f.scenes)[0];
+    const entrySceneId = await resolveEntrySceneId(off.floor.id, b.id);
 
     return {
       confidence: bestOfficeMatch.score,
@@ -285,7 +287,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
         floorNumber: off.floor.floorNumber,
         entranceLatitude: b.entranceLatitude,
         entranceLongitude: b.entranceLongitude,
-        entrySceneId: entryScene?.id,
+        entrySceneId,
       },
       clarificationCandidates: [],
     };
@@ -294,16 +296,6 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
   // ── 4. Search Buildings (Building / Block / Zone) ──────────────────────────
   const buildings = await prisma.building.findMany({
     where: { isActive: true },
-    include: {
-      floors: {
-        include: {
-          scenes: {
-            where: { isEntryScene: true },
-            take: 1,
-          },
-        },
-      },
-    },
   });
 
   let bestBuildingMatch: { building: (typeof buildings)[0]; score: number } | null = null;
@@ -322,7 +314,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
 
   if (bestBuildingMatch && bestBuildingMatch.score >= 0.60) {
     const b = bestBuildingMatch.building;
-    const entryScene = b.floors.flatMap((f) => f.scenes)[0];
+    const entrySceneId = await resolveEntrySceneId(undefined, b.id);
 
     return {
       confidence: bestBuildingMatch.score,
@@ -336,7 +328,7 @@ export async function searchCampusKnowledge(query: NormalizedQuery): Promise<Cam
         buildingCode: b.code,
         entranceLatitude: b.entranceLatitude,
         entranceLongitude: b.entranceLongitude,
-        entrySceneId: entryScene?.id,
+        entrySceneId,
       },
       clarificationCandidates: [],
     };

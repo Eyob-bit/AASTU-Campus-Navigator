@@ -170,11 +170,49 @@ export class SearchRepository {
     }
 
     async findEntryScene(floorId: string) {
-        return prisma.panoramaScene.findFirst({
+        // 1st Priority: Entry scene on this target floor
+        const floorEntryScene = await prisma.panoramaScene.findFirst({
             where: {
                 floorId,
                 isEntryScene: true,
             },
+        });
+        if (floorEntryScene) return floorEntryScene;
+
+        // 2nd Priority: Any scene on this target floor
+        const anyFloorScene = await prisma.panoramaScene.findFirst({
+            where: { floorId },
+            orderBy: { displayOrder: "asc" },
+        });
+        if (anyFloorScene) return anyFloorScene;
+
+        // 3rd Priority: Entrance scene of the building (e.g. Ground floor entry scene)
+        const floor = await prisma.floor.findUnique({
+            where: { id: floorId },
+            select: { buildingId: true },
+        });
+        if (floor?.buildingId) {
+            const buildingEntryScene = await prisma.panoramaScene.findFirst({
+                where: {
+                    floor: { buildingId: floor.buildingId },
+                    isEntryScene: true,
+                },
+            });
+            if (buildingEntryScene) return buildingEntryScene;
+
+            // 4th Priority: Any scene in the building
+            const anyBuildingScene = await prisma.panoramaScene.findFirst({
+                where: {
+                    floor: { buildingId: floor.buildingId },
+                },
+                orderBy: { displayOrder: "asc" },
+            });
+            if (anyBuildingScene) return anyBuildingScene;
+        }
+
+        // 5th Priority: Global default entry scene
+        return prisma.panoramaScene.findFirst({
+            orderBy: [{ isEntryScene: "desc" }, { createdAt: "asc" }],
         });
     }
 

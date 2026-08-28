@@ -14,8 +14,6 @@ interface UserLocationMarkerProps {
   subscribeHeading?: (listener: (heading: number) => void) => () => void;
 }
 
-// Arrow glyph pointing north at rotation 0, centred on its own origin.
-const ARROW_PATH = "M 0 -11 L 7.5 9 L 0 4.5 L -7.5 9 Z";
 // Only push a new icon once the heading has moved this far, in degrees.
 const ROTATION_QUANTUM_DEGREES = 3;
 
@@ -33,21 +31,10 @@ function haloIcon(isNavigating: boolean): google.maps.Symbol {
   };
 }
 
-function coreIcon(isNavigating: boolean, rotation: number): google.maps.Symbol {
-  if (isNavigating) {
-    return {
-      path: ARROW_PATH,
-      scale: 1.2,
-      rotation,
-      fillColor: CYAN,
-      fillOpacity: 1,
-      strokeColor: WHITE,
-      strokeWeight: 2.5,
-    };
-  }
+function coreIcon(isNavigating: boolean): google.maps.Symbol {
   return {
     path: google.maps.SymbolPath.CIRCLE,
-    scale: 8,
+    scale: isNavigating ? 9 : 8,
     fillColor: CYAN,
     fillOpacity: 1,
     strokeColor: WHITE,
@@ -105,7 +92,7 @@ export function UserLocationMarker({
       map,
       title: "Your Location",
       zIndex: 999,
-      icon: coreIcon(isNavigatingRef.current, rotationRef.current),
+      icon: coreIcon(isNavigatingRef.current),
     });
 
     const circle = new google.maps.Circle({
@@ -156,7 +143,7 @@ export function UserLocationMarker({
   // ── Navigating / idle appearance ───────────────────────────────────────────
   useEffect(() => {
     haloRef.current?.setIcon(haloIcon(isNavigating));
-    coreRef.current?.setIcon(coreIcon(isNavigating, rotationRef.current));
+    coreRef.current?.setIcon(coreIcon(isNavigating));
   }, [isNavigating]);
 
   // ── Accuracy circle ───────────────────────────────────────────────────────
@@ -183,7 +170,7 @@ export function UserLocationMarker({
 
       rotationRef.current = heading;
       if (isNavigatingRef.current) {
-        coreRef.current?.setIcon(coreIcon(true, heading));
+        coreRef.current?.setIcon(coreIcon(true));
       }
     });
   }, [subscribeHeading]);
