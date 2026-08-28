@@ -99,8 +99,14 @@ export function GoogleMapsContainer({
   }, [map, tileMode]);
 
 
+  const mapId =
+    import.meta.env.VITE_GOOGLE_MAP_ID ||
+    (typeof process !== "undefined" ? (process.env as any)?.REACT_APP_GOOGLE_MAP_ID : "") ||
+    "DEMO_MAP_ID";
+
   const mapOptions = useMemo<google.maps.MapOptions>(() => {
     const opts: google.maps.MapOptions = {
+      mapId,
       disableDefaultUI: true,
       clickableIcons: false,
       zoomControl: false,
@@ -108,6 +114,10 @@ export function GoogleMapsContainer({
       streetViewControl: false,
       fullscreenControl: false,
       rotateControl: true,
+      headingInteractionEnabled: true,
+      tiltInteractionEnabled: true,
+      heading: 0,
+      tilt: 0,
       minZoom,
       maxZoom,
       gestureHandling: "greedy",
@@ -124,8 +134,15 @@ export function GoogleMapsContainer({
         { featureType: "transit.station",  elementType: "all",    stylers: [{ visibility: "off" }] },
       ],
     };
+
+    if (typeof google !== "undefined" && "maps" in google && (google.maps as any)?.RenderingType) {
+      opts.renderingType = (google.maps as any).RenderingType.VECTOR;
+    } else {
+      (opts as any).renderingType = "VECTOR";
+    }
+
     return opts;
-  }, [minZoom, maxZoom]);
+  }, [mapId, minZoom, maxZoom]);
 
   if (loadError) {
     return (

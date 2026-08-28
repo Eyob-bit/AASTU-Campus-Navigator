@@ -336,6 +336,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
       const current = mapRef.current.getHeading() || 0;
       const next = (current - 15 + 360) % 360;
       mapRef.current.setHeading(next);
+      setMapHeading(next);
     }
   }, []);
 
@@ -344,6 +345,7 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
       const current = mapRef.current.getHeading() || 0;
       const next = (current + 15) % 360;
       mapRef.current.setHeading(next);
+      setMapHeading(next);
     }
   }, []);
 
