@@ -85,16 +85,18 @@ export function GoogleMapsContainer({
     [center[0], center[1]]
   );
 
-  const mapTypeId = useMemo<string>(() => {
-    if (tileMode === "satellite") return "hybrid";
-    return "roadmap";
-  }, [tileMode]);
-
   useEffect(() => {
-    if (map) {
-      map.setMapTypeId(mapTypeId);
+    if (!map || typeof google === "undefined" || !google.maps) return;
+    try {
+      const targetType =
+        tileMode === "satellite"
+          ? google.maps.MapTypeId.HYBRID
+          : google.maps.MapTypeId.ROADMAP;
+      map.setMapTypeId(targetType);
+    } catch (err) {
+      console.warn("[GoogleMapsContainer] Error setting mapTypeId:", err);
     }
-  }, [map, mapTypeId]);
+  }, [map, tileMode]);
 
   const mapId =
     import.meta.env.VITE_GOOGLE_MAP_ID ||
@@ -104,7 +106,6 @@ export function GoogleMapsContainer({
   const mapOptions = useMemo<google.maps.MapOptions>(() => {
     const opts: google.maps.MapOptions = {
       mapId,
-      mapTypeId,
       disableDefaultUI: true,
       zoomControl: false,
       mapTypeControl: false,
@@ -127,7 +128,7 @@ export function GoogleMapsContainer({
     }
 
     return opts;
-  }, [mapId, mapTypeId, minZoom, maxZoom]);
+  }, [mapId, minZoom, maxZoom]);
 
   if (loadError) {
     return (

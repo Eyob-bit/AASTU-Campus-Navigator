@@ -30,6 +30,18 @@ export { AASTU_CENTER, type TileMode };
 // How often the live GPS position is pushed into the app store, in ms.
 const STORE_UPDATE_INTERVAL_MS = 500;
 
+function getCardinalDirection(heading: number): string {
+  const normalized = ((heading % 360) + 360) % 360;
+  if (normalized >= 337.5 || normalized < 22.5) return "N";
+  if (normalized >= 22.5 && normalized < 67.5) return "NE";
+  if (normalized >= 67.5 && normalized < 112.5) return "E";
+  if (normalized >= 112.5 && normalized < 157.5) return "SE";
+  if (normalized >= 157.5 && normalized < 202.5) return "S";
+  if (normalized >= 202.5 && normalized < 247.5) return "SW";
+  if (normalized >= 247.5 && normalized < 292.5) return "W";
+  return "NW";
+}
+
 // ── Floating Map Controls (GPS Pin + Satellite toggle + Rotate buttons) ───────
 interface MapControlsProps {
   tileMode: TileMode;
@@ -482,13 +494,16 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
         >
           <button
             onClick={handleResetNorth}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0B132B]/95 text-cyan-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95"
-            title="Reset to North-Up"
+            className="flex h-10 items-center gap-1.5 px-3 rounded-full bg-[#0B132B]/95 text-cyan-400 border border-slate-700 shadow-2xl backdrop-blur-md hover:bg-slate-800 hover:text-white transition-all cursor-pointer active:scale-95"
+            title={`Reset to North (Current: ${Math.round(mapHeading)}° ${getCardinalDirection(mapHeading)})`}
           >
             <Compass
               className="h-5 w-5 transition-transform duration-300 ease-out"
               style={{ transform: `rotate(${-mapHeading}deg)` }}
             />
+            <span className="text-xs font-mono font-bold text-cyan-300 tracking-wider">
+              {Math.round(((mapHeading % 360) + 360) % 360)}° {getCardinalDirection(mapHeading)}
+            </span>
           </button>
         </div>
       </GoogleMapsContainer>
