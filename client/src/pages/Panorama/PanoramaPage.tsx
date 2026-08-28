@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store";
 import { PublicPanoramaPage } from "./PublicPanoramaPage";
 import { Loader2 } from "lucide-react";
 
 export function PanoramaPage() {
-  const navigate = useNavigate();
   const { destinationTarget } = useAppStore();
   const [targetSceneId, setTargetSceneId] = useState<string | null>(
     destinationTarget?.entrySceneId || null
