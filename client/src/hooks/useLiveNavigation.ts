@@ -33,8 +33,8 @@ export interface UseLiveNavigationResult {
   stopTracking: () => void;
 }
 
-// Max allowed GPS accuracy radius in meters before considering reading suspicious (if previous location exists)
-const MAX_ACCURACY_THRESHOLD_METERS = 45;
+// Max allowed GPS accuracy radius in meters before considering reading suspicious (if previous location is already accurate)
+const MAX_ACCURACY_THRESHOLD_METERS = 100;
 // Minimum position change in meters required to trigger state update (suppresses stationary jitter)
 const MIN_POSITION_CHANGE_METERS = 1.0;
 
@@ -97,13 +97,17 @@ export function useLiveNavigation({
 
         const prevPos = lastPosRef.current;
 
-        // 2. Accuracy check: If accuracy is very bad (> 45m) and we already have a fix, skip wild jump
-        if (
-          prevPos !== null &&
-          accuracy != null &&
-          accuracy > MAX_ACCURACY_THRESHOLD_METERS
-        ) {
-          return;
+        // 2. Accuracy check: Allow update if previous fix was null, if accuracy is good (<=100m),
+        //    if the new fix is more accurate than the old fix, or if the old fix itself had poor accuracy.
+        if (prevPos !== null && accuracy != null) {
+          const prevAccuracy = prevPos.accuracy ?? Infinity;
+          const isNewAccuracyGood = accuracy <= MAX_ACCURACY_THRESHOLD_METERS;
+          const isBetterThanPrev = accuracy < prevAccuracy;
+          const wasPrevBad = prevAccuracy > MAX_ACCURACY_THRESHOLD_METERS;
+
+          if (!isNewAccuracyGood && !isBetterThanPrev && !wasPrevBad) {
+            return;
+          }
         }
 
         // 3. Jitter filtering: If change is tiny (< 1.0m) and speed is zero/low, skip

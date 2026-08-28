@@ -131,9 +131,8 @@ export function CampusMap({ className, visibleOnly = false }: CampusMapProps) {
 
   const isNavigating = navStep === "OUTDOOR_NAV";
 
-  // Continuous live GPS tracking. High accuracy costs battery, so it is reserved for
-  // active navigation.
-  const { userPosition } = useLiveNavigation({ enabled: true, highAccuracy: isNavigating });
+  // Continuous live GPS tracking with high accuracy enabled.
+  const { userPosition } = useLiveNavigation({ enabled: true, highAccuracy: true });
 
   // Heading fusion (device compass + GPS course with circular EMA smoothing).
   // The heading is delivered by subscription rather than state — at ~10Hz, holding it
