@@ -3,7 +3,16 @@ import { prisma } from "../config/prisma.js";
 const OFFICE_NAV_INCLUDE = {
     floor: {
         include: {
-            building: true,
+            building: {
+                include: {
+                    complex: true,
+                    entrances: {
+                        include: {
+                            roadNode: true,
+                        },
+                    },
+                },
+            },
         },
     },
 };
@@ -30,12 +39,31 @@ export class NavigationRepository {
         });
     }
 
-    async findEntryScene(floorId: string) {
-        return prisma.panoramaScene.findFirst({
+    async findEntryScene(floorId: string, buildingId?: string) {
+        // Priority 1: Entry scene on the exact destination floor
+        const floorEntry = await prisma.panoramaScene.findFirst({
             where: {
                 floorId,
                 isEntryScene: true,
             },
+        });
+        if (floorEntry) return floorEntry;
+
+        // Priority 2: Entry scene for this physical building block (e.g. Ground Floor)
+        if (buildingId) {
+            const buildingEntry = await prisma.panoramaScene.findFirst({
+                where: {
+                    floor: { buildingId },
+                    isEntryScene: true,
+                },
+            });
+            if (buildingEntry) return buildingEntry;
+        }
+
+        // Priority 3: Any scene on the target floor
+        return prisma.panoramaScene.findFirst({
+            where: { floorId },
+            orderBy: { displayOrder: "asc" },
         });
     }
 
@@ -52,11 +80,23 @@ export class NavigationRepository {
         return element?.scene ?? null;
     }
 
-    async findSceneGraph(floorId: string) {
+    async findSceneGraph(floorId: string, buildingId?: string, complexId?: string | null) {
+        // If buildingId is provided, query all scenes in this physical block or connected complex
+        // so that stairs, elevators, and bridge transitions are fully included in the BFS graph
+        const whereClause: any = complexId
+            ? {
+                floor: {
+                    building: {
+                        OR: [{ id: buildingId }, { complexId }],
+                    },
+                },
+            }
+            : buildingId
+            ? { floor: { buildingId } }
+            : { floorId };
+
         return prisma.panoramaScene.findMany({
-            where: {
-                floorId,
-            },
+            where: whereClause,
             include: SCENE_GRAPH_INCLUDE,
         });
     }

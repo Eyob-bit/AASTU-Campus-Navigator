@@ -18,6 +18,9 @@ import analyticsRoutes from "./analytics.routes.js";
 import adminProfileRoutes from "./adminProfile.routes.js";
 import infoContentRoutes from "./infoContent.routes.js";
 import { chatRouter } from "./chat.routes.js";
+import complexRoutes from "./complex.routes.js";
+import entranceRoutes from "./entrance.routes.js";
+import importRoutes from "./import.routes.js";
 import { requireAdminAuth } from "../middleware/auth.middleware.js";
 
 const router = Router();
@@ -31,7 +34,10 @@ router.use("/navigation", navigationRoutes); // Indoor navigation (public)
 router.use("/navigation", roadNavigationRoutes); // A* route (public)
 router.use("/chat", chatRouter);            // AI chatbot (public)
 // Campus map/client routes (read-only GET endpoints protected by route handlers, write operations protected by requireAdminAuth within each route file)
+router.use("/complexes", complexRoutes);
 router.use("/buildings", buildingRoutes);
+router.use("/buildings/:buildingId/entrances", entranceRoutes);
+router.use("/entrances", entranceRoutes);
 router.use("/floors", floorRoutes);
 router.use("/offices", officeRoutes);
 router.use("/staff", staffRoutes);
@@ -46,5 +52,6 @@ router.use("/road-edges", roadEdgeRoutes);
 router.use("/analytics", requireAdminAuth, analyticsRoutes);
 router.use("/admin-profile", requireAdminAuth, adminProfileRoutes);
 router.use("/info-content", infoContentRoutes); // has public-read sub-routes
+router.use("/import", importRoutes);
 
 export default router;

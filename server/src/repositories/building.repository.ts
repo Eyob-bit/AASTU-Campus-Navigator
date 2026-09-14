@@ -13,6 +13,12 @@ export class BuildingRepository {
                     },
                 },
                 entranceRoadNode: true,
+                complex: true,
+                entrances: {
+                    include: {
+                        roadNode: true,
+                    },
+                },
             },
         });
     }
@@ -22,6 +28,12 @@ export class BuildingRepository {
             where: { id },
             include: {
                 entranceRoadNode: true,
+                complex: true,
+                entrances: {
+                    include: {
+                        roadNode: true,
+                    },
+                },
             },
         });
     }
@@ -33,6 +45,12 @@ export class BuildingRepository {
             },
             include: {
                 entranceRoadNode: true,
+                complex: true,
+                entrances: {
+                    include: {
+                        roadNode: true,
+                    },
+                },
             },
         });
     }
@@ -48,6 +66,26 @@ export class BuildingRepository {
                 },
                 announcements: true,
                 entranceRoadNode: true,
+                complex: true,
+                entrances: {
+                    include: {
+                        roadNode: true,
+                    },
+                },
+                connectionsFrom: {
+                    include: {
+                        toBuilding: true,
+                        fromFloor: true,
+                        toFloor: true,
+                    },
+                },
+                connectionsTo: {
+                    include: {
+                        fromBuilding: true,
+                        fromFloor: true,
+                        toFloor: true,
+                    },
+                },
             },
         });
     }
@@ -65,6 +103,7 @@ export class BuildingRepository {
             themeColor?: string;
             zone?: string;
             entranceRoadNodeId?: string | null;
+            complexId?: string | null;
             isActive?: boolean;
         }
     ) {
@@ -73,6 +112,12 @@ export class BuildingRepository {
             data,
             include: {
                 entranceRoadNode: true,
+                complex: true,
+                entrances: {
+                    include: {
+                        roadNode: true,
+                    },
+                },
             },
         });
     }
@@ -97,6 +142,7 @@ export class BuildingRepository {
         themeColor?: string;
         zone?: string;
         entranceRoadNodeId?: string | null;
+        complexId?: string | null;
     }) {
         return prisma.building.create({
             data: {
@@ -110,9 +156,16 @@ export class BuildingRepository {
                 themeColor: data.themeColor,
                 zone: data.zone,
                 entranceRoadNodeId: data.entranceRoadNodeId,
+                complexId: data.complexId,
             },
             include: {
                 entranceRoadNode: true,
+                complex: true,
+                entrances: {
+                    include: {
+                        roadNode: true,
+                    },
+                },
             },
         });
     }

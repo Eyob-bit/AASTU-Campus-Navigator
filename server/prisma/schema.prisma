@@ -34,6 +34,30 @@ enum RoadNodeType {
 }
 
 
+model BuildingComplex {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  description String?
+  zone        String?
+  coverImage  String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  blocks      Building[]        @relation("ComplexBlocks")
+  connections BlockConnection[] @relation("ComplexConnections")
+
+  @@index([name])
+}
+
+enum ConnectionType {
+  BRIDGE
+  WALKWAY
+  SKYWALK
+  TUNNEL
+}
+
 model Building {
   id            String   @id @default(cuid())
   name          String
@@ -47,8 +71,14 @@ model Building {
   themeColor    String?
   zone          String?
   entranceRoadNodeId String?
+  complexId     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  complex       BuildingComplex?  @relation("ComplexBlocks", fields: [complexId], references: [id], onDelete: SetNull)
+  entrances     BuildingEntrance[] @relation("BuildingEntrances")
+  connectionsFrom BlockConnection[] @relation("BlockConnectionFrom")
+  connectionsTo   BlockConnection[] @relation("BlockConnectionTo")
 
   floors        Floor[]
   announcements Announcement[]
@@ -56,6 +86,55 @@ model Building {
   entranceRoadNode RoadNode? @relation("BuildingEntrance", fields: [entranceRoadNodeId], references: [id], onDelete: SetNull)
 
   @@index([name])
+  @@index([complexId])
+}
+
+model BuildingEntrance {
+  id          String   @id @default(cuid())
+  name        String
+  buildingId  String
+  latitude    Float
+  longitude   Float
+  image       String?
+  isPrimary   Boolean  @default(false)
+  roadNodeId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  building    Building  @relation("BuildingEntrances", fields: [buildingId], references: [id], onDelete: Cascade)
+  roadNode    RoadNode? @relation("DedicatedEntranceNode", fields: [roadNodeId], references: [id], onDelete: SetNull)
+
+  @@index([buildingId])
+  @@index([roadNodeId])
+}
+
+model BlockConnection {
+  id              String         @id @default(cuid())
+  name            String
+  type            ConnectionType @default(BRIDGE)
+  fromBuildingId  String
+  toBuildingId    String
+  fromFloorId     String?
+  toFloorId       String?
+  fromSceneId     String?
+  toSceneId       String?
+  description     String?
+  isWalkable      Boolean        @default(true)
+  complexId       String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  fromBuilding    Building        @relation("BlockConnectionFrom", fields: [fromBuildingId], references: [id], onDelete: Cascade)
+  toBuilding      Building        @relation("BlockConnectionTo", fields: [toBuildingId], references: [id], onDelete: Cascade)
+  fromFloor       Floor?          @relation("FloorConnectionFrom", fields: [fromFloorId], references: [id], onDelete: SetNull)
+  toFloor         Floor?          @relation("FloorConnectionTo", fields: [toFloorId], references: [id], onDelete: SetNull)
+  fromScene       PanoramaScene?  @relation("SceneConnectionFrom", fields: [fromSceneId], references: [id], onDelete: SetNull)
+  toScene         PanoramaScene?  @relation("SceneConnectionTo", fields: [toSceneId], references: [id], onDelete: SetNull)
+  complex         BuildingComplex? @relation("ComplexConnections", fields: [complexId], references: [id], onDelete: SetNull)
+
+  @@index([fromBuildingId])
+  @@index([toBuildingId])
+  @@index([complexId])
 }
 
 model Floor {
@@ -69,6 +148,8 @@ model Floor {
 
   offices Office[]
   scenes  PanoramaScene[]
+  connectionsFrom BlockConnection[] @relation("FloorConnectionFrom")
+  connectionsTo   BlockConnection[] @relation("FloorConnectionTo")
 
   @@unique([buildingId, floorNumber])
 }
@@ -160,6 +241,9 @@ model PanoramaScene {
   elements SceneElement[] @relation("SceneElements")
 
   nextScenes SceneElement[] @relation("SceneNavigation")
+
+  connectionsFrom BlockConnection[] @relation("SceneConnectionFrom")
+  connectionsTo   BlockConnection[] @relation("SceneConnectionTo")
 
   @@unique([floorId, displayOrder])
 }
@@ -254,8 +338,9 @@ model RoadNode {
   outgoingEdges RoadEdge[] @relation("FromNode")
   incomingEdges RoadEdge[] @relation("ToNode")
 
-  buildingEntrances Building[] @relation("BuildingEntrance")
-  landmarks         Landmark[] @relation("LandmarkNode")
+  buildingEntrances Building[]         @relation("BuildingEntrance")
+  dedicatedEntrances BuildingEntrance[] @relation("DedicatedEntranceNode")
+  landmarks         Landmark[]         @relation("LandmarkNode")
 
   @@index([type])
   @@index([zone])

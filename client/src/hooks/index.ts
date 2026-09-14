@@ -13,9 +13,11 @@ export function useSearch() {
 export { useCampusSearch, useNavigationPath, campusQueryKeys } from "./useCampusQueries";
 
 export { useScenePreview } from "./useScenePreview";
+export { useIndoorNavigationRoute } from "./useIndoorNavigationRoute";
 export { useLiveNavigation } from "./useLiveNavigation";
 export { useOutdoorRoute } from "./useOutdoorRoute";
 export { useTurnByTurnNavigation } from "./useTurnByTurnNavigation";
 export { useAdminProfile } from "./useAdminProfile";
 export { useHeadingFusion } from "./useHeadingFusion";
+
 

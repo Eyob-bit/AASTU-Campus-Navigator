@@ -28,11 +28,13 @@ export class NavigationService {
         }
 
         const floorId = office.floorId;
+        const buildingId = office.floor?.building?.id;
+        const complexId = (office.floor?.building as any)?.complexId;
 
         const [entryScene, destinationScene, scenes] = await Promise.all([
-            this.repository.findEntryScene(floorId),
+            this.repository.findEntryScene(floorId, buildingId),
             this.repository.findDestinationScene(officeId),
-            this.repository.findSceneGraph(floorId),
+            this.repository.findSceneGraph(floorId, buildingId, complexId),
         ]);
 
         if (!entryScene) {

@@ -8,6 +8,20 @@ export interface BuildingDTO {
     entranceImage: string | null;
     coverImage: string | null;
     entranceRoadNodeId?: string | null;
+    complexId?: string | null;
+    complex?: {
+        id: string;
+        name: string;
+        code: string;
+    } | null;
+    entrances?: Array<{
+        id: string;
+        name: string;
+        latitude: number;
+        longitude: number;
+        roadNodeId?: string | null;
+        isPrimary: boolean;
+    }>;
 }
 
 export interface FloorDTO {

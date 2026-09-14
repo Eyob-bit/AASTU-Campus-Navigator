@@ -9,6 +9,7 @@ export interface ScenePreviewContext {
   elements: SceneElement[];
   floor: Floor | null;
   building: Building | null;
+  floorScenes: PanoramaScene[];
   isLoading: boolean;
   error: string | null;
   reload: () => void;
@@ -24,6 +25,7 @@ export function useScenePreview(initialSceneId: string): ScenePreviewContext {
   const [elements, setElements] = useState<SceneElement[]>([]);
   const [floor, setFloor] = useState<Floor | null>(null);
   const [building, setBuilding] = useState<Building | null>(null);
+  const [floorScenes, setFloorScenes] = useState<PanoramaScene[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +43,14 @@ export function useScenePreview(initialSceneId: string): ScenePreviewContext {
       // Load floor and building in parallel
       const floorData = await floorApi.getById(sceneData.floorId);
       setFloor(floorData);
+
+      // Load all scenes on this floor (with their elements) for the graph
+      try {
+        const scenesList = await floorApi.getScenes(sceneData.floorId);
+        setFloorScenes(scenesList.scenes || []);
+      } catch (scenesErr) {
+        console.warn("Failed to load floor scenes list for graph:", scenesErr);
+      }
 
       const buildingData = await buildingApi.getById(floorData.buildingId);
       setBuilding(buildingData);
@@ -78,5 +88,6 @@ export function useScenePreview(initialSceneId: string): ScenePreviewContext {
     setSceneId(prev);
   }, [history]);
 
-  return { scene, elements, floor, building, isLoading, error, reload, navigateTo, history, goBack };
+  return { scene, elements, floor, building, floorScenes, isLoading, error, reload, navigateTo, history, goBack };
 }
+

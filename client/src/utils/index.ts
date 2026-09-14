@@ -11,3 +11,9 @@ export {
   type RouteProgress,
 } from "./RouteProgressTracker";
 export { routeProgressStore } from "./routeProgressStore";
+export {
+  calculateIndoorNextStep,
+  findDestinationSceneId,
+  buildFloorSceneGraph,
+  type IndoorNavigationStep,
+} from "./indoorPathfinding";

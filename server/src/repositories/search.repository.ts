@@ -6,12 +6,23 @@ interface PrismaModelClient<T> {
 
 const SEARCH_LIMIT = 10;
 
+const BUILDING_SEARCH_INCLUDE = {
+    include: {
+        complex: true,
+        entrances: {
+            include: {
+                roadNode: true,
+            },
+        },
+    },
+};
+
 const STAFF_INCLUDE = {
     office: {
         include: {
             floor: {
                 include: {
-                    building: true,
+                    building: BUILDING_SEARCH_INCLUDE,
                 },
             },
         },
@@ -21,7 +32,7 @@ const STAFF_INCLUDE = {
 const OFFICE_INCLUDE = {
     floor: {
         include: {
-            building: true,
+            building: BUILDING_SEARCH_INCLUDE,
         },
     },
 };
@@ -31,7 +42,7 @@ const ALIAS_INCLUDE = {
         include: {
             floor: {
                 include: {
-                    building: true,
+                    building: BUILDING_SEARCH_INCLUDE,
                 },
             },
         },
@@ -42,7 +53,7 @@ const ALIAS_INCLUDE = {
                 include: {
                     floor: {
                         include: {
-                            building: true,
+                            building: BUILDING_SEARCH_INCLUDE,
                         },
                     },
                 },

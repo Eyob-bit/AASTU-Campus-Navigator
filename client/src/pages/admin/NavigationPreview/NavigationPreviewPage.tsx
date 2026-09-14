@@ -4,6 +4,7 @@ import {
   ChevronRight, Home, ArrowLeft, RotateCcw, AlertTriangle, Loader2, Play, Image as ImageIcon,
 } from "lucide-react";
 import { useScenePreview } from "@/hooks/useScenePreview";
+import { useIndoorNavigationRoute } from "@/hooks/useIndoorNavigationRoute";
 import { useCampusHierarchy } from "@/hooks/useCampusHierarchy";
 import { floorApi } from "@/api/floor.api";
 import type { PanoramaScene } from "@/types";
@@ -192,8 +193,29 @@ function NoSceneSelected() {
 function ScenePreview({ sceneId }: { sceneId: string }) {
   const navigate = useNavigate();
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const { scene, elements, floor, building, isLoading, error, reload, navigateTo, history, goBack } =
-    useScenePreview(sceneId);
+  const {
+    scene,
+    elements,
+    floor,
+    building,
+    floorScenes,
+    isLoading,
+    error,
+    reload,
+    navigateTo,
+    history,
+    goBack,
+  } = useScenePreview(sceneId);
+
+  const {
+    isRouteActive,
+    highlightedNextSceneId,
+    highlightedElementId,
+  } = useIndoorNavigationRoute({
+    currentSceneId: sceneId,
+    currentFloorId: scene?.floorId,
+    floorScenes,
+  });
 
   function handleArrowClick(nextSceneId: string) {
     if (!nextSceneId) return;
@@ -270,8 +292,12 @@ function ScenePreview({ sceneId }: { sceneId: string }) {
             elements={elements}
             onArrowClick={handleArrowClick}
             isTransitioning={isTransitioning}
+            highlightedNextSceneId={highlightedNextSceneId}
+            highlightedElementId={highlightedElementId}
+            isRouteActive={isRouteActive}
           />
         )}
+
 
         {/* Back button overlay */}
         {history.length > 0 && !isLoading && (

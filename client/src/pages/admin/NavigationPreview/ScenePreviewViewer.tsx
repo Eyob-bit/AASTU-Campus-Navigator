@@ -10,6 +10,11 @@ interface ScenePreviewViewerProps {
   elements: SceneElement[];
   onArrowClick: (nextSceneId: string) => void;
   isTransitioning?: boolean;
+  highlightedNextSceneId?: string | null;
+  highlightedElementId?: string | null;
+  isRouteActive?: boolean;
+  targetOfficeId?: string | null;
+  targetOfficeName?: string | null;
 }
 
 export function ScenePreviewViewer({
@@ -17,6 +22,11 @@ export function ScenePreviewViewer({
   elements,
   onArrowClick,
   isTransitioning = false,
+  highlightedNextSceneId = null,
+  highlightedElementId = null,
+  isRouteActive = false,
+  targetOfficeId = null,
+  targetOfficeName = null,
 }: ScenePreviewViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<Viewer | null>(null);
@@ -105,7 +115,6 @@ export function ScenePreviewViewer({
         const pitch = (el.y - 0.5) * Math.PI;
 
         const wrapper = document.createElement("div");
-        wrapper.className = "pointer-events-auto cursor-pointer select-none transition-transform hover:scale-125 z-30";
 
         // Prevent Marzipano canvas from swallowing pointerdown/mousedown/touchstart events on hotspots
         const stopProp = (e: Event) => {
@@ -117,7 +126,20 @@ export function ScenePreviewViewer({
         wrapper.addEventListener("touchstart", stopProp);
 
         if (el.type === "ARROW") {
-          wrapper.innerHTML = getNeonChevronArrowHtml(el.rotation ?? 0);
+          const isHighlighted =
+            isRouteActive &&
+            ((highlightedElementId && el.id === highlightedElementId) ||
+              (highlightedNextSceneId && el.nextSceneId === highlightedNextSceneId));
+          const isDimmed = isRouteActive && !isHighlighted;
+          const variant = isHighlighted ? "highlighted" : isDimmed ? "dimmed" : "normal";
+
+          wrapper.className = isHighlighted
+            ? "pointer-events-auto cursor-pointer select-none transition-transform hover:scale-130 scale-110 z-40"
+            : isDimmed
+            ? "pointer-events-auto cursor-pointer select-none transition-transform hover:scale-110 opacity-70 z-20"
+            : "pointer-events-auto cursor-pointer select-none transition-transform hover:scale-125 z-30";
+
+          wrapper.innerHTML = getNeonChevronArrowHtml(el.rotation ?? 0, variant);
           const handleArrowClick = (e: Event) => {
             e.stopPropagation();
             if (el.nextSceneId) onArrowClick(el.nextSceneId);
@@ -125,10 +147,34 @@ export function ScenePreviewViewer({
           wrapper.addEventListener("click", handleArrowClick);
           wrapper.addEventListener("pointerup", handleArrowClick);
         } else if (el.type === "OFFICE_LABEL") {
+          const isTargetOffice =
+            isRouteActive &&
+            ((targetOfficeId &&
+              (el.officeId === targetOfficeId || el.targetOfficeId === targetOfficeId)) ||
+              (targetOfficeName &&
+                el.label &&
+                (el.label.toLowerCase().includes(targetOfficeName.toLowerCase()) ||
+                  targetOfficeName.toLowerCase().includes(el.label.toLowerCase()))));
+
+          wrapper.className = isTargetOffice
+            ? "pointer-events-auto cursor-pointer select-none transition-transform hover:scale-115 z-40"
+            : "pointer-events-auto cursor-pointer select-none transition-transform hover:scale-110 z-30";
+
           wrapper.innerHTML = `
-            <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-white/80 text-gray-900 text-xs font-bold shadow-2xl hover:bg-white transition-all cursor-pointer">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"/><path d="M2 20h20"/><path d="M14 12v.01"/></svg>
+            <div class="flex items-center gap-2 px-3.5 py-2 rounded-2xl ${
+              isTargetOffice
+                ? "bg-[#0B132B]/95 border-2 border-cyan-400 text-white shadow-[0_0_20px_rgba(0,240,255,0.7)] backdrop-blur-xl animate-pulse"
+                : "bg-white/95 backdrop-blur-md border border-white/80 text-gray-900 shadow-2xl hover:bg-white"
+            } text-xs font-bold transition-all cursor-pointer">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${
+                isTargetOffice ? "#00f0ff" : "#4f46e5"
+              }" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14"/><path d="M2 20h20"/><path d="M14 12v.01"/></svg>
               <span class="whitespace-nowrap">${el.label || "Office"}</span>
+              ${
+                isTargetOffice
+                  ? '<span class="px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 text-[9px] font-mono border border-cyan-400/40">DESTINATION</span>'
+                  : ""
+              }
             </div>
           `;
           const handleOfficeClick = (e: Event) => {
@@ -138,6 +184,7 @@ export function ScenePreviewViewer({
           wrapper.addEventListener("click", handleOfficeClick);
           wrapper.addEventListener("pointerup", handleOfficeClick);
         } else if (el.type === "INFORMATION") {
+          wrapper.className = "pointer-events-auto cursor-pointer select-none transition-transform hover:scale-125 z-30";
           wrapper.innerHTML = `
             <div class="w-8 h-8 rounded-full bg-amber-500/95 border-2 border-white/90 backdrop-blur-md flex items-center justify-center text-white shadow-xl hover:bg-amber-600 transition-all font-bold text-xs cursor-pointer">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
@@ -178,7 +225,17 @@ export function ScenePreviewViewer({
         containerRef.current.innerHTML = "";
       }
     };
-  }, [resolvedImageUrl, use3D, elements, onArrowClick]);
+  }, [
+    resolvedImageUrl,
+    use3D,
+    elements,
+    onArrowClick,
+    highlightedNextSceneId,
+    highlightedElementId,
+    isRouteActive,
+    targetOfficeId,
+    targetOfficeName,
+  ]);
 
   // Close tooltip on outside click
   useEffect(() => {
@@ -243,7 +300,8 @@ export function ScenePreviewViewer({
               opacity: isTransitioning ? 0 : 1,
               transform: isTransitioning ? "scale(1.12)" : "scale(1)",
               filter: isTransitioning ? "blur(4px)" : "blur(0px)",
-              transition: "opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), filter 0.45s cubic-bezier(0.4, 0, 0.2, 1)",
+              transition:
+                "opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), filter 0.45s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           />
 
@@ -270,7 +328,8 @@ export function ScenePreviewViewer({
               opacity: isTransitioning ? 0 : 1,
               transform: isTransitioning ? "scale(1.12)" : "scale(1)",
               filter: isTransitioning ? "blur(4px)" : "blur(0px)",
-              transition: "opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), filter 0.45s cubic-bezier(0.4, 0, 0.2, 1)",
+              transition:
+                "opacity 0.45s cubic-bezier(0.4, 0, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), filter 0.45s cubic-bezier(0.4, 0, 0.2, 1)",
             }}
           >
             {/* Absolute Marker Overlay */}
@@ -280,6 +339,11 @@ export function ScenePreviewViewer({
                   key={el.id}
                   element={el}
                   onArrowClick={onArrowClick}
+                  highlightedNextSceneId={highlightedNextSceneId}
+                  highlightedElementId={highlightedElementId}
+                  isRouteActive={isRouteActive}
+                  targetOfficeId={targetOfficeId}
+                  targetOfficeName={targetOfficeName}
                   onInfoClick={(e: MouseEvent<HTMLButtonElement>, x: number, y: number) => {
                     e.stopPropagation();
                     setTooltip((prev) => (prev?.element.id === el.id ? null : { element: el, x, y }));
@@ -309,25 +373,52 @@ interface MarkerProps {
   element: SceneElement;
   onArrowClick: (nextSceneId: string) => void;
   onInfoClick: (e: MouseEvent<HTMLButtonElement>, x: number, y: number) => void;
+  highlightedNextSceneId?: string | null;
+  highlightedElementId?: string | null;
+  isRouteActive?: boolean;
+  targetOfficeId?: string | null;
+  targetOfficeName?: string | null;
 }
 
-function ElementMarker({ element, onArrowClick, onInfoClick }: MarkerProps) {
+function ElementMarker({
+  element,
+  onArrowClick,
+  onInfoClick,
+  highlightedNextSceneId,
+  highlightedElementId,
+  isRouteActive = false,
+  targetOfficeId,
+  targetOfficeName,
+}: MarkerProps) {
   const left = `${element.x * 100}%`;
   const top = `${element.y * 100}%`;
 
   if (element.type === "ARROW") {
+    const isHighlighted =
+      isRouteActive &&
+      ((highlightedElementId && element.id === highlightedElementId) ||
+        (highlightedNextSceneId && element.nextSceneId === highlightedNextSceneId));
+    const isDimmed = isRouteActive && !isHighlighted;
+    const variant = isHighlighted ? "highlighted" : isDimmed ? "dimmed" : "normal";
+
     return (
       <button
-        className="absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2 transition-transform hover:scale-125 cursor-pointer z-10 focus:outline-none"
+        className={`absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2 transition-transform cursor-pointer focus:outline-none ${
+          isHighlighted
+            ? "scale-115 z-30 hover:scale-130"
+            : isDimmed
+            ? "z-10 hover:scale-110"
+            : "hover:scale-125 z-20"
+        }`}
         style={{ left, top }}
         onClick={(e: MouseEvent<HTMLButtonElement>) => {
           e.stopPropagation();
           if (element.nextSceneId) onArrowClick(element.nextSceneId);
         }}
         aria-label={`Navigate: ${element.label ?? "Next scene"}`}
-        title={element.label ?? "Go to next scene"}
+        title={element.label ?? (isHighlighted ? "Next step toward target office" : "Go to next scene")}
       >
-        <NeonChevronArrow rotation={element.rotation ?? 0} size="md" />
+        <NeonChevronArrow rotation={element.rotation ?? 0} size="md" variant={variant} />
       </button>
     );
   }
@@ -347,15 +438,31 @@ function ElementMarker({ element, onArrowClick, onInfoClick }: MarkerProps) {
   }
 
   if (element.type === "OFFICE_LABEL") {
+    const isTargetOffice =
+      isRouteActive &&
+      ((targetOfficeId &&
+        (element.officeId === targetOfficeId || element.targetOfficeId === targetOfficeId)) ||
+        (targetOfficeName &&
+          element.label &&
+          (element.label.toLowerCase().includes(targetOfficeName.toLowerCase()) ||
+            targetOfficeName.toLowerCase().includes(element.label.toLowerCase()))));
+
     return (
       <button
-        className="absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl bg-white/90 backdrop-blur-md border border-white/80 text-gray-900 text-[10px] sm:text-xs font-semibold shadow-lg sm:shadow-xl hover:bg-white hover:scale-105 transition-all duration-200 cursor-pointer z-10"
+        className={`absolute pointer-events-auto -translate-x-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg sm:rounded-xl ${
+          isTargetOffice
+            ? "bg-[#0B132B]/95 border-2 border-cyan-400 text-white shadow-[0_0_16px_rgba(0,240,255,0.8)] backdrop-blur-xl animate-pulse scale-105 z-30"
+            : "bg-white/90 backdrop-blur-md border border-white/80 text-gray-900 shadow-lg sm:shadow-xl hover:bg-white hover:scale-105 z-10"
+        } text-[10px] sm:text-xs font-semibold transition-all duration-200 cursor-pointer`}
         style={{ left, top }}
         onClick={(e: MouseEvent<HTMLButtonElement>) => onInfoClick(e, element.x, element.y)}
         aria-label={`Office: ${element.label ?? "Office"}`}
       >
-        <DoorOpen size={12} className="text-indigo-600 flex-shrink-0 sm:w-3.5 sm:h-3.5" />
+        <DoorOpen size={12} className={isTargetOffice ? "text-cyan-400 flex-shrink-0 sm:w-3.5 sm:h-3.5" : "text-indigo-600 flex-shrink-0 sm:w-3.5 sm:h-3.5"} />
         <span className="whitespace-nowrap truncate max-w-[90px] sm:max-w-[140px]">{element.label ?? "Office"}</span>
+        {isTargetOffice && (
+          <span className="ml-1 px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-300 text-[8px] font-mono border border-cyan-400/40">TARGET</span>
+        )}
       </button>
     );
   }

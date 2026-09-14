@@ -32,6 +32,21 @@ function toBuildingDTO(building: any): BuildingDTO {
         entranceLongitude: building.entranceLongitude,
         entranceImage: building.entranceImage ?? null,
         coverImage: building.coverImage ?? null,
+        entranceRoadNodeId: building.entranceRoadNodeId ?? null,
+        complexId: building.complexId ?? null,
+        complex: building.complex ? {
+            id: building.complex.id,
+            name: building.complex.name,
+            code: building.complex.code,
+        } : null,
+        entrances: building.entrances?.map((e: any) => ({
+            id: e.id,
+            name: e.name,
+            latitude: e.latitude,
+            longitude: e.longitude,
+            roadNodeId: e.roadNodeId ?? null,
+            isPrimary: e.isPrimary ?? false,
+        })) ?? [],
     };
 }
 
